@@ -5,11 +5,14 @@
 #include <nvcomp/native/streaming_gzip.hpp>
 #include <nvcomp/version.h>
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <future>
+#include <mutex>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
+#include <thread>
 
 namespace gipu {
 namespace {
@@ -173,11 +176,38 @@ double read_batch(const Archive& archive, const Batch& b, BatchHost& host) {
 }
 double write_batch(const Batch& b, const BatchHost& host, OutputRoot* root, const Options& opts) {
   auto start = std::chrono::steady_clock::now();
-  if (root) for (size_t i = 0; i < b.entries.size(); ++i) {
+  auto write_one = [&](size_t i) {
     check_cancelled();
     OutputFile file(*root, *b.entries[i], opts.durable);
     file.write(std::span<const char>(host.output.data() + b.output_offsets[i], checked_size(b.entries[i]->uncompressed)));
     file.commit();
+  };
+  if (root) {
+    size_t count = std::min(opts.write_threads, b.entries.size());
+    if (count == 1) {
+      for (size_t i = 0; i < b.entries.size(); ++i) write_one(i);
+    } else {
+      std::atomic<size_t> next{0};
+      std::atomic<bool> stop{false};
+      std::mutex lock;
+      std::exception_ptr error;
+      std::vector<std::jthread> workers;
+      for (size_t worker = 0; worker < count; ++worker) workers.emplace_back([&] {
+        try {
+          while (!stop.load()) {
+            auto i = next.fetch_add(1);
+            if (i >= b.entries.size()) break;
+            write_one(i);
+          }
+        } catch (...) {
+          stop.store(true);
+          std::lock_guard guard(lock);
+          if (!error) error = std::current_exception();
+        }
+      });
+      workers.clear();
+      if (error) std::rethrow_exception(error);
+    }
   }
   return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
 }
@@ -185,9 +215,11 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
                   nvcompBatchedDeflateDecompressOpts_t decompress_opts, BatchBuffers& buffers, BatchHost& host, Stats& stats,
                   bool preloaded = false, bool defer_write = false) {
   size_t n = b.entries.size();
+  auto allocate_start = std::chrono::steady_clock::now();
   buffers.arena.reserve(b.memory);
-  if (!preloaded) stats.read_seconds += read_batch(archive, b, host);
   if (root) host.output.reserve(b.output);
+  stats.allocation_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - allocate_start).count();
+  if (!preloaded) stats.read_seconds += read_batch(archive, b, host);
   size_t offset = 0;
   auto take = [&](size_t bytes) {
     void* ptr = static_cast<char*>(buffers.arena.data()) + offset;
@@ -296,6 +328,19 @@ Stats pipeline_decode(const Archive& archive, OutputRoot* root, const Options& o
   if (root) for (const auto& e : entries) if (e.directory) root->directory(e.name);
   Stats stats; stats.workspace = StreamingCrc::memory;
   if (batches.empty()) return stats;
+  // 全計画の最大容量を先に確保。先読み中のcudaMallocHostがGPU/DMAを同期するのを避ける。
+  auto allocate_start = std::chrono::steady_clock::now();
+  size_t max_input = 0, max_output = 0, max_memory = 0;
+  for (const auto& b : batches) {
+    max_input = std::max(max_input, b.input); max_output = std::max(max_output, b.output);
+    max_memory = std::max(max_memory, b.memory);
+  }
+  buffers.arena.reserve(max_memory);
+  for (auto& host : hosts) {
+    host.input.reserve(max_input);
+    if (root) host.output.reserve(max_output);
+  }
+  stats.allocation_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - allocate_start).count();
   std::future<double> reader, writers[2]; // futureはhost/batchより先に破棄・joinされる。
   stats.read_seconds += read_batch(archive, batches[0], hosts[0]);
   for (size_t i = 0; i < batches.size(); ++i) {

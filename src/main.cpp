@@ -28,6 +28,7 @@ void help() {
                "オプション:\n"
                "  --backend gpu|cpu|libdeflate  既定gpu。CPUは比較・検証用\n"
                "  --threads N              libdeflateのCPU worker数（既定1、最大32）\n"
+               "  --write-threads N        GPUの1バッチ出力worker数（既定8、最大32）\n"
                "  --batch-entries N        GPUバッチの最大エントリ数（既定4096）\n"
                "  --pipeline               GPUバッチ専用、読み込み・GPU・書き込みを重畳\n"
                "  --gpu N                  CUDAデバイス番号（既定0）\n"
@@ -54,12 +55,13 @@ int main(int argc, char** argv) {
       if (arg == "--output" || arg == "-o") output_path = value();
       else if (arg == "--backend") opts.backend = value();
       else if (arg == "--gpu-mode") opts.gpu_mode = value();
-      else if (arg == "--threads" || arg == "--batch-entries") {
+      else if (arg == "--threads" || arg == "--write-threads" || arg == "--batch-entries") {
         auto text = value(); size_t used = 0;
         if (text.empty() || text.front() < '0' || text.front() > '9') throw std::runtime_error("個数が不正です");
         auto count = std::stoull(text, &used);
-        if (used != text.size() || count == 0 || count > (arg == "--threads" ? 32ULL : 65536ULL)) throw std::runtime_error("個数の範囲が不正です");
+        if (used != text.size() || count == 0 || count > (arg == "--batch-entries" ? 65536ULL : 32ULL)) throw std::runtime_error("個数の範囲が不正です");
         if (arg == "--threads") opts.threads = static_cast<size_t>(count);
+        else if (arg == "--write-threads") opts.write_threads = static_cast<size_t>(count);
         else opts.batch_entries = static_cast<size_t>(count);
       }
       else if (arg == "--gpu") {
@@ -102,7 +104,8 @@ int main(int argc, char** argv) {
                         << ",\"parse_seconds\":" << std::chrono::duration<double>(parsed - start).count()
                         << ",\"read_seconds\":" << stats.read_seconds << ",\"write_seconds\":" << stats.write_seconds
                         << ",\"decode_seconds\":" << stats.decode_seconds << ",\"crc_seconds\":" << stats.crc_seconds
-                        << ",\"transfer_seconds\":" << stats.transfer_seconds << "}\n";
+                        << ",\"transfer_seconds\":" << stats.transfer_seconds
+                        << ",\"allocation_seconds\":" << stats.allocation_seconds << "}\n";
     else std::cout << "完了: " << stats.files << "ファイル / " << stats.bytes << " bytes / " << seconds << "秒 / " << throughput
                    << " GiB/s（" << opts.backend << ", batch=" << stats.batches << ", stream=" << stats.streams << "）\n";
     return 0;

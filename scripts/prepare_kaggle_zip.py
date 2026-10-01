@@ -3,6 +3,7 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 from collections import deque
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -21,7 +22,10 @@ def paths(root):
 
 
 def compress(path):
-    data = path.read_bytes()
+    with path.open("rb") as source:
+        data = source.read((16 << 20) + 1)
+    if len(data) > 16 << 20:
+        raise RuntimeError("16MiBを超えるDICOMは初期生成器の対象外です")
     encoder = zlib.compressobj(6, zlib.DEFLATED, -15)
     return path, len(data), zlib.crc32(data), encoder.compress(data) + encoder.flush()
 
@@ -33,7 +37,7 @@ def main():
     parser.add_argument("--target-gb", type=float, default=50, help="圧縮ZIP容量、10進GB")
     parser.add_argument("--workers", type=int, default=12)
     args = parser.parse_args()
-    if args.target_gb <= 0 or not 1 <= args.workers <= 32:
+    if not math.isfinite(args.target_gb) or args.target_gb <= 0 or not 1 <= args.workers <= 32:
         parser.error("容量またはworker数が不正です")
     if not args.source.is_dir():
         parser.error("データソースがありません")
@@ -45,7 +49,8 @@ def main():
     part = args.output.with_suffix(args.output.suffix + ".part")
     central_path = args.output.with_suffix(args.output.suffix + ".central.part")
     manifest_path = args.output.with_suffix(args.output.suffix + ".manifest.jsonl")
-    if any(p.exists() for p in (args.output, part, central_path, manifest_path)):
+    summary_path = args.output.with_suffix(args.output.suffix + ".summary.json")
+    if any(p.exists() for p in (args.output, part, central_path, manifest_path, summary_path)):
         parser.error("出力または作業ファイルが既に存在します。上書きしません")
     started = time.perf_counter()
     count = total_raw = 0
@@ -115,7 +120,8 @@ def main():
     central_path.unlink()
     report = {"source": str(args.source), "archive": str(args.output), "archive_bytes": args.output.stat().st_size,
               "raw_bytes": total_raw, "files": count, "method": "Deflate level 6 / ZIP64", "seconds": time.perf_counter() - started}
-    args.output.with_suffix(args.output.suffix + ".summary.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+    with summary_path.open("x", encoding="utf-8") as summary:
+        summary.write(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
     print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
 
 

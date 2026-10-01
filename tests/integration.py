@@ -179,9 +179,19 @@ class Integration(unittest.TestCase):
         self.process(zip_bytes([("empty", b"")]), extract=False, ok=False, extra=("--pipeline",))
         self.process(zip_bytes([("large", b"a" * (32 << 20))]), extract=False, ok=False,
                      extra=("--pipeline", "--vram-limit", "16M"))
+        # デコードできてもCRCが異なるバッチは、出力workerへ渡さない。
+        data = bytearray(zip_bytes([("bad-crc", b"valid deflate" * 1000)]))
+        cd = data.index(b"PK\x01\x02")
+        wrong_crc = struct.unpack_from("<I", data, cd + 16)[0] ^ 1
+        struct.pack_into("<I", data, 14, wrong_crc)
+        struct.pack_into("<I", data, cd + 16, wrong_crc)
+        self.process(data, ok=False, extra=("--pipeline",))
+        self.assertFalse((self.out / "bad-crc").exists())
+        self.assertEqual(list(self.out.rglob("*.part")), [])
 
     def test_invalid_counts(self):
         for flag, value in (("--threads", "0"), ("--threads", "33"), ("--threads", "-1"),
+                            ("--write-threads", "0"), ("--write-threads", "33"),
                             ("--batch-entries", "0"), ("--batch-entries", "65537"), ("--batch-entries", "3x")):
             with self.subTest(flag=flag, value=value):
                 self.process(zip_bytes([("file", b"data")]), ok=False, extra=(flag, value))
