@@ -11,7 +11,8 @@ fi
 if [[ ! -x .deps/env/bin/cmake ]]; then
   .deps/tools/bin/micromamba create -y --no-rc --root-prefix "$gipu_root/.deps/mamba" \
     -p "$gipu_root/.deps/env" -c conda-forge -c nvidia \
-    'gxx_linux-64=14' cmake ninja zlib cuda-cudart-dev cuda-version=13.0
+    'gxx_linux-64=14' cmake ninja zlib 'cuda-cudart-dev=13.0.*' \
+    'cuda-crt-dev_linux-64=13.0.*' cuda-version=13.0
 fi
 if [[ ! -f .deps/nvcomp/include/nvcomp/native/streaming_gzip.hpp ]]; then
   curl -fLsS https://developer.download.nvidia.com/compute/nvcomp/redist/nvcomp/linux-x86_64/nvcomp-linux-x86_64-5.3.0.16_cuda13-archive.tar.xz |

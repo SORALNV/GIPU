@@ -40,6 +40,16 @@ int OutputRoot::parent(const std::string& name) const {
 void OutputRoot::directory(const std::string& name) const {
   int fd = parent(name); ::close(fd);
 }
+OutputFile::OutputFile() {
+  auto temporary = (std::filesystem::temp_directory_path() / "gipu-spool-XXXXXX").string();
+  fd_ = ::mkstemp(temporary.data());
+  if (fd_ < 0) fail("ストリーミング検証用の一時出力を作成できません");
+  if (::unlink(temporary.c_str()) != 0) {
+    const int saved = errno; ::close(fd_); fd_ = -1; errno = saved;
+    fail("ストリーミング検証用の一時名を削除できません");
+  }
+  ::fcntl(fd_, F_SETFD, FD_CLOEXEC);
+}
 OutputFile::OutputFile(const OutputRoot& root, const Entry& entry, bool durable) : durable_(durable) {
   parent_ = root.parent(entry.name);
   try {
@@ -51,7 +61,7 @@ OutputFile::OutputFile(const OutputRoot& root, const Entry& entry, bool durable)
     uint64_t random = 0;
     if (::getrandom(&random, sizeof(random), 0) != sizeof(random)) fail("一時名を生成できません");
     temporary_ = ".gipu-" + std::to_string(random) + ".part";
-    fd_ = ::openat(parent_, temporary_.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
+    fd_ = ::openat(parent_, temporary_.c_str(), O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
     if (fd_ < 0) fail("一時ファイルを作成できません");
   } catch (...) { ::close(parent_); parent_ = -1; throw; }
 }
@@ -70,6 +80,19 @@ void OutputFile::write(std::span<const char> bytes) {
     if (n < 0 && errno == EINTR) continue;
     if (n <= 0) fail("展開データを書き込めません");
     offset += static_cast<size_t>(n);
+  }
+}
+void OutputFile::read_all(const std::function<void(std::span<const char>)>& consume) const {
+  std::vector<char> buffer(4 << 20);
+  off_t offset = 0;
+  for (;;) {
+    check_cancelled();
+    auto n = ::pread(fd_, buffer.data(), buffer.size(), offset);
+    if (n < 0 && errno == EINTR) continue;
+    if (n < 0) fail("GPU CRC用の出力再読み込みに失敗しました");
+    if (n == 0) break;
+    consume(std::span<const char>(buffer.data(), static_cast<size_t>(n)));
+    offset += n;
   }
 }
 void OutputFile::commit() {

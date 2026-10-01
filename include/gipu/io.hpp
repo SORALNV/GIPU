@@ -21,11 +21,13 @@ class OutputRoot {
 // 同一ディレクトリ内に一時ファイルを作り、検証後だけ確定する。
 class OutputFile {
  public:
+  OutputFile(); // testコマンド用の、名前を持たない一時出力。
   OutputFile(const OutputRoot& root, const Entry& entry, bool durable);
   ~OutputFile();
   OutputFile(const OutputFile&) = delete;
   OutputFile& operator=(const OutputFile&) = delete;
   void write(std::span<const char> bytes);
+  void read_all(const std::function<void(std::span<const char>)>& consume) const;
   void commit();
  private:
   int parent_ = -1, fd_ = -1;

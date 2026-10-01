@@ -105,6 +105,50 @@ class Integration(unittest.TestCase):
         self.process(zip_bytes([("data.bin", b"descriptor" * 20000)], descriptor=True))
         self.assertEqual((self.out / "data.bin").read_bytes(), b"descriptor" * 20000)
 
+    def test_unsigned_descriptor(self):
+        data = bytearray(zip_bytes([("data.bin", b"descriptor" * 20000)], descriptor=True))
+        descriptor = data.index(b"PK\x07\x08")
+        del data[descriptor:descriptor + 4]
+        end = data.rfind(b"PK\x05\x06")
+        offset = struct.unpack_from("<I", data, end + 16)[0]
+        struct.pack_into("<I", data, end + 16, offset - 4)
+        self.process(data, extract=False)
+
+    def test_zip64_central_sizes_and_offset(self):
+        data = bytearray(zip_bytes([("wide.bin", b"zip64" * 1000)], force_zip64=True))
+        cd = data.index(b"PK\x01\x02")
+        compressed, uncompressed = struct.unpack_from("<II", data, cd + 20)
+        local_offset = struct.unpack_from("<I", data, cd + 42)[0]
+        name_length = struct.unpack_from("<H", data, cd + 28)[0]
+        extra = struct.pack("<HHQQQ", 1, 24, uncompressed, compressed, local_offset)
+        struct.pack_into("<II", data, cd + 20, 0xffffffff, 0xffffffff)
+        struct.pack_into("<I", data, cd + 42, 0xffffffff)
+        struct.pack_into("<H", data, cd + 30, len(extra))
+        position = cd + 46 + name_length
+        data[position:position] = extra
+        end = data.rfind(b"PK\x05\x06")
+        size = struct.unpack_from("<I", data, end + 12)[0]
+        struct.pack_into("<I", data, end + 12, size + len(extra))
+        self.process(full_zip64(data), extract=False)
+
+    @unittest.skipUnless(BACKEND == "gpu" and MODE == "auto", "GPU自動スケジューラのテスト")
+    def test_gpu_memory_budget(self):
+        entries = [(f"{i}.bin", b"a" * (1 << 20)) for i in range(20)]
+        result = self.process(zip_bytes(entries), extract=False, extra=("--vram-limit", "12M", "--json"))
+        stats = json.loads(result.stdout)
+        self.assertGreater(stats["gpu_batches"], 1)
+        self.assertLessEqual(stats["workspace_bytes"], 12 << 20)
+        result = self.process(zip_bytes([("big.bin", b"a" * (32 << 20))]), extract=False,
+                              extra=("--vram-limit", "16M", "--json"))
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["gpu_streams"], 1)
+        self.assertEqual(stats["gpu_batches"], 0)
+        self.assertLessEqual(stats["workspace_bytes"], 16 << 20)
+
+    @unittest.skipUnless(BACKEND == "gpu", "GPU予算のテスト")
+    def test_insufficient_gpu_budget(self):
+        self.process(zip_bytes([("file", b"data")]), extract=False, ok=False, extra=("--vram-limit", "4M"))
+
     def test_cp437(self):
         data = zip_bytes([("x.txt", b"cp437")]).replace(b"x.txt", b"\x82.txt")
         self.process(data)

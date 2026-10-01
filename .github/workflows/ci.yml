@@ -1,0 +1,22 @@
+name: ZIP解析・CPU参照経路の検証
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  cpu:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        sanitize: [OFF, ON]
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: ビルド依存を準備
+        run: sudo apt-get update && sudo apt-get install -y g++ cmake ninja-build zlib1g-dev
+      - name: 構成とビルド
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DGIPU_ENABLE_GPU=OFF -DGIPU_SANITIZE=${{ matrix.sanitize }}
+          cmake --build build -j 2
+      - name: ZIP互換性と不正入力・出力保護を検証
+        run: ctest --test-dir build --output-on-failure
