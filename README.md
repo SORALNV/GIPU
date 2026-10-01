@@ -122,3 +122,27 @@ Ubuntu 26.04.1、RTX 3090（24GiB）、CUDAランタイム13.0、nvCOMP 5.3.0で
 - 256MiB／16エントリの合成ZIPを展開・fsync・SHA256確認した比較では、CLI全体時間の中央値がCPU zlib **0.181秒**、GPU **0.446秒**。この条件ではGPUが約2.47倍遅く、CPUより超高速という目標は未達です。
 
 測定条件・解釈と次の改善対象は[実測記録](docs/measurements-2026-10-01.md)、実装の分担と制約は[構成](docs/architecture.md)を参照してください。
+
+## 2026年10月2日：Kaggle実データ50GBの比較
+
+Optaneのworkspaceに**50.001GBの標準ZIP64**を作成しました。元データは2TB SSD側のKaggle RSNA DICOM、155,925ファイル・展開後109.557GBです。元データは変更していません。
+
+| 経路 | 解凍＋CRC（書き込みなし） | SSDへの実展開 |
+|---|---:|---:|
+| zlib単一CPU、初回1回の基準値 | 277.07秒 | 311.93秒 |
+| libdeflate 16スレッド、最終3回中央値 | 13.90秒 | 60.18秒 |
+| GPU pipeline、4GiB、最終3回中央値 | 19.01秒 | **54.85秒** |
+
+単一CPU zlib基準比は、書き込みなしで約14.58倍、実展開で**約5.69倍**でした。選んだデータの中央値では5倍目標を超えています。ただし最速CPU比5倍ではありません。実展開の16スレッドCPU比は中央値で約1.10倍、時間の範囲も重なり、安定した優位性までは示せていません。書き込みなしでは並列CPUの方が速い結果です。
+
+GPUの実展開3回は47.02／67.42／54.85秒でした。**fsyncによる全件永続化は含まない**通常write完了までの比較で、全件CRC・出力サイズと元データ128件のSHA256を確認しています。試験用の展開物だけ削除し、50GB ZIPと元データは残しました。GPU解凍区間は約11.5〜11.7秒と安定し、残る主要な変動は書き込み側です。CUDAバッファ、固定化メモリ、GPU CRC、I/O重畳、並列ファイル出力を最適化し、カーネルやドライバ自体は変更していません。
+
+このZIPで使う推奨経路:
+
+```bash
+build/gipu extract /srv/workspace/sora/gipu-bench/kaggle-50GB.zip \
+  --output /home/sora/gipu-extracted --pipeline --vram-limit 4G \
+  --batch-entries 4096 --write-threads 8 --json
+```
+
+展開先には約110GB＋余裕が必要です。pipelineは最大16個のCPU出力workerを使います。元データ・医用画像・ローカルマニフェストはGitHubへ公開していません。測定方法、各回の値、比較対象の制約、ZIPのSHA256は[50GB実測記録](docs/measurements-kaggle-50gb-2026-10-02.md)と[集計JSON](docs/benchmarks/kaggle50-2026-10-02.json)を参照してください。
