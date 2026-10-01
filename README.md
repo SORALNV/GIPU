@@ -51,6 +51,7 @@ build/gipu extract archive.zip --output ./out --vram-limit 4G
 build/gipu test archive.zip --gpu-mode stream --json
 build/gipu test archive.zip --backend cpu
 build/gipu test archive.zip --backend libdeflate --threads 16 --json
+build/gipu extract archive.zip --output ./out --pipeline --json
 ```
 
 `test`は展開先を作らずに解凍・サイズ・CRCを検証します。GPUストリーミングの`test`だけは、CRC再読み込み用に名前なし一時ファイルを作るため、展開量と同じ一時ディスク容量が必要です（配置先は`TMPDIR`、未指定時は通常`/tmp`）。終了時に削除されます。CPU／GPUバッチの`test`は展開データをディスクへ書きません。`--max-output`の既定値は1TiBです。`--sync`を付けるとファイルと親ディレクトリをfsyncします。失敗時、処理中の一時ファイルは削除されます。既に検証・確定されたファイルは残ります。
@@ -58,6 +59,8 @@ build/gipu test archive.zip --backend libdeflate --threads 16 --json
 `--gpu-mode auto`は予算内の最大4096エントリをまとめ、収まらないエントリをストリーミングへ回します。`--batch-entries`で上限を変更できます。`stream`は全DeflateをStreaming Gzipへ、`batch`はサイズ・予算内のDeflateだけをバッチへ送ります。Storedはコピー＋GPU CRCです。空のDeflateエントリはストリーミング経路で処理します。
 
 比較用の`--backend libdeflate`は任意のlibdeflate依存を見つけたビルドで使用できます。既存環境には`libdeflate`を追加して再ビルドしてください。エントリ全体をCPU RAMに置くため、1エントリの圧縮／展開サイズは各256MiBまでです。`--threads`はこの経路だけに作用します。
+
+`--pipeline`は全ファイルが非空Deflateバッチに収まるZIP専用の実験経路です。固定化ホスト入出力を二重化し、次バッチの読み込み・GPU処理・前バッチの書き込みを重畳します。GPU arenaは一つだけでVRAM予算は変わりませんが、ホストRAMの必要量はバッチ入出力の約2倍になります。Stored／空ファイル／Streamingが必要な入力にはこの指定を外してください。各バッチ全体のGPU CRC確認が済むまでは、そのバッチの出力を書き出しません。
 
 `--vram-limit`は、GIPUが明示的に確保する入力・出力・nvCOMP作業領域・メタデータ・CRC領域の合計を制限します。CUDAコンテキストやライブラリ内部の割り当て、他プロセスの使用量は含まれません。総VRAMの厳密な上限を保証するオプションではありません。ホストRAMにはバッチ入出力と同程度の固定化メモリが必要です。Streaming経路はアーカイブ／展開量の全体バッファを確保しません。
 

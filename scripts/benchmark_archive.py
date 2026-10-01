@@ -37,6 +37,7 @@ def main():
         "gpu256": ["--backend", "gpu", "--batch-entries", "256"],
         "gpu1024": ["--backend", "gpu", "--batch-entries", "1024"],
         "gpu4096": ["--backend", "gpu", "--batch-entries", "4096"],
+        "gpupipeline": ["--backend", "gpu", "--pipeline", "--batch-entries", "4096"],
     }
     if any(case not in cases for case in args.cases):
         p.error("不明な測定caseです")

@@ -11,6 +11,7 @@ struct Options {
   uint64_t vram_limit = 4ULL << 30;
   uint64_t max_output = 1ULL << 40;
   bool durable = false;
+  bool pipeline = false;
 };
 struct Stats {
   uint64_t files = 0, bytes = 0, batches = 0, streams = 0, workspace = 0;

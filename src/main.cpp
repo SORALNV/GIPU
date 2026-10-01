@@ -29,6 +29,7 @@ void help() {
                "  --backend gpu|cpu|libdeflate  既定gpu。CPUは比較・検証用\n"
                "  --threads N              libdeflateのCPU worker数（既定1、最大32）\n"
                "  --batch-entries N        GPUバッチの最大エントリ数（既定4096）\n"
+               "  --pipeline               GPUバッチ専用、読み込み・GPU・書き込みを重畳\n"
                "  --gpu N                  CUDAデバイス番号（既定0）\n"
                "  --gpu-mode auto|stream|batch  GPU経路（既定auto）\n"
                "  --vram-limit 4G          GIPUが確保するGPU作業領域の上限\n"
@@ -67,6 +68,7 @@ int main(int argc, char** argv) {
       } else if (arg == "--vram-limit") opts.vram_limit = size_value(value());
       else if (arg == "--max-output") opts.max_output = size_value(value());
       else if (arg == "--sync") opts.durable = true;
+      else if (arg == "--pipeline") opts.pipeline = true;
       else if (arg == "--json") json = true;
       else if (!arg.empty() && arg.front() == '-') throw std::runtime_error("不明なオプションです: " + arg);
       else if (archive_path.empty()) archive_path = arg;
@@ -74,6 +76,7 @@ int main(int argc, char** argv) {
     }
     if (opts.backend != "gpu" && opts.backend != "cpu" && opts.backend != "libdeflate") throw std::runtime_error("backendはgpu/cpu/libdeflateです");
     if (opts.gpu_mode != "auto" && opts.gpu_mode != "stream" && opts.gpu_mode != "batch") throw std::runtime_error("gpu-modeはauto/stream/batchです");
+    if (opts.pipeline && (opts.backend != "gpu" || opts.gpu_mode == "stream")) throw std::runtime_error("pipelineはGPU auto/batch専用です");
     if (command == "doctor") { std::cout << gipu::gpu_info(opts.gpu) << '\n'; return 0; }
     if (archive_path.empty()) throw std::runtime_error("ZIPファイルを指定してください");
     const auto start = std::chrono::steady_clock::now();

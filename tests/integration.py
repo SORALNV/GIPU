@@ -168,6 +168,24 @@ class Integration(unittest.TestCase):
         for name, payload in entries:
             self.assertEqual((self.out / name).read_bytes(), payload)
 
+    @unittest.skipUnless(BACKEND == "gpu" and MODE != "stream", "GPUパイプラインのテスト")
+    def test_pipeline(self):
+        entries = [(f"pipeline/{i}.bin", bytes(range(256)) * (32 + i)) for i in range(20)]
+        result = self.process(zip_bytes(entries), extra=("--pipeline", "--batch-entries", "3", "--json", "--sync"))
+        self.assertGreater(json.loads(result.stdout)["gpu_batches"], 1)
+        for name, payload in entries:
+            self.assertEqual((self.out / name).read_bytes(), payload)
+        self.process(zip_bytes([("stored", b"x")], method=zipfile.ZIP_STORED), extract=False, ok=False, extra=("--pipeline",))
+        self.process(zip_bytes([("empty", b"")]), extract=False, ok=False, extra=("--pipeline",))
+        self.process(zip_bytes([("large", b"a" * (32 << 20))]), extract=False, ok=False,
+                     extra=("--pipeline", "--vram-limit", "16M"))
+
+    def test_invalid_counts(self):
+        for flag, value in (("--threads", "0"), ("--threads", "33"), ("--threads", "-1"),
+                            ("--batch-entries", "0"), ("--batch-entries", "65537"), ("--batch-entries", "3x")):
+            with self.subTest(flag=flag, value=value):
+                self.process(zip_bytes([("file", b"data")]), ok=False, extra=(flag, value))
+
     def test_unsafe_paths(self):
         for name in ("../escape", "/absolute", "a/../../escape", "C:/drive", "a\\..\\escape", "a//b", "./dot"):
             with self.subTest(name=name):
