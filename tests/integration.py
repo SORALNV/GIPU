@@ -68,7 +68,8 @@ class Integration(unittest.TestCase):
 
     def process(self, data, *, ok=True, extract=True, extra=()):
         self.archive.write_bytes(data)
-        args = ["extract" if extract else "test", self.archive, "--backend", BACKEND, "--gpu-mode", MODE]
+        args = ["extract" if extract else "test", self.archive, "--backend", BACKEND, "--gpu-mode", MODE,
+                "--threads", os.environ.get("GIPU_TEST_THREADS", "1")]
         if extract:
             args += ["--output", self.out]
         return self.run_cli(*args, *extra, ok=ok)
@@ -143,6 +144,13 @@ class Integration(unittest.TestCase):
         stats = json.loads(result.stdout)
         self.assertEqual(stats["gpu_streams"], 1)
         self.assertEqual(stats["gpu_batches"], 0)
+        self.assertLessEqual(stats["workspace_bytes"], 16 << 20)
+        # バッチの後にStreamingを選んでもarenaを解放して予算を守る。
+        result = self.process(zip_bytes([("small", b"a" * (8 << 20)), ("large", b"b" * (32 << 20))]), extract=False,
+                              extra=("--vram-limit", "16M", "--json"))
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["gpu_batches"], 1)
+        self.assertEqual(stats["gpu_streams"], 1)
         self.assertLessEqual(stats["workspace_bytes"], 16 << 20)
 
     @unittest.skipUnless(BACKEND == "gpu", "GPU予算のテスト")

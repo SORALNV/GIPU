@@ -12,6 +12,8 @@ Ubuntu＋NVIDIA GPUで、通常のZIPを展開するCLIを開発しています�
 - nvCOMP 5.3.0によるGPUバッチDeflate／Streaming Gzip。予算に応じて自動選択します。
 - GPU CRC32（バッチ／増分計算）。CPU参照経路（zlib）は明示したときだけ使います。
 - JSONの処理時間・展開量・バッチ数・ストリーム数・作業領域の出力。
+- バッチarena／固定化ホストバッファの再利用、検証時の全展開データD2H転送の省略。
+- libdeflateによる比較用CPU経路（1〜32 worker、任意の依存）。
 
 ## ビルド
 
@@ -48,11 +50,14 @@ build/gipu list archive.zip
 build/gipu extract archive.zip --output ./out --vram-limit 4G
 build/gipu test archive.zip --gpu-mode stream --json
 build/gipu test archive.zip --backend cpu
+build/gipu test archive.zip --backend libdeflate --threads 16 --json
 ```
 
 `test`は展開先を作らずに解凍・サイズ・CRCを検証します。GPUストリーミングの`test`だけは、CRC再読み込み用に名前なし一時ファイルを作るため、展開量と同じ一時ディスク容量が必要です（配置先は`TMPDIR`、未指定時は通常`/tmp`）。終了時に削除されます。CPU／GPUバッチの`test`は展開データをディスクへ書きません。`--max-output`の既定値は1TiBです。`--sync`を付けるとファイルと親ディレクトリをfsyncします。失敗時、処理中の一時ファイルは削除されます。既に検証・確定されたファイルは残ります。
 
-`--gpu-mode auto`は予算内の最大256エントリをまとめ、収まらないエントリをストリーミングへ回します。`stream`は全DeflateをStreaming Gzipへ、`batch`はサイズ・予算内のDeflateだけをバッチへ送ります。Storedはコピー＋GPU CRCです。空のDeflateエントリはストリーミング経路で処理します。
+`--gpu-mode auto`は予算内の最大4096エントリをまとめ、収まらないエントリをストリーミングへ回します。`--batch-entries`で上限を変更できます。`stream`は全DeflateをStreaming Gzipへ、`batch`はサイズ・予算内のDeflateだけをバッチへ送ります。Storedはコピー＋GPU CRCです。空のDeflateエントリはストリーミング経路で処理します。
+
+比較用の`--backend libdeflate`は任意のlibdeflate依存を見つけたビルドで使用できます。既存環境には`libdeflate`を追加して再ビルドしてください。エントリ全体をCPU RAMに置くため、1エントリの圧縮／展開サイズは各256MiBまでです。`--threads`はこの経路だけに作用します。
 
 `--vram-limit`は、GIPUが明示的に確保する入力・出力・nvCOMP作業領域・メタデータ・CRC領域の合計を制限します。CUDAコンテキストやライブラリ内部の割り当て、他プロセスの使用量は含まれません。総VRAMの厳密な上限を保証するオプションではありません。ホストRAMにはバッチ入出力と同程度の固定化メモリが必要です。Streaming経路はアーカイブ／展開量の全体バッファを確保しません。
 
@@ -68,7 +73,25 @@ python3 scripts/benchmark.py --binary build/gipu --total-mib 256 --entries 16 --
 python3 scripts/verify_large.py --binary build/gipu --gib 26 --vram-limit 64M
 ```
 
-ベンチマークのCPU比較対象は現在zlibです。7-Zip／libdeflateとの比較や本格的なI/O重畳は次の段階です。`test`はデコード＋CRC（GPUストリーミング時は一時出力のI/Oも含む）の測定で、`benchmark.py --extract`はZIP解析・ファイル生成・書き込みも含む測定です。CUDA初期化を含むCLI全体時間を外部から測り、CLI内部時間も保存します。速度倍率を一般的なZIPや7-Zipへの倍率として解釈しないでください。
+CPU比較対象にはzlibとlibdeflateを使います。`test`はデコード＋CRC（GPUストリーミング時は一時出力のI/Oも含む）の測定で、`benchmark.py --extract`はZIP解析・ファイル生成・書き込みも含む測定です。CUDA初期化を含むCLI全体時間を外部から測り、CLI内部時間も保存します。速度倍率を一般的なZIPや7-Zipへの倍率として解釈しないでください。
+
+### Kaggle実データの大容量測定
+
+元データは読み取り専用です。ZIP／ローカルマニフェストは既存ファイルを上書きせず、リポジトリには公開しません。
+
+```bash
+python3 scripts/prepare_kaggle_zip.py --source /path/to/train_series \
+  --output /optane/workspace/kaggle-50GB.zip --target-gb 50 --workers 12
+python3 scripts/benchmark_archive.py --archive /optane/workspace/kaggle-50GB.zip \
+  --results bench-results/kaggle50-test.json
+python3 scripts/benchmark_archive.py --archive /optane/workspace/kaggle-50GB.zip \
+  --extract-root /ssd/gipu-bench-output --source /path/to/train_series \
+  --cases cpu libdeflate16 gpu4096 --results bench-results/kaggle50-extract.json
+```
+
+容量は圧縮ZIPの10進GBです。生成には目標容量＋15GB、展開には展開量＋20GBの空きを要求します。試験が作った一時展開ディレクトリだけ終了後に削除し、ZIPと元データを残します。全エントリのCRC／サイズを検証し、実展開では全出力サイズと元データ128サンプルのSHA256も確認します。既定は対象ZIPへ`POSIX_FADV_DONTNEED`を助言しますが、完全なcold cacheを保証しません。繰り返し時は測定順序を交互にします。
+
+実展開の既定は通常のwrite完了までで、永続化まで測る場合は`--sync`を指定します。GPUの`decode_seconds`／`crc_seconds`／`transfer_seconds`はCUDA event時間、読み込み／出力はCPU側の経過時間です。libdeflateの各工程時間はworkerの加算値で、並列時の実経過時間とは異なります。
 
 初期版のGPU経路は既知の正しいDeflateストリームで検証する実験実装です。nvCOMPは破損した圧縮入力に対する動作を保証しておらず、ZIPヘッダ検査と展開後CRCだけで解凍中の安全性は保証できません。不明な配布元や破損が疑われる入力は、まず`--backend cpu`で検証してください。圧縮ストリームの安全なGPU検証は未実装です。
 

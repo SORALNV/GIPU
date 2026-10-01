@@ -5,6 +5,7 @@
 #include <nvcomp/native/streaming_gzip.hpp>
 #include <nvcomp/version.h>
 #include <algorithm>
+#include <chrono>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
@@ -27,22 +28,47 @@ class Stream {
 };
 class DeviceBuffer {
  public:
-  explicit DeviceBuffer(size_t size) { cuda_check(cudaMalloc(&ptr_, std::max<size_t>(size, 1))); }
+  explicit DeviceBuffer(size_t size = 0) { if (size) reserve(size); }
   ~DeviceBuffer() { cudaFree(ptr_); }
   DeviceBuffer(const DeviceBuffer&) = delete;
   DeviceBuffer& operator=(const DeviceBuffer&) = delete;
   void* data() const { return ptr_; }
   template<class T> T* as() const { return static_cast<T*>(ptr_); }
+  void reserve(size_t size) {
+    if (size <= capacity_) return;
+    cuda_check(cudaFree(ptr_)); ptr_ = nullptr; capacity_ = 0;
+    cuda_check(cudaMalloc(&ptr_, size)); capacity_ = size;
+  }
+  void release() { cuda_check(cudaFree(ptr_)); ptr_ = nullptr; capacity_ = 0; }
+  size_t capacity() const { return capacity_; }
  private:
   void* ptr_ = nullptr;
+  size_t capacity_ = 0;
 };
 class PinnedBuffer {
  public:
-  explicit PinnedBuffer(size_t size) { cuda_check(cudaMallocHost(&ptr_, std::max<size_t>(size, 1))); }
+  explicit PinnedBuffer(size_t size = 0) { if (size) reserve(size); }
   ~PinnedBuffer() { cudaFreeHost(ptr_); }
   char* data() const { return static_cast<char*>(ptr_); }
+  void reserve(size_t size) {
+    if (size <= capacity_) return;
+    cuda_check(cudaFreeHost(ptr_)); ptr_ = nullptr; capacity_ = 0;
+    cuda_check(cudaMallocHost(&ptr_, size)); capacity_ = size;
+  }
  private:
   void* ptr_ = nullptr;
+  size_t capacity_ = 0;
+};
+class Events {
+ public:
+  Events() { for (auto& e : events_) cuda_check(cudaEventCreate(&e)); }
+  ~Events() { for (auto e : events_) cudaEventDestroy(e); }
+  void mark(size_t index, cudaStream_t stream) { cuda_check(cudaEventRecord(events_[index], stream)); }
+  double elapsed(size_t first, size_t last) const {
+    float ms = 0; cuda_check(cudaEventElapsedTime(&ms, events_[first], events_[last])); return ms / 1000.0;
+  }
+ private:
+  cudaEvent_t events_[5]{};
 };
 void upload(void* dst, const void* src, size_t bytes, cudaStream_t stream) {
   cuda_check(cudaMemcpyAsync(dst, src, bytes, cudaMemcpyHostToDevice, stream));
@@ -112,7 +138,6 @@ struct Batch {
   std::vector<size_t> input_offsets, output_offsets;
   size_t input = 0, output = 0, max_output = 0, total_output = 0, scratch = 0, memory = 0;
 };
-constexpr size_t metadata_per_entry = 2 * sizeof(void*) + 3 * sizeof(size_t) + 2 * sizeof(nvcompStatus_t) + sizeof(uint32_t);
 Batch plan(const std::vector<const Entry*>& entries, nvcompBatchedDeflateDecompressOpts_t opts) {
   Batch b; b.entries = entries;
   nvcompAlignmentRequirements_t requirements{};
@@ -125,65 +150,96 @@ Batch plan(const std::vector<const Entry*>& entries, nvcompBatchedDeflateDecompr
     b.total_output += checked_size(e->uncompressed);
   }
   nv_check(nvcompBatchedDeflateDecompressGetTempSizeAsync(entries.size(), b.max_output, opts, &b.scratch, b.total_output));
-  b.memory = b.input + b.output + std::max<size_t>(b.scratch, 1) + entries.size() * metadata_per_entry;
+  // 一つの再利用arenaに置く各領域を256byte境界に揃える。
+  b.memory = aligned(b.input, 256) + aligned(b.output, 256) + aligned(std::max<size_t>(b.scratch, 1), 256)
+      + 5 * aligned(entries.size() * sizeof(size_t), 256)
+      + 2 * aligned(entries.size() * sizeof(nvcompStatus_t), 256) + aligned(entries.size() * sizeof(uint32_t), 256);
   return b;
 }
+struct BatchBuffers {
+  DeviceBuffer arena;
+  PinnedBuffer input, output;
+  Events events;
+};
 void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, const Options& opts, cudaStream_t stream,
-                  nvcompBatchedDeflateDecompressOpts_t decompress_opts, Stats& stats) {
+                  nvcompBatchedDeflateDecompressOpts_t decompress_opts, BatchBuffers& buffers, Stats& stats) {
   size_t n = b.entries.size();
-  DeviceBuffer input(b.input), output(b.output), scratch(b.scratch), input_ptrs(n * sizeof(void*)), output_ptrs(n * sizeof(void*));
-  DeviceBuffer compressed_sizes(n * sizeof(size_t)), capacities(n * sizeof(size_t)), actual_sizes(n * sizeof(size_t));
-  DeviceBuffer statuses(n * sizeof(nvcompStatus_t)), crc_statuses(n * sizeof(nvcompStatus_t)), checksums(n * sizeof(uint32_t));
-  PinnedBuffer host_input(b.input), host_output(b.output);
+  buffers.arena.reserve(b.memory); buffers.input.reserve(b.input);
+  if (root) buffers.output.reserve(b.output);
+  size_t offset = 0;
+  auto take = [&](size_t bytes) {
+    void* ptr = static_cast<char*>(buffers.arena.data()) + offset;
+    offset += aligned(std::max<size_t>(bytes, 1), 256); return ptr;
+  };
+  auto input = take(b.input), output = take(b.output), scratch = take(b.scratch);
+  auto input_ptrs = static_cast<const void**>(take(n * sizeof(void*)));
+  auto output_ptrs = static_cast<void**>(take(n * sizeof(void*)));
+  auto compressed_sizes = static_cast<size_t*>(take(n * sizeof(size_t)));
+  auto capacities = static_cast<size_t*>(take(n * sizeof(size_t)));
+  auto actual_sizes = static_cast<size_t*>(take(n * sizeof(size_t)));
+  auto statuses = static_cast<nvcompStatus_t*>(take(n * sizeof(nvcompStatus_t)));
+  auto crc_statuses = static_cast<nvcompStatus_t*>(take(n * sizeof(nvcompStatus_t)));
+  auto checksums = static_cast<uint32_t*>(take(n * sizeof(uint32_t)));
+  if (offset != b.memory) throw std::runtime_error("GPU arenaの見積もりが一致しません");
   std::vector<const void*> in_ptrs(n);
   std::vector<void*> out_ptrs(n);
   std::vector<size_t> sizes(n), limits(n), actual(n);
   std::vector<nvcompStatus_t> status(n), crc_status(n);
   std::vector<uint32_t> crc(n);
+  auto read_start = std::chrono::steady_clock::now();
   for (size_t i = 0; i < n; ++i) {
     const auto& e = *b.entries[i];
-    archive.read(e.data_offset, std::span<char>(host_input.data() + b.input_offsets[i], checked_size(e.compressed)));
-    in_ptrs[i] = static_cast<char*>(input.data()) + b.input_offsets[i];
-    out_ptrs[i] = static_cast<char*>(output.data()) + b.output_offsets[i];
+    archive.read(e.data_offset, std::span<char>(buffers.input.data() + b.input_offsets[i], checked_size(e.compressed)));
+    in_ptrs[i] = static_cast<char*>(input) + b.input_offsets[i];
+    out_ptrs[i] = static_cast<char*>(output) + b.output_offsets[i];
     sizes[i] = checked_size(e.compressed); limits[i] = checked_size(e.uncompressed);
   }
-  upload(input.data(), host_input.data(), b.input, stream);
-  upload(input_ptrs.data(), in_ptrs.data(), n * sizeof(void*), stream);
-  upload(output_ptrs.data(), out_ptrs.data(), n * sizeof(void*), stream);
-  upload(compressed_sizes.data(), sizes.data(), n * sizeof(size_t), stream);
-  upload(capacities.data(), limits.data(), n * sizeof(size_t), stream);
-  nv_check(nvcompBatchedDeflateDecompressAsync(input_ptrs.as<const void*>(), compressed_sizes.as<size_t>(), capacities.as<size_t>(),
-      actual_sizes.as<size_t>(), n, scratch.data(), b.scratch, output_ptrs.as<void*>(), decompress_opts, statuses.as<nvcompStatus_t>(), stream));
-  download(status.data(), statuses.data(), n * sizeof(nvcompStatus_t), stream);
-  download(actual.data(), actual_sizes.data(), n * sizeof(size_t), stream);
+  stats.read_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - read_start).count();
+  auto& events = buffers.events;
+  events.mark(0, stream);
+  upload(input, buffers.input.data(), b.input, stream);
+  upload(input_ptrs, in_ptrs.data(), n * sizeof(void*), stream);
+  upload(output_ptrs, out_ptrs.data(), n * sizeof(void*), stream);
+  upload(compressed_sizes, sizes.data(), n * sizeof(size_t), stream);
+  upload(capacities, limits.data(), n * sizeof(size_t), stream);
+  events.mark(1, stream);
+  nv_check(nvcompBatchedDeflateDecompressAsync(input_ptrs, compressed_sizes, capacities,
+      actual_sizes, n, scratch, b.scratch, output_ptrs, decompress_opts, statuses, stream));
+  events.mark(2, stream);
+  auto crc_opts = crc_options(n, b.max_output, stream);
+  nv_check(nvcompBatchedCRC32Async(static_cast<const void**>(static_cast<void*>(output_ptrs)), capacities, n, checksums, crc_opts,
+                                 nvcompCRC32OnlySegment, crc_statuses, stream));
+  events.mark(3, stream);
+  download(status.data(), statuses, n * sizeof(nvcompStatus_t), stream);
+  download(actual.data(), actual_sizes, n * sizeof(size_t), stream);
+  download(crc.data(), checksums, n * sizeof(uint32_t), stream);
+  download(crc_status.data(), crc_statuses, n * sizeof(nvcompStatus_t), stream);
+  // testでは検証結果だけ戻す。展開データ全量のD2H転送は不要。
+  if (root) download(buffers.output.data(), output, b.output, stream);
+  events.mark(4, stream);
   cuda_check(cudaStreamSynchronize(stream));
+  stats.transfer_seconds += events.elapsed(0, 1) + events.elapsed(3, 4);
+  stats.decode_seconds += events.elapsed(1, 2); stats.crc_seconds += events.elapsed(2, 3);
+  // バッチ全体のCRCを検証してから各ファイルを確定する。
   for (size_t i = 0; i < n; ++i) {
     nv_check(status[i]);
     if (actual[i] != limits[i]) throw std::runtime_error("GPU展開サイズが一致しません: " + b.entries[i]->name);
-  }
-  auto crc_opts = crc_options(n, b.max_output, stream);
-  nv_check(nvcompBatchedCRC32Async(output_ptrs.as<const void*>(), capacities.as<size_t>(), n, checksums.as<uint32_t>(), crc_opts,
-                                 nvcompCRC32OnlySegment, crc_statuses.as<nvcompStatus_t>(), stream));
-  download(crc.data(), checksums.data(), n * sizeof(uint32_t), stream);
-  download(crc_status.data(), crc_statuses.data(), n * sizeof(nvcompStatus_t), stream);
-  download(host_output.data(), output.data(), b.output, stream);
-  cuda_check(cudaStreamSynchronize(stream));
-  // バッチ全体のCRCを検証してから各ファイルを確定する。
-  for (size_t i = 0; i < n; ++i) {
     nv_check(crc_status[i]);
     if (crc[i] != b.entries[i]->crc) throw std::runtime_error("GPU CRC32が一致しません: " + b.entries[i]->name);
   }
+  auto write_start = std::chrono::steady_clock::now();
   for (size_t i = 0; i < n; ++i) {
     check_cancelled();
     const auto& e = *b.entries[i];
     if (root) {
       OutputFile file(*root, e, opts.durable);
-      file.write(std::span<const char>(host_output.data() + b.output_offsets[i], checked_size(e.uncompressed)));
+      file.write(std::span<const char>(buffers.output.data() + b.output_offsets[i], checked_size(e.uncompressed)));
       file.commit();
     }
     ++stats.files; stats.bytes += e.uncompressed;
   }
-  stats.workspace = std::max<uint64_t>(stats.workspace, b.memory + StreamingCrc::memory);
+  stats.write_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - write_start).count();
+  stats.workspace = std::max<uint64_t>(stats.workspace, buffers.arena.capacity() + StreamingCrc::memory);
   ++stats.batches;
 }
 void stream_decode(const Archive& archive, const Entry& e, OutputRoot* root, const Options& opts, StreamingCrc& crc,
@@ -244,6 +300,7 @@ Stats run_gpu(const Archive& archive, OutputRoot* root, const Options& opts) {
   if (opts.vram_limit < StreamingCrc::memory) throw std::runtime_error("--vram-limitがGPU CRC32の作業領域より小さいです");
   Stream stream;
   StreamingCrc crc;
+  BatchBuffers buffers;
   Stats stats; stats.workspace = StreamingCrc::memory;
   auto decompress_opts = nvcompBatchedDeflateDecompressDefaultOpts;
   decompress_opts.backend = NVCOMP_DECOMPRESS_BACKEND_CUDA;
@@ -255,30 +312,47 @@ Stats run_gpu(const Archive& archive, OutputRoot* root, const Options& opts) {
     if (e.method == 0 || opts.gpu_mode == "stream" || e.uncompressed > nvcompDeflateDecompressionMaxAllowedChunkSize ||
         e.compressed > nvcompDeflateDecompressionMaxAllowedChunkSize || e.uncompressed == 0) {
       if (opts.gpu_mode == "batch" && e.method == 8 && e.uncompressed != 0) throw std::runtime_error("エントリがバッチAPIのサイズ上限を超えています");
+      buffers.arena.release(); // Streamingのscratchとarenaを同時に保持しない。
       stream_decode(archive, e, root, opts, crc, stream, stats); ++i; continue;
     }
     Batch chosen;
     std::vector<const Entry*> pending;
     size_t j = i;
-    // バッチを最大256エントリとし、GPU入力・出力・scratch・metadataを含めて予算化する。
-    while (j < entries.size() && pending.size() < 256) {
+    uint64_t payload = 0;
+    // まず候補を集め、必要な場合だけ二分探索で予算内に縮める（O(N²)計画を廃止）。
+    while (j < entries.size() && pending.size() < opts.batch_entries) {
       const auto& candidate = entries[j];
       if (candidate.directory || candidate.method != 8 || candidate.uncompressed == 0 ||
           candidate.uncompressed > nvcompDeflateDecompressionMaxAllowedChunkSize || candidate.compressed > nvcompDeflateDecompressionMaxAllowedChunkSize) break;
       // 見積もりの加算前に上限をチェックし、巨大な宣言値による整数オーバーフローを防ぐ。
       const auto remaining = opts.vram_limit - StreamingCrc::memory;
       if (candidate.compressed > remaining || candidate.uncompressed > remaining ||
-          candidate.compressed > remaining - candidate.uncompressed) break;
+          candidate.compressed > remaining - candidate.uncompressed ||
+          payload > remaining - candidate.compressed - candidate.uncompressed) break;
       pending.push_back(&candidate);
-      auto b = plan(pending, decompress_opts);
-      if (b.memory > remaining) { pending.pop_back(); break; }
-      chosen = std::move(b); ++j;
+      payload += candidate.compressed + candidate.uncompressed; ++j;
+    }
+    if (!pending.empty()) {
+      chosen = plan(pending, decompress_opts);
+      if (chosen.memory > opts.vram_limit - StreamingCrc::memory) {
+        size_t lo = 0, hi = pending.size();
+        chosen = Batch{};
+        while (lo + 1 < hi) {
+          auto mid = lo + (hi - lo) / 2;
+          std::vector<const Entry*> prefix(pending.begin(), pending.begin() + static_cast<ptrdiff_t>(mid));
+          auto attempt = plan(prefix, decompress_opts);
+          if (attempt.memory <= opts.vram_limit - StreamingCrc::memory) { lo = mid; chosen = std::move(attempt); }
+          else hi = mid;
+        }
+      }
+      j = i + chosen.entries.size();
     }
     if (chosen.entries.empty()) {
       if (opts.gpu_mode == "batch") throw std::runtime_error("エントリが--vram-limit内のバッチに収まりません");
+      buffers.arena.release();
       stream_decode(archive, e, root, opts, crc, stream, stats); ++i;
     } else {
-      batch_decode(archive, chosen, root, opts, stream, decompress_opts, stats); i = j;
+      batch_decode(archive, chosen, root, opts, stream, decompress_opts, buffers, stats); i = j;
     }
   }
   return stats;
