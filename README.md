@@ -83,3 +83,14 @@ python3 scripts/verify_large.py --binary build/gipu --gib 26 --vram-limit 64M
 暗号化ZIP、Deflate64、BZip2、LZMA、分割ZIP、特殊ファイル、Windowsは初期版の対象外です。
 
 設計の依存API: [nvCOMP Native API](https://docs.nvidia.com/cuda/nvcomp/native_api.html)、[C API](https://docs.nvidia.com/cuda/nvcomp/c_api.html)、[CRC32](https://docs.nvidia.com/cuda/nvcomp/crc32.html)。Native APIは実験的なため、SDKのバージョンを固定します。
+
+## 2026年10月1日の実機検証
+
+Ubuntu 26.04.1、RTX 3090（24GiB）、CUDAランタイム13.0、nvCOMP 5.3.0で確認しました。
+
+- CPU／GPU auto／GPU stream／GPU batchの4統合テストスイートが成功。1スイート22テストで、経路に該当しないテストはskipしています。
+- CPU経路のAddressSanitizer／UndefinedBehaviorSanitizer検証が成功。
+- **26GiBの単一ZIP64エントリ**で展開サイズとGPU CRCが一致。プロセスVRAMのサンプリング最大値は**270MiB**、アプリが明示的に確保する作業領域は9,633,904 bytes。高圧縮率のゼロデータでの成立確認であり、26GiBの圧縮入力自体を処理した検証ではありません。
+- 256MiB／16エントリの合成ZIPを展開・fsync・SHA256確認した比較では、CLI全体時間の中央値がCPU zlib **0.181秒**、GPU **0.446秒**。この条件ではGPUが約2.47倍遅く、CPUより超高速という目標は未達です。
+
+測定条件・解釈と次の改善対象は[実測記録](docs/measurements-2026-10-01.md)、実装の分担と制約は[構成](docs/architecture.md)を参照してください。
