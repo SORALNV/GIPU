@@ -1,0 +1,138 @@
+{
+  "source_log": "corpus-final-large-smoke-20261002.jsonl",
+  "source_sha256": "7d4ba4b8fbaa5bf0564304d97635a886d56888b3d8b46718f3bbaa2ad4684d83",
+  "metadata": [
+    {
+      "kind": "metadata",
+      "time_utc": "2026-10-02T14:09:30Z",
+      "binary_sha256": "06b40b43c95ed44af92d533f4a0979e054ca398c26961f67569239b45a83b482",
+      "cache": "warm",
+      "durable": false,
+      "note": "warmはOSキャッシュを排除しない。drop-advisedもcoldを保証しない。異常終了は行に記録する。"
+    }
+  ],
+  "groups": [
+    {
+      "case": "real-single8g",
+      "mode": "test",
+      "variant": "auto-experimental",
+      "runs": 1,
+      "failures": 0,
+      "raw_bytes": 8589934592,
+      "archive_bytes": 6426188962,
+      "wall_seconds": [
+        2.4889089810021687
+      ],
+      "median_seconds": 2.4889089810021687,
+      "min_seconds": 2.4889089810021687,
+      "max_seconds": 2.4889089810021687,
+      "files": 1,
+      "sha256_samples": [
+        0
+      ],
+      "selected_backends": [
+        "rapidgzip"
+      ],
+      "peak_rss_kib": [
+        264848
+      ],
+      "user_seconds": [
+        24.08
+      ],
+      "system_seconds": [
+        1.12
+      ],
+      "median_stats": {
+        "parse_seconds": 0.000135875,
+        "metadata_threads": 1,
+        "read_seconds": 0,
+        "write_seconds": 0.000396233,
+        "decode_seconds": 2.3224,
+        "crc_seconds": 0.147416,
+        "allocation_seconds": 0,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 1,
+        "isal_files": 0,
+        "host_buffer_bytes": 4194304,
+        "cpu_crc_bytes": 8589934592,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 0,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 0
+      }
+    },
+    {
+      "case": "real-single8g",
+      "mode": "test",
+      "variant": "gpu-stream-cpu",
+      "runs": 1,
+      "failures": 0,
+      "raw_bytes": 8589934592,
+      "archive_bytes": 6426188962,
+      "wall_seconds": [
+        33.50333087600302
+      ],
+      "median_seconds": 33.50333087600302,
+      "min_seconds": 33.50333087600302,
+      "max_seconds": 33.50333087600302,
+      "files": 1,
+      "sha256_samples": [
+        0
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        116668
+      ],
+      "user_seconds": [
+        1.87
+      ],
+      "system_seconds": [
+        6.99
+      ],
+      "median_stats": {
+        "parse_seconds": 0.000158338,
+        "metadata_threads": 1,
+        "read_seconds": 0,
+        "write_seconds": 0,
+        "decode_seconds": 33.4477,
+        "crc_seconds": 0.132141,
+        "allocation_seconds": 0,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 1,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 1,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 12582912,
+        "cpu_crc_bytes": 8589934592,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 0,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 0
+      }
+    }
+  ]
+}

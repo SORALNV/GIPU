@@ -1,0 +1,158 @@
+{
+  "source_log": "corpus-final-durable-20261002.jsonl",
+  "source_sha256": "6094c7cbf70e1c65f07e9c3a5489dc32a6b044fc99163fe13865ceab8f7dc431",
+  "metadata": [
+    {
+      "kind": "metadata",
+      "time_utc": "2026-10-02T14:07:18Z",
+      "binary_sha256": "06b40b43c95ed44af92d533f4a0979e054ca398c26961f67569239b45a83b482",
+      "cache": "warm",
+      "durable": true,
+      "note": "warmはOSキャッシュを排除しない。drop-advisedもcoldを保証しない。異常終了は行に記録する。"
+    }
+  ],
+  "groups": [
+    {
+      "case": "small",
+      "mode": "extract",
+      "variant": "auto",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 67108864,
+      "archive_bytes": 36938540,
+      "wall_seconds": [
+        11.31888092599911,
+        11.288016164002329,
+        11.009315900999354
+      ],
+      "median_seconds": 11.288016164002329,
+      "min_seconds": 11.009315900999354,
+      "max_seconds": 11.31888092599911,
+      "files": 16384,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        13764,
+        13972,
+        13892
+      ],
+      "user_seconds": [
+        0.53,
+        0.27,
+        0.45
+      ],
+      "system_seconds": [
+        1.59,
+        1.65,
+        1.52
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0110321,
+        "metadata_threads": 4,
+        "read_seconds": 0.0325288,
+        "write_seconds": 179.565,
+        "decode_seconds": 0.157519,
+        "crc_seconds": 0.00275468,
+        "allocation_seconds": 6.414e-05,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 16384,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 99408,
+        "cpu_crc_bytes": 67108864,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 16384,
+        "named_output_files": 0,
+        "fast_parent_opens": 16255,
+        "portable_parent_walks": 129
+      }
+    },
+    {
+      "case": "small",
+      "mode": "extract",
+      "variant": "gpu",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 67108864,
+      "archive_bytes": 36938540,
+      "wall_seconds": [
+        23.887497809002525,
+        23.59848255900215,
+        23.774047235998296
+      ],
+      "median_seconds": 23.774047235998296,
+      "min_seconds": 23.59848255900215,
+      "max_seconds": 23.887497809002525,
+      "files": 16384,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        144344,
+        144168,
+        143792
+      ],
+      "user_seconds": [
+        0.37,
+        0.34,
+        0.34
+      ],
+      "system_seconds": [
+        1.51,
+        1.5,
+        1.53
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0117838,
+        "metadata_threads": 4,
+        "read_seconds": 0.015345,
+        "write_seconds": 23.5259,
+        "decode_seconds": 0.00745603,
+        "crc_seconds": 0.00024544,
+        "allocation_seconds": 0.0121522,
+        "transfer_seconds": 0.00447574,
+        "crc_combine_seconds": 6.4224e-05,
+        "gpu_crc_chunks": 16384,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 4,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 38015048,
+        "cpu_crc_bytes": 0,
+        "gpu_crc_bytes": 67108864,
+        "anonymous_output_files": 16384,
+        "named_output_files": 0,
+        "fast_parent_opens": 16320,
+        "portable_parent_walks": 64
+      }
+    }
+  ]
+}

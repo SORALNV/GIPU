@@ -149,6 +149,8 @@ CPU比較対象にはzlibとlibdeflateを使います。`test`はデコード＋
 
 `scripts/make_corpus.py`と`scripts/benchmark_corpus.py`で、極小・小・中・単一大ファイル、高低圧縮率、Stored／空ファイル混在を再現比較できます。後者はピークRSS・CLI全体時間・内部工程・全出力サイズ・固定seedのSHA256サンプルを記録し、元ZIPを残して自分の一時展開先だけを削除します。5時間の改善作業は[研究・実験ログ](docs/research-2026-10-02.md)に記録します。
 
+100万件超の極小ファイル試験は`--cases million-tiny --variants auto-million`で明示上限200万を使います。通常CLIの既定上限100万は維持しています。
+
 `scripts/make_real_single.py`は既存バイナリの先頭N GiBを読み取り、単一エントリの比較用ZIP64を作ります。入力と既存出力を上書きしません。`scripts/fuzz_zip.py`はCPU経路に限り、固定seedでヘッダ・圧縮本体・切り詰め等の変異入力を試し、成功例をPython zipfileと照合します。GPUへの不正Deflate投入は行いません。
 
 多形状比較と制約は[適応型解凍の実測](docs/measurements-adaptive-2026-10-02.md)を参照してください。`tests/cancellation.py`は単一大ファイルの処理中にSIGINT／SIGTERM／SIGKILLを送り、未確定出力とworker残留を検査します。`--worker-faults`では所有するGPU子プロセスの停止／異常終了も試します。`/usr/bin/time`のピークRSSは、GPU Streamingの親子合計ピークではない点に注意してください。
