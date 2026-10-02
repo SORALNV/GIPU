@@ -272,7 +272,7 @@ class Integration(unittest.TestCase):
         self.assertFalse((self.out / "bad.bin").exists())
         self.assertEqual(list(self.out.glob("*.part")), [])
 
-    @unittest.skipUnless(BACKEND != "gpu", "不正DeflateはCPU経路でのみ検証する")
+    @unittest.skipUnless(BACKEND not in ("gpu", "hybrid", "auto"), "不正DeflateはCPU経路でのみ検証する")
     def test_corrupt_deflate_body(self):
         original = zip_bytes([("bad.bin", b"a" * (4 << 20))])
         cd = original.index(b"PK\x01\x02")
@@ -323,6 +323,45 @@ class Integration(unittest.TestCase):
         self.process(zip_bytes([("file", b"data")]), extract=False)
         self.assertFalse(self.out.exists())
 
+    @unittest.skipUnless(BACKEND == "hybrid", "CPU/GPU分担とGPU不在時の検証")
+    def test_hybrid_partition_and_fallback(self):
+        data = io.BytesIO()
+        payload = b"hybrid" * 90000
+        with zipfile.ZipFile(data, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("folder/", b"")
+            archive.writestr("folder/stored", b"stored", compress_type=zipfile.ZIP_STORED)
+            archive.writestr("folder/empty", b"")
+            for i in range(64):
+                archive.writestr(f"folder/{i}", payload)
+        result = self.process(data.getvalue(), extra=("--host-limit", "128M", "--json"))
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["files"], 66)
+        self.assertGreater(stats["cpu_buffered_files"] + stats["cpu_stream_files"], 0)
+        self.assertEqual(stats["cpu_crc_bytes"] + stats["gpu_crc_bytes"], stats["bytes"])
+        self.assertLessEqual(stats["host_buffer_bytes"], 128 << 20)
+        if os.environ.get("GIPU_EXPECT_HYBRID_GPU") == "1":
+            self.assertEqual(stats["selected_backend"], "hybrid")
+            self.assertGreater(stats["gpu_batches"], 0)
+        for i in range(64):
+            self.assertEqual((self.out / f"folder/{i}").read_bytes(), payload)
+        result = self.process(data.getvalue(), extract=False, extra=("--gpu", "99999", "--json"))
+        fallback = json.loads(result.stdout)
+        self.assertEqual(fallback["gpu_batches"], 0)
+        self.assertEqual(fallback["cpu_crc_bytes"], fallback["bytes"])
+        self.assertEqual(fallback["selection_reason"], "gpu_unavailable")
+
+    @unittest.skipUnless(BACKEND == "hybrid", "両経路の例外伝播と部分出力の検証")
+    def test_hybrid_cpu_error_is_not_hidden(self):
+        data = bytearray(zip_bytes([(f"{i}", b"x" * (1 << 20)) for i in range(32)]))
+        cd = data.index(b"PK\x01\x02")
+        bad_crc = struct.unpack_from("<I", data, cd + 16)[0] ^ 1
+        struct.pack_into("<I", data, cd + 16, bad_crc)
+        struct.pack_into("<I", data, 14, bad_crc)
+        result = self.process(data, ok=False)
+        self.assertIn("CRC32", result.stderr)
+        self.assertFalse((self.out / "0").exists())
+        self.assertEqual(list(self.out.rglob("*.part")), [])
+
     @unittest.skipUnless(BACKEND == "libdeflate", "CPUの共有メモリ予算")
     def test_cpu_memory_budget_and_streaming(self):
         small = os.urandom(1 << 20)
@@ -344,6 +383,17 @@ class Integration(unittest.TestCase):
     @unittest.skipUnless(BACKEND in ("cpu", "libdeflate", "isal"), "CPUの最小メモリ予算")
     def test_cpu_insufficient_memory_budget(self):
         self.process(zip_bytes([("x", b"x")]), extract=False, ok=False, extra=("--host-limit", "1M"))
+
+    @unittest.skipUnless(BACKEND == "gpu" and MODE == "auto", "固定化ホストバッファの予算")
+    def test_gpu_host_memory_budget(self):
+        result = self.process(zip_bytes([(f"{i}", b"x" * (1 << 20)) for i in range(12)]),
+                              extra=("--host-limit", "16M", "--json"))
+        stats = json.loads(result.stdout)
+        self.assertGreater(stats["gpu_batches"], 1)
+        self.assertLessEqual(stats["host_buffer_bytes"], 16 << 20)
+        result = self.process(zip_bytes([("large", b"x" * (32 << 20))]), extract=False,
+                              extra=("--host-limit", "12M", "--json"))
+        self.assertEqual(json.loads(result.stdout)["gpu_streams"], 1)
 
     @unittest.skipUnless(BACKEND == "gpu" and ALGORITHM == "lookahead", "LOOKAHEADの選択確認")
     def test_lookahead_selected(self):

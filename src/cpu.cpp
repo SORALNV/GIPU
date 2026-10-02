@@ -122,11 +122,8 @@ Stats run_cpu_selected(const Archive& archive, std::span<const Entry* const> ent
   return stats;
 }
 }
-Stats run_cpu(const Archive& archive, OutputRoot* root, const Options& opts) {
+Stats run_cpu(const Archive& archive, OutputRoot* root, const Options& opts, EntrySelection entries) {
   if (opts.backend == "isal" && !isal_available()) throw std::runtime_error("ISA-Lを有効にしたビルドが必要です");
-  std::vector<const Entry*> entries;
-  entries.reserve(archive.entries().size());
-  for (const auto& e : archive.entries()) entries.push_back(&e);
   return run_cpu_selected(archive, entries, root, opts, opts.backend == "isal");
 }
 Stats run_cpu_entry(const Archive& archive, const Entry& entry, OutputRoot* root, const Options& opts, bool fast_checksum) {

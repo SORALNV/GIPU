@@ -56,6 +56,8 @@ class PinnedBuffer {
   explicit PinnedBuffer(size_t size = 0) { if (size) reserve(size); }
   ~PinnedBuffer() { cudaFreeHost(ptr_); }
   char* data() const { return static_cast<char*>(ptr_); }
+  size_t capacity() const { return capacity_; }
+  void release() { cuda_check(cudaFreeHost(ptr_)); ptr_ = nullptr; capacity_ = 0; }
   void reserve(size_t size) {
     if (size <= capacity_) return;
     cuda_check(cudaFreeHost(ptr_)); ptr_ = nullptr; capacity_ = 0;
@@ -204,6 +206,24 @@ struct BatchBuffers {
   DeviceBuffer arena;
   Events events;
 };
+// GPU CRC入力、Streaming入力、比較用spool読み戻しの固定バッファ分。
+constexpr uint64_t host_fixed_buffers = 12ULL << 20;
+bool fits_batch(const Batch& b, const Options& opts, bool extracting) {
+  if (opts.vram_limit < StreamingCrc::memory || opts.host_limit < host_fixed_buffers) return false;
+  auto host_budget = (opts.host_limit - host_fixed_buffers) / (opts.pipeline ? 2 : 1);
+  auto output = extracting ? b.output : 0;
+  return b.memory <= opts.vram_limit - StreamingCrc::memory && b.input <= host_budget && output <= host_budget - b.input;
+}
+void prepare_host(const Batch& b, BatchHost& host, const Options& opts, bool extracting) {
+  auto input = std::max(b.input, host.input.capacity());
+  auto output = extracting ? std::max(b.output, host.output.capacity()) : 0;
+  auto budget = opts.host_limit - host_fixed_buffers;
+  if (input > budget || output > budget - input) {
+    host.input.release(); host.output.release();
+  }
+  host.input.reserve(b.input);
+  if (extracting) host.output.reserve(b.output);
+}
 double read_batch(const Archive& archive, const Batch& b, BatchHost& host) {
   auto start = std::chrono::steady_clock::now();
   host.input.reserve(b.input);
@@ -266,7 +286,9 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
   size_t n = b.entries.size();
   auto allocate_start = std::chrono::steady_clock::now();
   buffers.arena.reserve(b.memory);
-  if (root) host.output.reserve(b.output);
+  if (!preloaded) prepare_host(b, host, opts, root != nullptr);
+  stats.host_buffer_bytes = std::max<uint64_t>(stats.host_buffer_bytes,
+      host.input.capacity() + host.output.capacity() + host_fixed_buffers);
   stats.allocation_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - allocate_start).count();
   if (!preloaded) stats.read_seconds += read_batch(archive, b, host);
   size_t offset = 0;
@@ -336,13 +358,13 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
   ++stats.batches;
   if (codec.gzip) ++stats.lookahead_batches;
 }
-Batch choose_batch(const std::vector<Entry>& entries, size_t i, const Options& opts,
-                   const Codec& codec) {
+Batch choose_batch(EntrySelection entries, size_t i, const Options& opts,
+                   const Codec& codec, bool extracting) {
   std::vector<const Entry*> pending;
   uint64_t payload = 0;
   const auto remaining = opts.vram_limit - StreamingCrc::memory;
   for (size_t j = i; j < entries.size() && pending.size() < opts.batch_entries; ++j) {
-    const auto& e = entries[j];
+    const auto& e = *entries[j];
     if (e.directory || e.method != 8 || e.uncompressed == 0 ||
         !codec.supported(e)) break;
     if (e.compressed > remaining || e.uncompressed > remaining || e.compressed > remaining - e.uncompressed ||
@@ -351,30 +373,29 @@ Batch choose_batch(const std::vector<Entry>& entries, size_t i, const Options& o
   }
   if (pending.empty()) return {};
   auto chosen = plan(pending, codec);
-  if (chosen.memory <= remaining) return chosen;
+  if (fits_batch(chosen, opts, extracting)) return chosen;
   size_t lo = 0, hi = pending.size();
   chosen = Batch{};
   while (lo + 1 < hi) {
     auto mid = lo + (hi - lo) / 2;
     std::vector<const Entry*> prefix(pending.begin(), pending.begin() + static_cast<ptrdiff_t>(mid));
     auto attempt = plan(prefix, codec);
-    if (attempt.memory <= remaining) { lo = mid; chosen = std::move(attempt); }
+    if (fits_batch(attempt, opts, extracting)) { lo = mid; chosen = std::move(attempt); }
     else hi = mid;
   }
   return chosen;
 }
 Stats pipeline_decode(const Archive& archive, OutputRoot* root, const Options& opts, cudaStream_t stream,
-                      const Codec& codec, BatchBuffers& buffers) {
+                      const Codec& codec, BatchBuffers& buffers, EntrySelection entries) {
   BatchHost hosts[2];
   std::vector<Batch> batches;
-  const auto& entries = archive.entries();
   for (size_t i = 0; i < entries.size();) {
-    if (entries[i].directory) { ++i; continue; }
-    auto b = choose_batch(entries, i, opts, codec);
+    if (entries[i]->directory) { ++i; continue; }
+    auto b = choose_batch(entries, i, opts, codec, root != nullptr);
     if (b.entries.empty()) throw std::runtime_error("pipelineは全ファイルが予算内の非空Deflateバッチに収まるZIP専用です");
     i += b.entries.size(); batches.push_back(std::move(b));
   }
-  if (root) for (const auto& e : entries) if (e.directory) root->directory(e.name);
+  if (root) for (const auto* e : entries) if (e->directory) root->directory(e->name);
   Stats stats; stats.workspace = StreamingCrc::memory;
   if (batches.empty()) return stats;
   // 全計画の最大容量を先に確保。先読み中のcudaMallocHostがGPU/DMAを同期するのを避ける。
@@ -384,11 +405,16 @@ Stats pipeline_decode(const Archive& archive, OutputRoot* root, const Options& o
     max_input = std::max(max_input, b.input); max_output = std::max(max_output, b.output);
     max_memory = std::max(max_memory, b.memory);
   }
+  auto slot_budget = (opts.host_limit - host_fixed_buffers) / 2;
+  size_t output = root ? max_output : 0;
+  if (max_input > slot_budget || output > slot_budget - max_input)
+    throw std::runtime_error("pipelineの最大固定化バッファが--host-limitを超えています。--vram-limitを下げてください");
   buffers.arena.reserve(max_memory);
   for (auto& host : hosts) {
     host.input.reserve(max_input);
     if (root) host.output.reserve(max_output);
   }
+  stats.host_buffer_bytes = 2 * (max_input + output) + host_fixed_buffers;
   stats.allocation_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - allocate_start).count();
   std::future<double> reader, writers[2]; // futureはhost/batchより先に破棄・joinされる。
   stats.read_seconds += read_batch(archive, batches[0], hosts[0]);
@@ -482,30 +508,40 @@ std::string gpu_info(int device) {
       << "\n増分GPU CRC32作業領域: " << StreamingCrc::memory << " bytes";
   return out.str();
 }
-Stats run_gpu(const Archive& archive, OutputRoot* root, const Options& opts) {
+uint64_t gpu_free_memory(int device) {
+  int count = 0;
+  if (cudaGetDeviceCount(&count) != cudaSuccess || device < 0 || device >= count) return 0;
+  if (cudaSetDevice(device) != cudaSuccess) return 0;
+  size_t free = 0, total = 0;
+  if (cudaMemGetInfo(&free, &total) != cudaSuccess) return 0;
+  return free;
+}
+Stats run_gpu(const Archive& archive, OutputRoot* root, const Options& opts, EntrySelection entries) {
   cuda_check(cudaSetDevice(opts.gpu));
   if (opts.vram_limit < StreamingCrc::memory) throw std::runtime_error("--vram-limitがGPU CRC32の作業領域より小さいです");
+  if (opts.host_limit < host_fixed_buffers) throw std::runtime_error("GPU経路には--host-limit 12M以上が必要です");
   Stream stream;
   StreamingCrc crc;
   BatchBuffers buffers;
   BatchHost host;
-  Stats stats; stats.workspace = StreamingCrc::memory;
+  Stats stats; stats.workspace = StreamingCrc::memory; stats.host_buffer_bytes = host_fixed_buffers;
   Codec codec(opts.gpu_algorithm == "lookahead");
-  if (opts.pipeline) return pipeline_decode(archive, root, opts, stream, codec, buffers);
-  const auto& entries = archive.entries();
+  if (opts.pipeline) return pipeline_decode(archive, root, opts, stream, codec, buffers, entries);
   for (size_t i = 0; i < entries.size();) {
     check_cancelled();
-    const auto& e = entries[i];
+    const auto& e = *entries[i];
     if (e.directory) { if (root) root->directory(e.name); ++i; continue; }
     if (e.method == 0 || opts.gpu_mode == "stream" || !codec.supported(e) || e.uncompressed == 0) {
       if (opts.gpu_mode == "batch" && e.method == 8 && e.uncompressed != 0) throw std::runtime_error("エントリがバッチAPIのサイズ上限を超えています");
       buffers.arena.release(); // Streamingのscratchとarenaを同時に保持しない。
+      host.input.release(); host.output.release();
       stream_decode(archive, e, root, opts, crc, stream, stats); ++i; continue;
     }
-    auto chosen = choose_batch(entries, i, opts, codec);
+    auto chosen = choose_batch(entries, i, opts, codec, root != nullptr);
     if (chosen.entries.empty()) {
       if (opts.gpu_mode == "batch") throw std::runtime_error("エントリが--vram-limit内のバッチに収まりません");
       buffers.arena.release();
+      host.input.release(); host.output.release();
       stream_decode(archive, e, root, opts, crc, stream, stats); ++i;
     } else {
       batch_decode(archive, chosen, root, opts, stream, codec, buffers, host, stats); i += chosen.entries.size();

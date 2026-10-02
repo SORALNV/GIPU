@@ -11,15 +11,23 @@
 #endif
 
 namespace gipu {
-Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& opts) {
+bool libdeflate_available() {
+#ifdef GIPU_HAVE_LIBDEFLATE
+  return true;
+#else
+  return false;
+#endif
+}
+Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& opts, EntrySelection entries) {
 #ifndef GIPU_HAVE_LIBDEFLATE
-  (void)archive; (void)root; (void)opts;
+  (void)archive; (void)root; (void)opts; (void)entries;
   throw std::runtime_error("libdeflateを有効にしたビルドが必要です");
 #else
   // workerごとに予算を分割。巨大エントリだけは定量メモリのStreamingへ回す。
   if (opts.host_limit < (2ULL << 20)) throw std::runtime_error("CPU経路には--host-limit 2M以上が必要です");
   size_t files = 0;
-  for (const auto& e : archive.entries()) {
+  for (const auto* entry : entries) {
+    const auto& e = *entry;
     if (e.directory && root) root->directory(e.name);
     if (!e.directory) ++files;
   }
@@ -42,8 +50,8 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
       size_t capacity = 0;
       while (!stop.load()) {
         auto index = next.fetch_add(1);
-        if (index >= archive.entries().size()) break;
-        const auto& e = archive.entries()[index];
+        if (index >= entries.size()) break;
+        const auto& e = *entries[index];
         if (e.directory) continue;
         check_cancelled();
         uint64_t output_bytes = e.method == 8 ? std::max<uint64_t>(e.uncompressed, 1) : 0;
@@ -52,12 +60,7 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
           buffer.reset(); capacity = 0;
           Options streaming = opts; streaming.host_limit = worker_budget;
           auto stats = run_cpu_entry(archive, e, root, streaming, true);
-          local.files += stats.files; local.bytes += stats.bytes; local.cpu_crc_bytes += stats.cpu_crc_bytes;
-          local.cpu_stream_files += stats.cpu_stream_files;
-          local.isal_files += stats.isal_files;
-          local.read_seconds += stats.read_seconds; local.write_seconds += stats.write_seconds;
-          local.decode_seconds += stats.decode_seconds; local.crc_seconds += stats.crc_seconds;
-          local.host_buffer_bytes = std::max(local.host_buffer_bytes, stats.host_buffer_bytes);
+          add_stats(local, stats);
           continue;
         }
         auto required = static_cast<size_t>(std::max<uint64_t>(e.compressed + output_bytes, 1));
@@ -104,15 +107,8 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
       if (!error) error = std::current_exception();
     }
     std::lock_guard guard(lock);
-    result.files += local.files; result.bytes += local.bytes;
-    result.cpu_crc_bytes += local.cpu_crc_bytes;
-    result.cpu_buffered_files += local.cpu_buffered_files; result.cpu_stream_files += local.cpu_stream_files;
-    result.isal_files += local.isal_files;
-    result.host_buffer_bytes += local.host_buffer_bytes;
-    result.allocation_seconds += local.allocation_seconds;
     // 複数workerの時間は加算値であり、実経過時間ではない。
-    result.read_seconds += local.read_seconds; result.write_seconds += local.write_seconds;
-    result.decode_seconds += local.decode_seconds; result.crc_seconds += local.crc_seconds;
+    add_stats(result, local, true);
   });
   workers.clear();
   if (error) std::rethrow_exception(error);

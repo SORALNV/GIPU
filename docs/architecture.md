@@ -11,6 +11,8 @@
 | `src/libdeflate.cpp` | workerごとの予算付き全エントリCPU解凍、巨大ファイルのStreaming切替、CRC、原子的な出力 |
 | `src/rapidgzip.cpp` | seek可能な仮想Gzip、任意のRapidgzip依存による単一ストリームCPU並列実験 |
 | `src/checksum.cpp` | libdeflate／zlibのCPU増分CRC共通処理 |
+| `src/hybrid.cpp` | エントリ特性とバイト割合によるCPU/GPUの分担、並行実行、GPU不在時のCPU切替 |
+| `src/backend.cpp` | 並行／順次処理の共通統計集計 |
 | `src/main.cpp` | CLI、合計出力上限、JSON統計 |
 | `tests/integration.py` | 標準zipfileで作ったZIPとの互換性、不正メタデータ、出力保護、予算による経路選択 |
 
@@ -30,9 +32,13 @@ GPU領域は256byte境界の単一arenaとし、必要容量が増えた場合�
 
 ## I/Oパイプライン
 
+各バックエンドは検証済みArchiveとエントリポインタの選択配列を受け取ります。ZIPの再解析・元データの複製は不要です。hybridはCPU向きファイルを先に分離し、残りをCPU担当バイト割合で分割します。CPUとGPUは重ならない出力名にだけ書き込み、共通のOutputRoot／OutputFileによる保護を使います。両経路が終わるまで参照元と配列を保持し、最初の例外を保存して停止要求を共有します。
+
 `--pipeline`では全ファイルがバッチ経路に収まることを事前に確認します。GPU arenaは一つだけ、ホスト入力・出力は2組です。別workerで次の圧縮入力を先読みし、GPUによる解凍・CRC・結果転送の間に、検証済みの前バッチを出力workerが書き出します。次の入力を準備するworkerと出力workerが同じホストスロットを使う場合も、入力領域と出力領域は別です。出力領域を再利用する前に、そのスロットの出力完了を待ちます。
 
 全バッチ計画の最大input／output／arena容量を処理前に確保します。先読みworkerが処理中に固定化メモリを再確保することによるCUDA同期を減らすためです。入出力の最大値が別バッチに現れる場合もあるため、RAM消費は一つのバッチ実容量の厳密な2倍とは限りません。
+
+`--host-limit`から固定分12MiBを引いた予算を固定化input/outputへ割り当てます。pipelineの2組は事前に最大容量を確認します。hybridはCPU・GPUへホスト予算を分配し、異なるバッチのinput/output最大値でも予算を超えない保守的なVRAM上限を使います。ホスト予算にCUDA/nvCOMP内部、ZIPエントリ一覧、OSページキャッシュは含みません。
 
 1バッチのファイル操作は既定8 workerで行います（`--write-threads`）。pipelineでは最大2バッチを出力中に保持するため、最大16個の出力workerになります。エントリ番号をatomicで割り当て、最初の例外を共有して新規処理を止め、workerをjoinしてから再送出します。ファイル単位の検証・上書き拒否・原子的な確定は共通OutputFileを使います。
 

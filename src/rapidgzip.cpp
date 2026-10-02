@@ -77,24 +77,20 @@ class ZipGzipReader final : public rapidgzip::FileReader {
 }
 #endif
 
-Stats run_rapidgzip(const Archive& archive, OutputRoot* root, const Options& opts) {
+Stats run_rapidgzip(const Archive& archive, OutputRoot* root, const Options& opts, EntrySelection entries) {
 #ifndef GIPU_HAVE_RAPIDGZIP
-  (void)archive; (void)root; (void)opts;
+  (void)archive; (void)root; (void)opts; (void)entries;
   throw std::runtime_error("Rapidgzipを有効にしたビルドが必要です");
 #else
   using Clock = std::chrono::steady_clock;
   Stats stats;
-  for (const auto& e : archive.entries()) {
+  for (const auto* entry : entries) {
+    const auto& e = *entry;
     check_cancelled();
     if (e.directory) { if (root) root->directory(e.name); continue; }
     if (e.method == 0 || e.uncompressed == 0 || opts.host_limit < (64ULL << 20)) {
       auto one = run_cpu_entry(archive, e, root, opts, true);
-      stats.files += one.files; stats.bytes += one.bytes; stats.cpu_crc_bytes += one.cpu_crc_bytes;
-      stats.cpu_stream_files += one.cpu_stream_files;
-      stats.isal_files += one.isal_files;
-      stats.read_seconds += one.read_seconds; stats.write_seconds += one.write_seconds;
-      stats.decode_seconds += one.decode_seconds; stats.crc_seconds += one.crc_seconds;
-      stats.host_buffer_bytes = std::max(stats.host_buffer_bytes, one.host_buffer_bytes);
+      add_stats(stats, one);
       continue;
     }
     size_t parallel = std::min<size_t>(opts.threads, static_cast<size_t>(opts.host_limit / (64ULL << 20)));

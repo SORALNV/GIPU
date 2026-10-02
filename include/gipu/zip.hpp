@@ -36,5 +36,6 @@ class Archive {
   void parse();
 };
 void check_cancelled();
+void request_cancel();
 void install_signal_handlers();
 }

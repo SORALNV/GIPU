@@ -1,6 +1,7 @@
 #include "gipu/zip.hpp"
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cerrno>
 #include <csignal>
 #include <cstring>
@@ -16,6 +17,7 @@
 namespace gipu {
 namespace {
 volatile std::sig_atomic_t cancelled = 0;
+std::atomic<bool> stop_requested{false};
 void on_signal(int) { cancelled = 1; }
 uint16_t u16(const char* p) {
   return static_cast<uint16_t>(static_cast<unsigned char>(p[0]) | (static_cast<unsigned char>(p[1]) << 8));
@@ -115,7 +117,8 @@ void zip64_extra(std::span<const char> extra, uint64_t& size, uint64_t& compress
 void install_signal_handlers() {
   std::signal(SIGINT, on_signal); std::signal(SIGTERM, on_signal);
 }
-void check_cancelled() { if (cancelled) throw std::runtime_error("処理をキャンセルしました"); }
+void request_cancel() { stop_requested.store(true, std::memory_order_relaxed); }
+void check_cancelled() { if (cancelled || stop_requested.load(std::memory_order_relaxed)) throw std::runtime_error("処理をキャンセルしました"); }
 Archive::Archive(const std::filesystem::path& path, uint64_t metadata_limit) : metadata_limit_(metadata_limit) {
   fd_ = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
   if (fd_ < 0) throw std::runtime_error("ZIPを開けません: " + std::string(std::strerror(errno)));

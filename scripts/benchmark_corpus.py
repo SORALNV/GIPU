@@ -13,6 +13,9 @@ import time
 VARIANTS = {
     "cpu": ["--backend", "cpu"],
     "isal": ["--backend", "isal"],
+    "hybrid": ["--backend", "hybrid"],
+    "hybrid25": ["--backend", "hybrid", "--cpu-percent", "25"],
+    "hybrid75": ["--backend", "hybrid", "--cpu-percent", "75"],
     "libdeflate1": ["--backend", "libdeflate", "--threads", "1"],
     "libdeflate4": ["--backend", "libdeflate", "--threads", "4"],
     "libdeflate16": ["--backend", "libdeflate", "--threads", "16"],
