@@ -24,6 +24,10 @@ def summarize(path):
         item = {"case": key[0], "mode": key[1], "variant": key[2], "runs": len(matching),
                 "failures": len(matching) - len(good),
                 "wall_seconds": [r["wall_seconds"] for r in matching],
+                "archive_sha256": sorted({r["archive_sha256"] for r in matching if "archive_sha256" in r}),
+                "archive_bytes": matching[0].get("archive_bytes"),
+                "raw_bytes": matching[0].get("raw_bytes"), "files": matching[0].get("files"),
+                "crc_verified_files": [r.get("crc_verified_files", 0) for r in matching],
                 "sha256_verified_files": [r.get("sha256_verified_files", 0) for r in matching],
                 "peak_rss_kib": [r.get("peak_rss_kib") for r in matching],
                 "selected_backends": [r.get("stats", {}).get("selected_backend") for r in matching],
@@ -41,7 +45,9 @@ def summarize(path):
         matching = [g for g in groups if (g["case"], g["mode"]) == (case, mode)]
         failed = any(g["failures"] or g.get("missing_runs", 0)
                      or not g.get("repeat_sequence_valid", True) for g in matching)
-        eligible = (complete and not missing_groups and not unexpected_groups and not failed
+        identities = {(r.get("archive_sha256"), r.get("archive_bytes"), r.get("raw_bytes"), r.get("files"))
+                      for r in runs if (r["case"], r["mode"]) == (case, mode)}
+        eligible = (complete and not missing_groups and not unexpected_groups and not failed and len(identities) == 1
                     and len({g["runs"] for g in matching}) == 1)
         value = {"case": case, "mode": mode, "complete_success": eligible,
                  "tools": {g["variant"]: g.get("median_seconds") for g in matching}}

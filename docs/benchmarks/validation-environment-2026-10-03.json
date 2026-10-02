@@ -24,14 +24,15 @@
     "cuda_invisible_auto": {"tests_run_including_skips": 67, "skips": 23, "failures": 0}
   },
   "ci": {
-    "revision": "6da190843b26cdcd80cd704210343a514021e19a",
-    "url": "https://github.com/SORALNV/GIPU/actions/runs/37036171109",
-    "all_ten_jobs_succeeded": true,
+    "revision": "d4135b0c506a1acb2091de34b0811b5b150ce32f",
+    "url": "https://github.com/SORALNV/GIPU/actions/runs/37039233087",
+    "all_jobs_succeeded": true,
+    "jobs": 11,
     "successful_jobs": [
       "cpu (ubuntu-22.04, OFF)", "cpu (ubuntu-22.04, ON)",
       "cpu (ubuntu-24.04, OFF)", "cpu (ubuntu-24.04, ON)",
       "minimal (ubuntu-22.04)", "minimal (ubuntu-24.04)", "minimal (ubuntu-24.04-arm)",
-      "compiler", "rapidgzip (OFF)", "rapidgzip (ON)"
+      "compiler", "rapidgzip (OFF)", "rapidgzip (ON)", "cpu-arm"
     ],
     "note": "CIはビルド・正確性を検証する。ローカル速度倍率をCI環境へ一般化しない。"
   }

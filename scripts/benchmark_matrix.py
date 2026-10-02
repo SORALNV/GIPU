@@ -21,7 +21,7 @@ from benchmark_space import check_output_space, plan_output_space
 
 
 VARIANTS = ("auto", "auto-experimental", "gpu", "gpu-pipeline", "hybrid", "cpu", "libdeflate1",
-            "7zip", "unzip", "python-parallel")
+            "7zip", "7zip-parallel", "unzip", "python-parallel")
 
 
 def digest(path):
@@ -96,6 +96,10 @@ def verify(output, manifest, samples, source=None):
 
 
 def command_for(args, variant, mode, archive, output):
+    if variant == "7zip-parallel":
+        command = [sys.executable, str(Path(__file__).with_name("reference_7zip_parallel.py").resolve()),
+                   mode, str(archive), "--threads", str(args.threads), "--sevenzip", str(args.sevenzip.resolve())]
+        return command + (["--output", str(output)] if mode == "extract" else [])
     if variant == "7zip":
         command = [str(args.sevenzip.resolve()), "t" if mode == "test" else "x", str(archive),
                    f"-mmt={args.threads}", "-bd", "-bso0", "-bsp0"]
@@ -178,6 +182,7 @@ def main():
                 "tool_sha256": {name: digest(path) for name, path in tools.items()},
                 "benchmark_script_sha256": digest(Path(__file__)),
                 "reference_script_sha256": digest(Path(__file__).with_name("reference_zip.py")),
+                "reference_7zip_script_sha256": digest(Path(__file__).with_name("reference_7zip_parallel.py")),
                 "note": "同じ機械でのaffinity制限。cold cache保証なし。通常write終了まで、fsyncなし。"
                         "属性復元・出力確定方式はツールで異なる。Python並列は比較用で最速CPU保証ではない。"}
     metadata["7zip_version"] = subprocess.run([str(args.sevenzip.resolve()), "i"], capture_output=True,

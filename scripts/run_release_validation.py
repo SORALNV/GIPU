@@ -18,6 +18,8 @@ def main():
     parser.add_argument("--tmpfs-output", type=Path, required=True)
     parser.add_argument("--report-prefix", type=Path, required=True)
     parser.add_argument("--predecessor-report", type=Path, help="別の所有する逐次試験の完了を待ってから開始する")
+    parser.add_argument("--parallel-reference-only", action="store_true",
+                        help="追加の並列7-Zip参照とauto／GPUを同じ条件で比較する")
     args = parser.parse_args()
     matrix = str(Path(__file__).with_name("benchmark_matrix.py").resolve())
     phases = []
@@ -35,6 +37,17 @@ def main():
     phases.append(("kaggle50", ["--archive", str(args.archive), "--source", str(args.source), "--samples", "128",
                                 "--repeats", "3", "--variants", "auto", "gpu-pipeline", "7zip", "python-parallel",
                                 "--modes", "extract", "--output-root", str(args.ssd_output)]))
+    if args.parallel_reference_only:
+        cases = ["stored-small", "stored-medium", "stored-large", "deflate-level0", "incompressible",
+                 "zeros-medium", "documents-level1", "documents-level9", "unicode-paths",
+                 "empty-directories", "many-empty", "skewed"]
+        phases = [
+            ("parallel-reference-shapes", ["--corpus", str(args.corpus), "--cases", *cases,
+                "--variants", "auto", "gpu", "7zip-parallel", "python-parallel", "--repeats", "3",
+                "--output-root", str(args.ssd_output)]),
+            ("parallel-reference-kaggle50", ["--archive", str(args.archive), "--source", str(args.source),
+                "--samples", "128", "--variants", "auto", "gpu-pipeline", "7zip-parallel", "--repeats", "3",
+                "--modes", "extract", "--output-root", str(args.ssd_output)])]
     status_path = Path(str(args.report_prefix) + "-status.jsonl")
     if status_path.exists() or any(Path(str(args.report_prefix) + f"-{name}.jsonl").exists() for name, _ in phases):
         parser.error("既存の逐次試験結果を上書きしません")

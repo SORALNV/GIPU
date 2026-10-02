@@ -1,5 +1,6 @@
 """小さな合成ZIPを変異させCPU経路を差分検証する。GPUへ不正圧縮データを送らない。"""
 import argparse
+import hashlib
 import io
 import json
 import os
@@ -108,6 +109,8 @@ def main():
     if args.iterations <= 0 or args.timeout <= 0 or args.results.exists():
         parser.error("正の反復数／時間と未使用のresultsを指定してください")
     args.results.parent.mkdir(parents=True, exist_ok=True)
+    identity = {"binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+                "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
     rng = random.Random(args.seed)
     bases = fixtures(args.many_files)
     counts = {"accepted": 0, "rejected": 0}
@@ -146,7 +149,7 @@ def main():
                 repro = args.results.with_suffix(f".failure-{i}.zip")
                 with repro.open("xb") as output:
                     output.write(data)
-                report = {"backend": args.backend, "seed": args.seed, "iteration": i, "failure": failure,
+                report = {**identity, "backend": args.backend, "seed": args.seed, "iteration": i, "failure": failure,
                           "reproducer": str(repro), **counts}
                 with args.results.open("x", encoding="utf-8") as output:
                     json.dump(report, output, ensure_ascii=False, indent=2)
@@ -154,7 +157,7 @@ def main():
                 raise RuntimeError(json.dumps(report, ensure_ascii=False))
             if i and i % 500 == 0:
                 print(json.dumps({"iteration": i, **counts}), flush=True)
-    report = {"backend": args.backend, "seed": args.seed, "iterations": args.iterations,
+    report = {**identity, "backend": args.backend, "seed": args.seed, "iterations": args.iterations,
               "metadata_threads": args.metadata_threads, "many_files": args.many_files,
               "valid_fixtures": len(bases), "seconds": time.perf_counter() - start, **counts, "failure": None}
     with args.results.open("x", encoding="utf-8") as output:

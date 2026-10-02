@@ -1,6 +1,6 @@
 # GIPU
 
-Ubuntu＋NVIDIA GPUで、通常のZIPを展開するCLIを開発しています。実験用GPUはRTX 3090です。
+LinuxでStored／DeflateのZIP32・ZIP64を展開するCLIを開発しています。CPUだけでも動作し、NVIDIA GPUは任意の実験経路です。実験用GPUはRTX 3090です。
 
 目標は、GPUとCPUを使い分け、大小・多数のファイルを含む標準ZIPを高速に展開することです。VRAMより大きいアーカイブや単一ファイルもストリーミング展開します。性能は解凍・CRCだけでなく、ファイル操作とI/Oを含めて実測で判断します。
 
@@ -8,7 +8,7 @@ Ubuntu＋NVIDIA GPUで、通常のZIPを展開するCLIを開発しています�
 
 ## 実装状況
 
-- ZIP32／ZIP64、Stored／Deflate、Data Descriptor、UTF-8／CP437ファイル名の解析。
+- ZIP32／ZIP64、Stored／Deflate、Data Descriptor、UTF-8／CP437／Unicode Path追加フィールドのファイル名解析。
 - 絶対パス、`..`、重複パス、シンボリックリンク、データ範囲の重複を拒否。
 - 展開サイズとCRCを確認してから、同じディレクトリ内の一時ファイルを確定。既存ファイルは上書きしません。
 - nvCOMP 5.3.0によるGPUバッチDeflate／Streaming Gzip。予算に応じて自動選択します。
@@ -33,7 +33,7 @@ bash scripts/build.sh
 build/gipu doctor
 ```
 
-既存の開発環境を使う場合は、C++20コンパイラ、CMake 3.24以上、zlib開発パッケージ、CUDAのランタイムとヘッダ、nvCOMP 5.3.0を用意します。CUDAカーネルを自作していないため、ビルド自体にnvccは不要です。
+既存の開発環境を使う場合は、C++20コンパイラ、CMake 3.22以上、zlib開発パッケージ、CUDAのランタイムとヘッダ、nvCOMP 5.3.0を用意します。CUDAカーネルを自作していないため、ビルド自体にnvccは不要です。
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
@@ -117,7 +117,7 @@ Rapidgzipは大きな単一ファイル向けの実験経路で、小ファイ�
 
 Rapidgzip内部の修正版ISA-Lを使う追加実験は、`bash scripts/bootstrap_rapidgzip.sh --with-isal`と`-DGIPU_RAPIDGZIP_ISAL=ON`で有効にできます。ビルドにはCコンパイラとNASMも必要です。通常のISA-Lとは`inflate_state`のABIが異なるため、同時リンクせず、GIPUのStreaming経路も同じ修正版ヘッダ／静的ライブラリへ揃えます。既定OFFで、速度と正確性を別途比較するための構成です。
 
-この作業環境では`build/gipu`と`build-unified/gipu`にGPU・libdeflate・Rapidgzip修正版ISA-Lを統合し、10統合スイートと容量検査スイートの計11スイートを検証しています。単一の大きな実データは`--backend auto --auto-parallel`、既知の正しい多数ファイルでGPUを試す場合は`--backend auto --auto-gpu`を使えます。実験経路の明示許可とメモリ上限の制約は変わりません。
+2026年10月2日の作業環境では`build/gipu`と`build-unified/gipu`にGPU・libdeflate・Rapidgzip修正版ISA-Lを統合し、10統合スイートと容量検査スイートの計11スイートを検証しました。10月3日の更新版`build/gipu`では外部比較スクリプトの試験を加えた計12スイートを検証しています。単一の大きな実データは`--backend auto --auto-parallel`、既知の正しい多数ファイルでGPUを試す場合は`--backend auto --auto-gpu`を使えます。実験経路の明示許可とメモリ上限の制約は変わりません。
 
 `--pipeline`は全ファイルが非空Deflateバッチに収まるZIP専用の実験経路です。固定化ホスト入出力を二重化し、次バッチの読み込み・GPU処理・前バッチの書き込みを重畳します。GPU arenaは一つだけでVRAM予算は変わりませんが、ホストRAMの必要量はバッチ入出力の約2倍になります。Stored／空ファイル／Streamingが必要な入力にはこの指定を外してください。各バッチ全体のGPU CRC確認が済むまでは、そのバッチの出力を書き出しません。
 

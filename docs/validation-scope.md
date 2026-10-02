@@ -20,13 +20,13 @@ GIPUは現時点でLinux向けのStored／Deflate ZIP32・ZIP64展開CLIです�
 
 ## 環境
 
-2026年10月3日の[CI](https://github.com/SORALNV/GIPU/actions/runs/37036171109)では10ジョブが成功しました。
+2026年10月3日の[CI](https://github.com/SORALNV/GIPU/actions/runs/37039233087)では11ジョブが成功しました。
 
 | 環境 | 実施した検証 | 保証しないもの |
 |---|---|---|
 | ローカルUbuntu 26.04、x86_64、Ryzen 9 7945HX | CPU最小・高速CPU・ASan／UBSan・実機GPU・外部比較 | 他のCPU機種・OSでの同じ速度 |
 | GitHub Ubuntu 22.04／24.04 x86_64 | GCC、ASan／UBSan、依存あり／zlibのみ、外部ZIP producer | hosted runnerの速度をローカル速度倍率へ適用すること |
-| GitHub Ubuntu 24.04 ARM64 | zlibのみのCPUビルド・実行 | ARM64のGPU、ISA-L、全依存のbootstrap |
+| GitHub Ubuntu 24.04 ARM64 | zlibのみ／libdeflateのCPUビルド・実行、4 worker | ARM64のGPU、ISA-L、全依存のbootstrap |
 | GitHub Ubuntu 24.04 Clang | CPUビルド・実行 | 全コンパイラ・最適化指定の組み合わせ |
 | RTX 3090、driver 595.91.07、CUDA runtime 13.0、nvCOMP 5.3.0 | GPUバッチ・Streaming・LOOKAHEAD、CPUとの比較 | 他のNVIDIA GPU、AMD／Intel GPU、他のdriver／CUDA／nvCOMP版 |
 | GPUを不可視にしたGPU対応ビルド | 既定autoがCPUで成立すること | あらゆるGPU故障・driver障害からの復旧 |

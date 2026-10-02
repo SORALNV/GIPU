@@ -4,6 +4,8 @@ import importlib.util
 import json
 from pathlib import Path
 import sys
+import shutil
+import subprocess
 import tempfile
 import unittest
 import zipfile
@@ -15,6 +17,7 @@ spec = importlib.util.spec_from_file_location("matrix_impl", SCRIPTS / "benchmar
 matrix = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(matrix)
 from summarize_matrix import summarize
+from reference_7zip_parallel import result_counts
 
 
 class Matrix(unittest.TestCase):
@@ -148,6 +151,61 @@ class Matrix(unittest.TestCase):
         result = self.summary_fixture(runs)
         self.assertEqual(result["failures"], 1)
         self.assertNotIn("ratio_to_auto", result["comparisons"][0])
+
+    def test_summary_different_input_no_ratio(self):
+        runs = self.summary_runs()
+        for row in runs:
+            row["archive_sha256"] = "archive-one"
+        runs[-1]["archive_sha256"] = "archive-two"
+        result = self.summary_fixture(runs)
+        self.assertNotIn("ratio_to_auto", result["comparisons"][0])
+
+    def test_7zip_single_file_counts(self):
+        self.assertEqual(result_counts("Everything is Ok\n\nSize: 123\nCompressed: 456\n"), (1, 123))
+
+    def test_7zip_many_file_counts(self):
+        self.assertEqual(result_counts("Everything is Ok\n\nFiles: 32\nSize:       123\n"), (32, 123))
+
+    def test_7zip_missing_crc_success_rejected(self):
+        with self.assertRaises(RuntimeError):
+            result_counts("Files: 32\nSize: 123\n")
+
+    def reference_fixture(self):
+        contents = {"nested/日本語.bin": self.payload, "nested/empty": b"",
+                    "other/wild*[?].bin": b"literal wildcard", "other/data": bytes(range(256))}
+        with zipfile.ZipFile(self.archive, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("empty-dir/nested/", b"")
+            for name, payload in contents.items():
+                archive.writestr(name, payload)
+        return {"files": len(contents), "uncompressed_bytes": sum(map(len, contents.values())),
+                "directories": ["empty-dir/nested/"],
+                "entries": [{"name": name, "bytes": len(payload), "sha256": hashlib.sha256(payload).hexdigest()}
+                            for name, payload in contents.items()]}
+
+    def check_reference(self, script, extra):
+        manifest = self.reference_fixture()
+        for mode in ("test", "extract"):
+            output = self.root / "reference-output"
+            command = [sys.executable, str(SCRIPTS / script), mode, str(self.archive), "--threads", "3", *extra]
+            if mode == "extract":
+                command += ["--output", str(output)]
+            result = subprocess.run(command, capture_output=True, text=True, timeout=15)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            stats = json.loads(result.stdout)
+            self.assertEqual((stats["files"], stats["bytes"]), (manifest["files"], manifest["uncompressed_bytes"]))
+            self.assertEqual(stats["crc_verified_files"], manifest["files"])
+            if mode == "extract":
+                self.assertEqual(matrix.verify(output, manifest, 0), manifest["files"])
+
+    def test_python_parallel_reference_end_to_end(self):
+        self.check_reference("reference_zip.py", [])
+
+    def test_7zip_parallel_reference_end_to_end(self):
+        local = SCRIPTS.parent / ".deps/7zip-26.03/7zz"
+        sevenzip = str(local) if local.is_file() else shutil.which("7zz") or shutil.which("7z")
+        if not sevenzip:
+            self.skipTest("7-Zipがないため外部参照の実行は未検証")
+        self.check_reference("reference_7zip_parallel.py", ["--sevenzip", sevenzip])
 
 
 if __name__ == "__main__":
