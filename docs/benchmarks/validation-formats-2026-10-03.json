@@ -1,0 +1,102 @@
+{
+  "time_utc": "2026-10-02T16:51:16Z",
+  "runs": [
+    {
+      "format": "deflate",
+      "expected": "supported",
+      "verified": true,
+      "reference_archive_valid": true,
+      "returncode": 0,
+      "seconds": 0.005966218999674311,
+      "stderr": ""
+    },
+    {
+      "format": "stored",
+      "expected": "supported",
+      "verified": true,
+      "reference_archive_valid": true,
+      "returncode": 0,
+      "seconds": 0.006155488001240883,
+      "stderr": ""
+    },
+    {
+      "format": "deflate64",
+      "expected": "reject_before_output",
+      "verified": true,
+      "reference_archive_valid": true,
+      "returncode": 1,
+      "seconds": 0.0021463459997903556,
+      "stderr": "gipu: 未対応の圧縮方式です: 9"
+    },
+    {
+      "format": "bzip2",
+      "expected": "reject_before_output",
+      "verified": true,
+      "reference_archive_valid": true,
+      "returncode": 1,
+      "seconds": 0.002467081001668703,
+      "stderr": "gipu: 未対応の圧縮方式です: 12"
+    },
+    {
+      "format": "lzma",
+      "expected": "reject_before_output",
+      "verified": true,
+      "reference_archive_valid": true,
+      "returncode": 1,
+      "seconds": 0.002357458000915358,
+      "stderr": "gipu: 未対応の圧縮方式です: 14"
+    },
+    {
+      "format": "aes256",
+      "expected": "reject_before_output",
+      "verified": true,
+      "reference_archive_valid": true,
+      "returncode": 1,
+      "seconds": 0.0020861699995293748,
+      "stderr": "gipu: 暗号化または未対応のZIPフラグです"
+    },
+    {
+      "format": "zipcrypto",
+      "expected": "reject_before_output",
+      "verified": true,
+      "reference_archive_valid": true,
+      "returncode": 1,
+      "seconds": 0.0020529239991446957,
+      "stderr": "gipu: 暗号化または未対応のZIPフラグです"
+    },
+    {
+      "format": "7z",
+      "expected": "reject_before_output",
+      "verified": true,
+      "reference_archive_valid": true,
+      "returncode": 1,
+      "seconds": 0.002277732997754356,
+      "stderr": "gipu: 有効なZIP終端レコードがありません"
+    },
+    {
+      "format": "multipart",
+      "expected": "reject_before_output",
+      "verified": true,
+      "reference_archive_valid": true,
+      "returncode": 1,
+      "seconds": 0.002317228998435894,
+      "stderr": "gipu: 有効なZIP終端レコードがありません"
+    },
+    {
+      "format": "gzip",
+      "expected": "reject_before_output",
+      "verified": true,
+      "returncode": 1,
+      "stderr": "gipu: 有効なZIP終端レコードがありません"
+    },
+    {
+      "format": "tar-gzip",
+      "expected": "reject_before_output",
+      "verified": true,
+      "returncode": 1,
+      "stderr": "gipu: 有効なZIP終端レコードがありません"
+    }
+  ],
+  "all_passed": true,
+  "note": "拒否は対応・速度の証明ではない。GPUへ未対応・不正な圧縮本体を送らない。"
+}

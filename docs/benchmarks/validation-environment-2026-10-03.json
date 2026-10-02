@@ -1,0 +1,38 @@
+{
+  "measured_binary_revision": "6da190843b26cdcd80cd704210343a514021e19a",
+  "measured_binary_sha256": "398d66deb7d4c8a83856145c2cbcbe516700876911c5f05908aee3966fe7d97e",
+  "local": {
+    "platform": "Ubuntu 26.04.1, Linux 7.0.0-34-generic, x86_64, glibc 2.43",
+    "cpu": "AMD Ryzen 9 7945HX",
+    "logical_cpus": 32,
+    "ram_kib": 94407420,
+    "gpu": "NVIDIA GeForce RTX 3090",
+    "gpu_vram_mib": 24576,
+    "driver": "595.91.07",
+    "compute_capability": "8.6",
+    "cuda_runtime": "13.0",
+    "nvcomp": "5.3.0",
+    "compiler": "GCC 14.4.0, conda-forge",
+    "input_storage": "Intel Optane SSDPF21Q400GB / ext4",
+    "ssd_output_storage": "ORICO 2TB / ext4",
+    "gpu_desktop_processes_present": true
+  },
+  "local_suites": {
+    "gpu_enabled_ctest": {"suites": 12, "failures": 0},
+    "asan_ubsan_ctest": {"suites": 7, "failures": 0},
+    "zlib_only_ctest": {"suites": 5, "failures": 0},
+    "cuda_invisible_auto": {"tests_run_including_skips": 67, "skips": 23, "failures": 0}
+  },
+  "ci": {
+    "revision": "6da190843b26cdcd80cd704210343a514021e19a",
+    "url": "https://github.com/SORALNV/GIPU/actions/runs/37036171109",
+    "all_ten_jobs_succeeded": true,
+    "successful_jobs": [
+      "cpu (ubuntu-22.04, OFF)", "cpu (ubuntu-22.04, ON)",
+      "cpu (ubuntu-24.04, OFF)", "cpu (ubuntu-24.04, ON)",
+      "minimal (ubuntu-22.04)", "minimal (ubuntu-24.04)", "minimal (ubuntu-24.04-arm)",
+      "compiler", "rapidgzip (OFF)", "rapidgzip (ON)"
+    ],
+    "note": "CIはビルド・正確性を検証する。ローカル速度倍率をCI環境へ一般化しない。"
+  }
+}

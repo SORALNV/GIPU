@@ -64,7 +64,7 @@ def validate_archive(archive, manifest):
     return members
 
 
-def verify(output, manifest, samples):
+def verify(output, manifest, samples, source=None):
     entries = manifest["entries"]
     expected = {e["name"] for e in entries}
     actual = {p.relative_to(output).as_posix() for p in output.rglob("*") if p.is_file()}
@@ -76,9 +76,21 @@ def verify(output, manifest, samples):
     for name in manifest.get("directories", []):
         if not (output / name).is_dir():
             raise RuntimeError("明示された空ディレクトリがありません")
+    expected_dirs = {name.rstrip("/") for name in manifest.get("directories", [])}
+    for name in list(expected) + list(expected_dirs):
+        for end in (i for i, c in enumerate(name) if c == "/"):
+            expected_dirs.add(name[:end])
+    actual_dirs = {p.relative_to(output).as_posix() for p in output.rglob("*") if p.is_dir()}
+    if expected_dirs != actual_dirs:
+        raise RuntimeError("出力ディレクトリ集合に過不足があります")
     chosen = entries if samples == 0 else random.Random(3090).sample(entries, min(samples, len(entries)))
     for entry in chosen:
-        if digest(output / entry["name"]) != entry["sha256"]:
+        expected_sha = entry.get("sha256")
+        if expected_sha is None:
+            if source is None:
+                raise RuntimeError("SHA256の期待値または元データが必要です")
+            expected_sha = digest(source / entry["name"])
+        if digest(output / entry["name"]) != expected_sha:
             raise RuntimeError("出力SHA-256が一致しません")
     return len(chosen)
 
@@ -108,13 +120,17 @@ def command_for(args, variant, mode, archive, output):
         command += ["--path-mode", args.path_mode]
     if args.host_limit:
         command += ["--host-limit", args.host_limit]
+    if args.vram_limit:
+        command += ["--vram-limit", args.vram_limit]
     return command + (["--output", str(output)] if mode == "extract" else [])
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--corpus", type=Path, required=True)
-    parser.add_argument("--cases", nargs="+", required=True)
+    parser.add_argument("--corpus", type=Path)
+    parser.add_argument("--cases", nargs="+")
+    parser.add_argument("--archive", type=Path, help="既存実データZIPを直接比較する")
+    parser.add_argument("--source", type=Path, help="archiveの独立SHA256照合に使う元データ")
     parser.add_argument("--variants", nargs="+", choices=VARIANTS,
                         default=["auto", "gpu", "7zip", "unzip", "python-parallel"])
     parser.add_argument("--binary", type=Path, default=Path("build/gipu"))
@@ -131,7 +147,13 @@ def main():
     parser.add_argument("--cache", choices=("warm", "drop-advised"), default="drop-advised")
     parser.add_argument("--path-mode", choices=("auto", "portable"), default="auto")
     parser.add_argument("--host-limit")
+    parser.add_argument("--vram-limit")
     args = parser.parse_args()
+    if args.archive:
+        if args.corpus or args.cases or ("extract" in args.modes and args.source is None):
+            parser.error("archive実展開にはsourceが必要です。corpus/casesとは併用しません")
+    elif not args.corpus or not args.cases or args.source:
+        parser.error("corpus/cases、またはarchive/sourceを指定してください")
     if min(args.repeats, args.threads, args.timeout) < 1 or args.threads > 32 or args.samples < 0:
         parser.error("反復数・期限・worker数が不正です")
     if args.report.exists():
@@ -147,9 +169,14 @@ def main():
     metadata = {"kind": "metadata", "time_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "platform": platform.platform(), "python": sys.version, "cpu_affinity": sorted(os.sched_getaffinity(0)),
                 "threads_requested": args.threads, "output_root": str(args.output_root.resolve()),
+                "repeats_requested": args.repeats, "variants_requested": args.variants, "modes_requested": args.modes,
+                "cases_requested": [args.archive.stem] if args.archive else args.cases,
                 "output_device": args.output_root.stat().st_dev, "cache": args.cache, "durable": False,
-                "path_mode": args.path_mode, "host_limit": args.host_limit, "samples": args.samples,
+                "path_mode": args.path_mode, "host_limit": args.host_limit, "vram_limit": args.vram_limit,
+                "samples": args.samples,
+                "source_sha256_validation": args.source is not None,
                 "tool_sha256": {name: digest(path) for name, path in tools.items()},
+                "benchmark_script_sha256": digest(Path(__file__)),
                 "reference_script_sha256": digest(Path(__file__).with_name("reference_zip.py")),
                 "note": "同じ機械でのaffinity制限。cold cache保証なし。通常write終了まで、fsyncなし。"
                         "属性復元・出力確定方式はツールで異なる。Python並列は比較用で最速CPU保証ではない。"}
@@ -160,9 +187,18 @@ def main():
     rows = []
     with args.report.open("x", encoding="utf-8", buffering=1) as report:
         report.write(json.dumps(metadata, ensure_ascii=False) + "\n")
-        for case in args.cases:
-            manifest = json.loads((args.corpus / f"{case}.json").read_text())
-            archive = (args.corpus / f"{case}.zip").resolve(strict=True)
+        cases = [args.archive.stem] if args.archive else args.cases
+        for case in cases:
+            if args.archive:
+                archive = args.archive.resolve(strict=True)
+                with zipfile.ZipFile(archive) as source:
+                    entries = [{"name": m.filename, "bytes": m.file_size} for m in source.infolist() if not m.is_dir()]
+                    directories = [m.filename for m in source.infolist() if m.is_dir()]
+                manifest = {"entries": entries, "directories": directories, "files": len(entries),
+                            "uncompressed_bytes": sum(e["bytes"] for e in entries)}
+            else:
+                manifest = json.loads((args.corpus / f"{case}.json").read_text())
+                archive = (args.corpus / f"{case}.zip").resolve(strict=True)
             members = validate_archive(archive, manifest)
             archive_sha256 = digest(archive)
             plan = plan_output_space(args.output_root, ((m.filename, m.file_size) for m in members), 2 << 30)
@@ -186,16 +222,28 @@ def main():
                             row = {"kind": "run", "case": case, "variant": variant, "mode": mode,
                                    "repeat": repeat + 1, "archive_bytes": archive.stat().st_size,
                                    "raw_bytes": manifest["uncompressed_bytes"], "files": manifest["files"],
-                                   "archive_sha256": archive_sha256, "verified": False}
+                                   "archive_sha256": archive_sha256, "verified": False, "command": command}
                             started = time.perf_counter()
                             process = subprocess.Popen(timed, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                                        text=True, start_new_session=True)
                             try:
                                 stdout, stderr = process.communicate(timeout=args.timeout)
                             except subprocess.TimeoutExpired:
-                                os.killpg(process.pid, signal.SIGKILL)
+                                try:
+                                    os.killpg(process.pid, signal.SIGKILL)
+                                except ProcessLookupError:
+                                    pass
                                 stdout, stderr = process.communicate()
                                 row["timeout"] = True
+                            except BaseException:
+                                # CLIは別sessionなので、wrapperの中断だけでは停止しない。
+                                # 自分で起動したprocess groupだけを回収してから一時出力を削除する。
+                                try:
+                                    os.killpg(process.pid, signal.SIGKILL)
+                                except ProcessLookupError:
+                                    pass
+                                process.communicate()
+                                raise
                             row.update(returncode=process.returncode, wall_seconds=time.perf_counter() - started)
                             if usage.exists():
                                 try:
@@ -211,7 +259,7 @@ def main():
                                             raise RuntimeError("CLI件数・展開量が一致しません")
                                         row["stats"] = stats
                                     row["crc_verified_files"] = manifest["files"]
-                                    row["sha256_verified_files"] = verify(output, manifest, args.samples) if mode == "extract" else 0
+                                    row["sha256_verified_files"] = verify(output, manifest, args.samples, args.source) if mode == "extract" else 0
                                     row["verified"] = True
                                 except Exception as error:
                                     row["verification_error"] = str(error)

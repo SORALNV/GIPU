@@ -62,3 +62,19 @@ jobs:
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ -DGIPU_ENABLE_GPU=OFF -DGIPU_ENABLE_ISAL=OFF
           cmake --build build -j 2
           ctest --test-dir build --output-on-failure
+  cpu-arm:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: ARM64実機のCPU・ツール情報と高速CPU構成を検証
+        run: |
+          uname -a
+          lscpu
+          sudo apt-get update && sudo apt-get install -y g++ cmake ninja-build zip 7zip zlib1g-dev libdeflate-dev
+          g++ --version
+          cmake --version
+          python3 --version
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DGIPU_ENABLE_GPU=OFF -DGIPU_ENABLE_ISAL=OFF
+          cmake --build build -j 2
+          ctest --test-dir build --output-on-failure
+          GIPU_TEST_BACKEND=libdeflate GIPU_TEST_THREADS=4 python3 tests/integration.py build/gipu

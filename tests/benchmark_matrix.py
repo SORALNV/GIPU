@@ -1,6 +1,7 @@
 """外部比較の入力制約と独立SHA256検証を試験する。"""
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -13,6 +14,7 @@ sys.path.insert(0, str(SCRIPTS))
 spec = importlib.util.spec_from_file_location("matrix_impl", SCRIPTS / "benchmark_matrix.py")
 matrix = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(matrix)
+from summarize_matrix import summarize
 
 
 class Matrix(unittest.TestCase):
@@ -84,6 +86,68 @@ class Matrix(unittest.TestCase):
             matrix.verify(output, self.manifest, 0)
         (output / "empty").mkdir()
         self.assertEqual(matrix.verify(output, self.manifest, 0), 1)
+
+    def test_missing_hash_requires_source(self):
+        del self.manifest["entries"][0]["sha256"]
+        output = self.output()
+        with self.assertRaises(RuntimeError):
+            matrix.verify(output, self.manifest, 0)
+        source = self.root / "original"
+        (source / "nested").mkdir(parents=True)
+        (source / "nested/data").write_bytes(self.payload)
+        self.assertEqual(matrix.verify(output, self.manifest, 0, source), 1)
+
+    def test_unexpected_empty_directory_rejected(self):
+        output = self.output()
+        (output / "unexpected").mkdir()
+        with self.assertRaises(RuntimeError):
+            matrix.verify(output, self.manifest, 0)
+
+    def summary_fixture(self, runs, finished=True):
+        report = self.root / "result.jsonl"
+        metadata = {"kind": "metadata", "cases_requested": ["small"],
+                    "modes_requested": ["extract"], "variants_requested": ["auto", "gpu"],
+                    "repeats_requested": 3}
+        rows = [metadata, *runs]
+        if finished:
+            rows.append({"kind": "summary"})
+        report.write_text("\n".join(json.dumps(row) for row in rows) + "\n")
+        return summarize(report)
+
+    def summary_runs(self):
+        return [{"kind": "run", "case": "small", "mode": "extract", "variant": variant,
+                 "repeat": repeat, "verified": True, "wall_seconds": seconds}
+                for variant, seconds in (("auto", 1.0), ("gpu", 2.0)) for repeat in range(1, 4)]
+
+    def test_summary_complete_ratio(self):
+        result = self.summary_fixture(self.summary_runs())
+        self.assertEqual(result["comparisons"][0]["ratio_to_auto"]["gpu"], 2)
+
+    def test_summary_partial_no_ratio(self):
+        result = self.summary_fixture(self.summary_runs(), finished=False)
+        self.assertNotIn("ratio_to_auto", result["comparisons"][0])
+
+    def test_summary_missing_variant_no_ratio(self):
+        result = self.summary_fixture(self.summary_runs()[:3])
+        self.assertEqual(result["missing_groups"], [("small", "extract", "gpu")])
+        self.assertNotIn("ratio_to_auto", result["comparisons"][0])
+
+    def test_summary_missing_repeat_no_ratio(self):
+        result = self.summary_fixture(self.summary_runs()[:-1])
+        self.assertNotIn("ratio_to_auto", result["comparisons"][0])
+
+    def test_summary_duplicate_repeat_no_ratio(self):
+        runs = self.summary_runs()
+        runs[-1]["repeat"] = 2
+        result = self.summary_fixture(runs)
+        self.assertNotIn("ratio_to_auto", result["comparisons"][0])
+
+    def test_summary_failed_run_no_ratio(self):
+        runs = self.summary_runs()
+        runs[-1]["verified"] = False
+        result = self.summary_fixture(runs)
+        self.assertEqual(result["failures"], 1)
+        self.assertNotIn("ratio_to_auto", result["comparisons"][0])
 
 
 if __name__ == "__main__":
