@@ -473,10 +473,11 @@ Stats pipeline_decode(const Archive& archive, OutputRoot* root, const Options& o
   for (auto& writer : writers) if (writer.valid()) stats.write_seconds += writer.get();
   return stats;
 }
-void stream_decode(const Archive& archive, const Entry& e, OutputRoot* root, const Options& opts, StreamingCrc& crc,
+void stream_decode(const Archive& archive, const Entry& e, OutputRoot* root, const Options& opts, StreamingCrc* crc,
                    std::unique_ptr<GpuStreamWorker>& worker, Stats& stats) {
-  crc.reset();
+  if (crc) crc->reset();
   const bool cpu_checksum = opts.stream_crc == "cpu";
+  if (!cpu_checksum && !crc) throw std::runtime_error("GPU CRC領域がありません");
   uint32_t checksum = 0;
   std::unique_ptr<OutputFile> file;
   if (root) file = std::make_unique<OutputFile>(*root, e, opts.durable);
@@ -486,7 +487,7 @@ void stream_decode(const Archive& archive, const Entry& e, OutputRoot* root, con
   Sink sink(e.uncompressed, file.get(), [&](auto bytes) {
     auto start = std::chrono::steady_clock::now();
     if (cpu_checksum) checksum = cpu_crc32(checksum, bytes.data(), bytes.size());
-    else if (e.method == 0) crc.update(bytes);
+    else if (e.method == 0) crc->update(bytes);
     stats.crc_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
   });
   std::ostream output(&sink); output.exceptions(std::ios::badbit | std::ios::failbit);
@@ -499,25 +500,23 @@ void stream_decode(const Archive& archive, const Entry& e, OutputRoot* root, con
     }
   } else {
     auto decode_start = std::chrono::steady_clock::now();
-    int concurrent = 0;
-    cuda_check(cudaDeviceGetAttribute(&concurrent, cudaDevAttrConcurrentManagedAccess, opts.gpu));
-    if (!concurrent) throw std::runtime_error("GPUストリーミングにはconcurrentManagedAccessが必要です");
-    size_t bytes = 0;
-    nv_check(nvcompGzipStreamingDecompressGetTempSize(&bytes));
-    if (bytes > opts.vram_limit - StreamingCrc::memory) throw std::runtime_error("ストリーミング作業領域が--vram-limitを超えています");
-    if (!worker) { worker = std::make_unique<GpuStreamWorker>(archive, opts); ++stats.gpu_stream_workers; }
-    worker->decode(e, output);
+    if (!worker) {
+      Options child = opts;
+      if (crc) child.vram_limit -= StreamingCrc::memory;
+      worker = std::make_unique<GpuStreamWorker>(archive, child); ++stats.gpu_stream_workers;
+    }
+    const uint64_t bytes = worker->decode(e, output);
     check_cancelled();
     // Streaming API内の読み出し・CRCコールバック・出力を含む時間。
     stats.decode_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - decode_start).count();
-    stats.workspace = std::max<uint64_t>(stats.workspace, bytes + StreamingCrc::memory);
+    stats.workspace = std::max<uint64_t>(stats.workspace, bytes + (crc ? StreamingCrc::memory : 0));
     ++stats.streams;
   }
   sink.finish();
   if (!cpu_checksum) {
     auto start = std::chrono::steady_clock::now();
-    if (e.method == 8) file->read_all([&](auto bytes) { crc.update(bytes); });
-    checksum = crc.finish();
+    if (e.method == 8) file->read_all([&](auto bytes) { crc->update(bytes); });
+    checksum = crc->finish();
     stats.crc_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
   }
   if (checksum != e.crc) throw std::runtime_error("CRC32が一致しません: " + e.name);
@@ -537,6 +536,9 @@ int gpu_stream_worker_main(int argc, char** argv) {
   struct stat metadata{};
   if (::fstat(3, &metadata) != 0 || !S_ISREG(metadata.st_mode) || metadata.st_size < 0) return 1;
   cuda_check(cudaSetDevice(device));
+  int concurrent = 0;
+  cuda_check(cudaDeviceGetAttribute(&concurrent, cudaDevAttrConcurrentManagedAccess, device));
+  if (!concurrent) throw std::runtime_error("GPUストリーミングにはconcurrentManagedAccessが必要です");
   Stream stream;
   size_t bytes = 0;
   nv_check(nvcompGzipStreamingDecompressGetTempSize(&bytes));
@@ -600,8 +602,8 @@ int gpu_stream_worker_main(int argc, char** argv) {
     auto status = nvcompGzipStreamingDecompress(input, output, bytes, scratch.data(), stream);
     if (status != nvcompSuccess || cudaStreamSynchronize(stream) != cudaSuccess || input.bad() || output.bad() || sink.remaining())
       std::_Exit(1);
-    uint64_t response = stream_response_magic;
-    if (::write(STDOUT_FILENO, &response, sizeof(response)) != static_cast<ssize_t>(sizeof(response))) abort_io();
+    std::array<uint64_t, 2> response{stream_response_magic, bytes};
+    if (::write(STDOUT_FILENO, response.data(), sizeof(response)) != static_cast<ssize_t>(sizeof(response))) abort_io();
   }
 }
 std::string gpu_info(int device) {
@@ -628,10 +630,10 @@ uint64_t gpu_free_memory(int device) {
   return free;
 }
 Stats run_gpu(const Archive& archive, OutputRoot* root, const Options& opts, EntrySelection entries) {
-  cuda_check(cudaSetDevice(opts.gpu));
   if (opts.vram_limit < StreamingCrc::memory) throw std::runtime_error("--vram-limitがGPU CRC32の作業領域より小さいです");
   if (opts.host_limit < host_fixed_buffers) throw std::runtime_error("GPU経路には--host-limit 12M以上が必要です");
   Stats stats;
+  Codec codec(opts.gpu_algorithm == "lookahead");
   std::vector<const Entry*> gpu_entries, copy_entries;
   if (!opts.pipeline && opts.gpu_mode != "stream") {
     // Stored／空エントリでGPUバッチを分断しない。Deflateの本体は引き続きGPUで処理する。
@@ -649,8 +651,36 @@ Stats run_gpu(const Archive& archive, OutputRoot* root, const Options& opts, Ent
       stats.selection_reason = "no_nonempty_deflate";
       return stats;
     }
+    if (opts.gpu_order == "auto") {
+      const size_t large = static_cast<size_t>(std::count_if(gpu_entries.begin(), gpu_entries.end(),
+          [](const Entry* e) { return e->uncompressed >= (64ULL << 20); }));
+      const size_t small = static_cast<size_t>(std::count_if(gpu_entries.begin(), gpu_entries.end(),
+          [](const Entry* e) { return e->uncompressed <= (1ULL << 20); }));
+      // ごく少数の大ファイルを各バッチへ散らすと、毎回同じ遅い1本に律速される。
+      // サイズが近いZIPやpipelineの物理順読み取りは変えず、外れ値がある場合だけ集める。
+      if (large >= 2 && large <= 64 && small >= 64) {
+        std::stable_partition(gpu_entries.begin(), gpu_entries.end(),
+            [](const Entry* e) { return e->uncompressed >= (64ULL << 20); });
+        ++stats.gpu_size_reorders;
+      }
+    }
     entries = gpu_entries;
   }
+  // Streaming＋CPU CRCだけなら親はCUDAへ触らず、コンテキストとCRC用領域を作らない。
+  const bool streaming_only = opts.gpu_mode == "stream" || std::none_of(entries.begin(), entries.end(),
+      [&](const Entry* e) { return !e->directory && e->method == 8 && e->uncompressed && codec.supported(*e); });
+  if (!opts.pipeline && opts.gpu_mode != "batch" && opts.stream_crc == "cpu" && streaming_only) {
+    std::unique_ptr<GpuStreamWorker> worker;
+    stats.host_buffer_bytes = std::max<uint64_t>(stats.host_buffer_bytes, host_fixed_buffers);
+    for (const auto* e : entries) {
+      check_cancelled();
+      if (e->directory) { if (root) root->directory(e->name); continue; }
+      if (e->method == 8 && e->uncompressed == 0) add_stats(stats, run_cpu_entry(archive, *e, root, opts, true));
+      else stream_decode(archive, *e, root, opts, nullptr, worker, stats);
+    }
+    return stats;
+  }
+  cuda_check(cudaSetDevice(opts.gpu));
   Stream stream;
   StreamingCrc crc;
   BatchBuffers buffers;
@@ -658,7 +688,6 @@ Stats run_gpu(const Archive& archive, OutputRoot* root, const Options& opts, Ent
   std::unique_ptr<GpuStreamWorker> worker;
   stats.workspace = StreamingCrc::memory;
   stats.host_buffer_bytes = std::max<uint64_t>(stats.host_buffer_bytes, host_fixed_buffers);
-  Codec codec(opts.gpu_algorithm == "lookahead");
   if (opts.pipeline) return pipeline_decode(archive, root, opts, stream, codec, buffers, entries);
   for (size_t i = 0; i < entries.size();) {
     check_cancelled();
@@ -670,13 +699,13 @@ Stats run_gpu(const Archive& archive, OutputRoot* root, const Options& opts, Ent
     if (e.method == 0 || opts.gpu_mode == "stream" || !codec.supported(e) || e.uncompressed == 0) {
       if (opts.gpu_mode == "batch" && e.method == 8 && e.uncompressed != 0) throw std::runtime_error("エントリがバッチAPIのサイズ上限を超えています");
       buffers.arena.release(); // Streamingのscratchとarenaを同時に保持しない。
-      stream_decode(archive, e, root, opts, crc, worker, stats); ++i; continue;
+      stream_decode(archive, e, root, opts, &crc, worker, stats); ++i; continue;
     }
     auto chosen = choose_batch(entries, i, opts, codec, root != nullptr);
     if (chosen.entries.empty()) {
       if (opts.gpu_mode == "batch") throw std::runtime_error("エントリが--vram-limit内のバッチに収まりません");
       buffers.arena.release();
-      stream_decode(archive, e, root, opts, crc, worker, stats); ++i;
+      stream_decode(archive, e, root, opts, &crc, worker, stats); ++i;
     } else {
       worker.reset(); // worker scratchとバッチarenaを同時に持たない。
       batch_decode(archive, chosen, root, opts, stream, codec, buffers, host, stats); i += chosen.entries.size();

@@ -6,6 +6,7 @@ struct Options {
   std::string backend = "auto";
   std::string gpu_mode = "auto";
   std::string gpu_algorithm = "deflate";
+  std::string gpu_order = "auto";
   std::string stream_crc = "cpu";
   std::string temp_mode = "auto";
   std::string path_mode = "auto";
@@ -34,6 +35,7 @@ struct Stats {
   uint64_t pipeline_overlap_waits = 0;
   uint64_t gpu_stream_workers = 0;
   uint64_t gpu_crc_chunks = 0;
+  uint64_t gpu_size_reorders = 0;
   uint64_t host_buffer_bytes = 0, cpu_buffered_files = 0, cpu_stream_files = 0;
   uint64_t cpu_parallel_files = 0;
   uint64_t isal_files = 0;

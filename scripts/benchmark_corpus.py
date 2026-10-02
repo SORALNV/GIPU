@@ -38,6 +38,7 @@ VARIANTS = {
     "gpu": ["--backend", "gpu"],
     "gpu-wide": ["--backend", "gpu", "--batch-entries", "65536"],
     "gpu-crc-whole": ["--backend", "gpu", "--gpu-crc-chunk", "whole"],
+    "gpu-archive-order": ["--backend", "gpu", "--gpu-order", "archive"],
     "gpu-crc64k": ["--backend", "gpu", "--gpu-crc-chunk", "64K"],
     "gpu-crc4m": ["--backend", "gpu", "--gpu-crc-chunk", "4M"],
     "gpu-wide-crc-whole": ["--backend", "gpu", "--batch-entries", "65536", "--gpu-crc-chunk", "whole"],

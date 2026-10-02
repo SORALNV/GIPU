@@ -78,6 +78,8 @@ build/gipu extract known-good.zip --output ./out --auto-gpu --auto-parallel --js
 
 GPU auto／batchでは、Stored・空ファイル・ディレクトリを先にCPUで処理し、残りのDeflateを連続したバッチへまとめます。ZIP内の並びで数千回の小さなGPU起動が発生するのを防ぎます。ファイルごとの検証・非上書き確定は維持しますが、失敗までに確定するファイルの順序は中央ディレクトリ順とは限りません。
 
+`--gpu-order auto`は64MiB以上が2〜64件、1MiB以下が64件以上という大小混在時に、大きいファイルを先頭へ安定分割します。大ファイルを別々のバッチへ散らして直列化するのを避ける実験則です。サイズが近い入力とpipelineは並びを変えません。`--gpu-order archive`で集約後の元順を使え、`gpu_size_reorders`で並べ替えの有無を確認できます。
+
 `--backend libdeflate`は任意のlibdeflate依存を見つけたビルドで使用できます。既存環境には`libdeflate`を追加して再ビルドしてください。`--threads`はこの経路のworker数です。`--host-limit`（既定8GiB、最小2MiB）をworker数で分配し、入力＋出力がworker予算に収まる場合だけ全バッファ解凍します。収まらないファイルはISA-Lまたはzlib Streaming＋高速CPU CRCで処理するため、従来の256MiB制限はありません。Storedは余分なコピーを省きます。`host_buffer_bytes`はworkerごとの最大データバッファ量の合計であり、ZIPメタデータ・ライブラリ内部・スレッドスタックを含むRSS全体の上限ではありません。
 
 `--backend hybrid`はStored・空ファイル・32KiB未満・64MiB超・ほぼ非圧縮のファイルをCPUへ送り、残りを`--cpu-percent`（既定50%）の展開バイト割合を目安に分割します。GPUに渡す配列からCPU担当ファイルを除くため、混在データでもGPUバッチが分断されません。CPUは既定最大8 worker、GPUはバッチI/Oパイプラインを使い、同時に処理します。片側が失敗すると他方にも停止を要求し、両方をjoinしてから最初のエラーを返します。CPU向きの入力だけ、予算が小さい、GPUが利用不能な場合はCPUだけで完結します。`selected_backend`と`selection_reason`で実際の選択を確認できます。この分割則は調整中で、最速を保証するものではありません。
@@ -125,7 +127,7 @@ GPUバッチ出力は`--write-threads`（既定8、最大32）で並列化しま
 
 バッチCRCは既定1MiBの区間へ分け、GPU上の展開済みデータを並列に検査します。CPUは区間のCRC値だけを`crc32_combine`でファイル順に結合するため、展開本体をCPUへ戻す必要はありません。大小のファイルが混ざったバッチで、最大ファイルだけを基準にしたCRCカーネル設定が不利になるのを避ける狙いです。`--gpu-crc-chunk whole`でファイル単位方式、4KiB〜64MiBのサイズ指定で比較できます。追加のGPU配列はVRAM予算に含みます。`gpu_crc_chunks`と`crc_combine_seconds`が区間数とCPU結合時間です。
 
-GPU Streamingは専用workerプロセスで実行し、親へpipeで出力を送ります。親が展開サイズ・CPU CRC・一時ファイル・確定を管理します。連続したStreamingエントリではworkerを再利用し、GPUバッチへ戻る前に破棄してscratchとarenaの同時保持を防ぎます。nvCOMPのI/O callbackから例外を投げると内部joinで停止する事象を確認したための分離です。停止・出力エラー・worker異常時は親が自分のworkerだけを終了／回収します。親が強制終了した場合もLinuxのparent-death signalでworkerを止めます。`--stream-timeout`（既定120秒）はpipe出力が来ない時間の上限です。子は入力のread-only FDとpipeだけを受け取り、出力パスを開きません。`/proc/self/exe`が必要で、CUDAコンテキストは親子それぞれに作られます。
+GPU Streamingは専用workerプロセスで実行し、親へpipeで出力を送ります。親が展開サイズ・CPU CRC・一時ファイル・確定を管理します。連続したStreamingエントリではworkerを再利用し、GPUバッチへ戻る前に破棄してscratchとarenaの同時保持を防ぎます。nvCOMPのI/O callbackから例外を投げると内部joinで停止する事象を確認したための分離です。停止・出力エラー・worker異常時は親が自分のworkerだけを終了／回収します。親が強制終了した場合もLinuxのparent-death signalでworkerを止めます。`--stream-timeout`（既定120秒）はpipe出力が来ない時間の上限で、親自身のCRC／filesystem待ちは除きます。子は入力のread-only FDとpipeだけを受け取り、出力パスを開きません。`/proc/self/exe`が必要です。明示stream、または全非空DeflateがバッチAPIのサイズ上限を超える場合、CPU CRCなら親でCUDAを初期化しません。バッチ／GPU CRCを併用する場合は親子両方のCUDAコンテキストが必要です。
 
 ## 検証と測定
 
@@ -174,6 +176,8 @@ python3 scripts/benchmark_archive.py --archive /optane/workspace/kaggle-50GB.zip
 5. 7-Zip／libdeflateと比較し、測定で判明したボトルネックを改善する。
 
 暗号化ZIP、Deflate64、BZip2、LZMA、分割ZIP、特殊ファイル、Windowsは初期版の対象外です。
+
+現時点では元ZIPのタイムスタンプ・実行権限などの属性は復元せず、通常ファイルとして出力します。対応していない方式を黙って読み飛ばすことはありません。
 
 設計の依存API: [nvCOMP Native API](https://docs.nvidia.com/cuda/nvcomp/native_api.html)、[C API](https://docs.nvidia.com/cuda/nvcomp/c_api.html)、[CRC32](https://docs.nvidia.com/cuda/nvcomp/crc32.html)。Native APIは実験的なため、SDKのバージョンを固定します。
 

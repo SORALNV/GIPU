@@ -33,7 +33,9 @@ def main():
                     if (i + 1) % 1024 == 0:
                         print(f"ZIP生成: {(i + 1) // 1024}/{args.gib} GiB", flush=True)
         samples = []
+        parent_samples, child_samples, worker_samples = [], [], []
         rss_samples = []
+        monitor_errors = []
         stop = threading.Event()
         def monitor():
             while not stop.is_set():
@@ -58,18 +60,31 @@ def main():
                     except FileNotFoundError:
                         pass
                 rss_samples.append(rss)
-                result = subprocess.run(["nvidia-smi", "--query-compute-apps=pid,used_gpu_memory", "--format=csv,noheader,nounits"],
-                                        capture_output=True, text=True, timeout=10)
-                memory = 0
+                try:
+                    result = subprocess.run(["nvidia-smi", "--query-compute-apps=pid,used_gpu_memory", "--format=csv,noheader,nounits"],
+                                            capture_output=True, text=True, timeout=10, check=True)
+                except (OSError, subprocess.SubprocessError) as error:
+                    monitor_errors.append(type(error).__name__)
+                    return
+                parent_memory, child_memory = 0, 0
+                workers = 0
                 for line in result.stdout.splitlines():
                     values = line.split(",")
                     if len(values) == 2 and values[0].strip() in {str(pid) for pid in pids}:
                         try:
-                            memory += int(values[1].strip())
+                            memory = int(values[1].strip())
+                            if int(values[0]) == process.pid:
+                                parent_memory += memory
+                            else:
+                                child_memory += memory
+                                workers += 1
                         except ValueError:
                             pass
-                if memory:
-                    samples.append(memory)
+                if parent_memory or child_memory:
+                    samples.append(parent_memory + child_memory)
+                    parent_samples.append(parent_memory)
+                    child_samples.append(child_memory)
+                    worker_samples.append(workers)
                 stop.wait(0.2)
         command = [binary, "test", str(archive), "--backend", "gpu", "--gpu-mode", "stream",
                    "--vram-limit", args.vram_limit, "--stream-crc", args.stream_crc, "--json"]
@@ -94,6 +109,9 @@ def main():
             raise RuntimeError("GPU展開量またはストリーム数が一致しません")
         report = {"output_gib": args.gib, "archive_bytes": archive.stat().st_size, "vram_limit": args.vram_limit,
                   "peak_process_tree_gpu_mib_sampled": max(samples, default=None), "memory_samples": len(samples),
+                  "peak_parent_gpu_mib_sampled": max(parent_samples, default=None),
+                  "peak_children_gpu_mib_sampled": max(child_samples, default=None),
+                  "peak_gpu_workers_sampled": max(worker_samples, default=None), "monitor_errors": monitor_errors,
                   "peak_process_tree_rss_kib_sampled": max(rss_samples, default=None),
                   "memory_note": "親子のGPU使用量・RSSを合算してサンプリング。RSSの共有ページは重複計上する。",
                   "wall_seconds": finished - started, "generation_seconds": started - generated,

@@ -13,10 +13,11 @@ class GpuStreamWorker {
   ~GpuStreamWorker();
   GpuStreamWorker(const GpuStreamWorker&) = delete;
   GpuStreamWorker& operator=(const GpuStreamWorker&) = delete;
-  void decode(const Entry&, std::ostream&);
+  uint64_t decode(const Entry&, std::ostream&);
  private:
   int pid_ = -1, commands_ = -1, output_ = -1;
   unsigned timeout_ = 120;
+  uint64_t vram_limit_ = 0;
 };
 int gpu_stream_worker_main(int argc, char** argv);
 }

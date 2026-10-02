@@ -9,6 +9,8 @@ fi
 export PATH="$gipu_root/.deps/env/bin:$PATH"
 cmake -S . -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$gipu_root/.deps/env/bin/x86_64-conda-linux-gnu-g++" \
+  -DCMAKE_C_COMPILER="$gipu_root/.deps/env/bin/x86_64-conda-linux-gnu-gcc" \
+  -DCMAKE_ASM_COMPILER="$gipu_root/.deps/env/bin/x86_64-conda-linux-gnu-gcc" \
   -DCMAKE_PREFIX_PATH="$gipu_root/.deps/env" \
   -DGIPU_ENABLE_GPU=ON \
   -DNVCOMP_ROOT="$gipu_root/.deps/nvcomp" -DCUDA_ROOT="$gipu_root/.deps/env" \

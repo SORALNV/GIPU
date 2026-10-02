@@ -263,6 +263,20 @@ class Integration(unittest.TestCase):
         for name, payload in entries:
             self.assertEqual((self.out / name).read_bytes(), payload)
 
+    @unittest.skipUnless(BACKEND == "gpu" and MODE == "auto" and ALGORITHM == "deflate", "大小混在の順序選択")
+    def test_gpu_large_outlier_order(self):
+        large = b"order-check\0" * ((64 << 20) // 12 + 1)
+        entries = [(f"order/{i}", large if i in (0, 65) else b"small" * 819) for i in range(130)]
+        data = zip_bytes(entries)
+        enabled = json.loads(self.process(data, extra=("--batch-entries", "64", "--json")).stdout)
+        self.assertEqual(enabled["gpu_size_reorders"], 1)
+        self.assertEqual((self.out / "order/0").read_bytes(), large)
+        self.assertEqual((self.out / "order/65").read_bytes(), large)
+        disabled = json.loads(self.process(data, extract=False,
+                              extra=("--gpu-order", "archive", "--batch-entries", "64", "--json")).stdout)
+        self.assertEqual(disabled["gpu_size_reorders"], 0)
+        self.assertEqual(enabled["bytes"], disabled["bytes"])
+
     def test_cp437(self):
         data = zip_bytes([("x.txt", b"cp437")]).replace(b"x.txt", b"\x82.txt")
         self.process(data)
@@ -628,6 +642,13 @@ class Integration(unittest.TestCase):
         self.assertEqual(stats["gpu_stream_workers"], 1)
         for name, payload in entries:
             self.assertEqual((self.out / name).read_bytes(), payload)
+
+    @unittest.skipUnless(BACKEND == "gpu" and MODE == "stream", "子側のGPU初期化失敗")
+    def test_stream_worker_unavailable_gpu(self):
+        self.process(zip_bytes([("no-device", b"device" * 32768)]), ok=False,
+                     extra=("--gpu", "99999", "--stream-timeout", "2"))
+        self.assertFalse((self.out / "no-device").exists())
+        self.assertEqual(list(self.out.rglob("*.part")), [])
 
 
 if __name__ == "__main__":

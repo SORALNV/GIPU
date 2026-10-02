@@ -36,7 +36,8 @@ struct Actions {
   ~Actions() { ::posix_spawn_file_actions_destroy(&value); }
 };
 }
-GpuStreamWorker::GpuStreamWorker(const Archive& archive, const Options& opts) : timeout_(opts.stream_timeout) {
+GpuStreamWorker::GpuStreamWorker(const Archive& archive, const Options& opts)
+    : timeout_(opts.stream_timeout), vram_limit_(opts.vram_limit) {
   Pipe commands, output;
   // dup先0/1/3と元FDが衝突しないよう、子へ渡す元FDだけ10以上へ複製する。
   Duplicate input(archive.native_handle()), request(commands.fds[0]), response(output.fds[1]);
@@ -63,7 +64,7 @@ GpuStreamWorker::~GpuStreamWorker() {
   if (commands_ >= 0) ::close(commands_);
   if (output_ >= 0) ::close(output_);
 }
-void GpuStreamWorker::decode(const Entry& e, std::ostream& destination) {
+uint64_t GpuStreamWorker::decode(const Entry& e, std::ostream& destination) {
   check_cancelled();
   StreamRequest request{stream_request_magic, e.data_offset, e.compressed, e.uncompressed, e.crc};
   // レコードはPIPE_BUFより小さい。SIGPIPEは親CLI側で無視し、EPIPEを通常エラーにする。
@@ -97,9 +98,11 @@ void GpuStreamWorker::decode(const Entry& e, std::ostream& destination) {
     deadline = Clock::now() + std::chrono::seconds(timeout_);
     left -= n;
   }
-  uint64_t response = 0;
+  std::array<uint64_t, 2> response{};
   for (size_t offset = 0; offset < sizeof(response);)
-    offset += receive(reinterpret_cast<char*>(&response) + offset, sizeof(response) - offset);
-  if (response != stream_response_magic) throw std::runtime_error("GPU workerの完了レコードが不正です");
+    offset += receive(reinterpret_cast<char*>(response.data()) + offset, sizeof(response) - offset);
+  if (response[0] != stream_response_magic || response[1] > vram_limit_)
+    throw std::runtime_error("GPU workerの完了レコードが不正です");
+  return response[1];
 }
 }

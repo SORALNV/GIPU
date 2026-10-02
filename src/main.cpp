@@ -40,6 +40,7 @@ void help() {
                "  --gpu N                  CUDAデバイス番号（既定0）\n"
                "  --gpu-mode auto|stream|batch  GPU経路（既定auto）\n"
                "  --gpu-algorithm deflate|lookahead  バッチ方式（既定deflate）\n"
+               "  --gpu-order auto|archive 大小混在時のGPU処理順（既定auto）\n"
                "  --stream-crc cpu|gpu     StreamingのCRC（既定cpu、再読み込み不要）\n"
                "  --gpu-crc-chunk 1M|whole バッチCRCの区間サイズ（4K〜64M、既定1M）\n"
                "  --stream-timeout N       GPU Streamingの無進捗timeout秒（既定120）\n"
@@ -73,6 +74,7 @@ int main(int argc, char** argv) {
       else if (arg == "--backend") opts.backend = value();
       else if (arg == "--gpu-mode") opts.gpu_mode = value();
       else if (arg == "--gpu-algorithm") opts.gpu_algorithm = value();
+      else if (arg == "--gpu-order") opts.gpu_order = value();
       else if (arg == "--cpu-percent") {
         auto text = value(); size_t used = 0;
         if (text.empty() || text.front() < '0' || text.front() > '9') throw std::runtime_error("CPU割合が不正です");
@@ -140,6 +142,7 @@ int main(int argc, char** argv) {
       opts.threads = std::min<size_t>(opts.backend == "auto" ? 16 : 8, gipu::available_cpu_threads());
     if (opts.gpu_mode != "auto" && opts.gpu_mode != "stream" && opts.gpu_mode != "batch") throw std::runtime_error("gpu-modeはauto/stream/batchです");
     if (opts.gpu_algorithm != "deflate" && opts.gpu_algorithm != "lookahead") throw std::runtime_error("gpu-algorithmはdeflate/lookaheadです");
+    if (opts.gpu_order != "auto" && opts.gpu_order != "archive") throw std::runtime_error("gpu-orderはauto/archiveです");
     if (opts.stream_crc != "cpu" && opts.stream_crc != "gpu") throw std::runtime_error("stream-crcはcpu/gpuです");
     if (opts.temp_mode != "named" && opts.temp_mode != "auto") throw std::runtime_error("temp-modeはnamed/autoです");
     if (opts.path_mode != "auto" && opts.path_mode != "portable") throw std::runtime_error("path-modeはauto/portableです");
@@ -179,6 +182,7 @@ int main(int argc, char** argv) {
                         << ",\"pipeline_overlap_waits\":" << stats.pipeline_overlap_waits
                         << ",\"gpu_stream_workers\":" << stats.gpu_stream_workers
                         << ",\"gpu_crc_chunks\":" << stats.gpu_crc_chunks
+                        << ",\"gpu_size_reorders\":" << stats.gpu_size_reorders
                         << ",\"crc_combine_seconds\":" << stats.crc_combine_seconds
                         << ",\"host_buffer_bytes\":" << stats.host_buffer_bytes
                         << ",\"cpu_buffered_files\":" << stats.cpu_buffered_files << ",\"cpu_stream_files\":" << stats.cpu_stream_files

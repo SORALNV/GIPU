@@ -1,4 +1,4 @@
-# 初期実装の構成
+# 実装の構成
 
 参照会話の最終方針（Ubuntu＋RTX 3090＋nvCOMP）に沿った構成です。
 
@@ -23,15 +23,19 @@
 
 ZIP解析では中央ディレクトリ256KiBとローカルヘッダ4KiBの窓を使い、短い`pread`の繰り返しを抑えます。ASCII名はUTF-8／CP437共通なのでiconvを省き、非ASCII名には従来どおり変換と妥当性検査を適用します。中央ディレクトリの宣言サイズは確保前に`--metadata-limit`で確認します。
 
+中央のパス・属性検証とローカル検証を分離し、多数のローカルヘッダには最大4／8 workerを適応的に使います。各workerが独立した先読み窓と担当エントリを持ち、例外を集約して全workerをjoinします。最後の範囲重複検査まで成功することが、出力先を開く前提です。
+
 1. 圧縮／展開サイズの上限を確認する。単一Deflateストリームを任意の位置では分割しない。
 2. APIでアラインメントとscratchサイズを取得する。
 3. 入力・出力・scratch・メタデータ・共通CRC領域を予算化する。
 4. 既定最大4096エントリを固定化ホスト入力からGPUへ転送する。候補全体を計画し、予算不足時だけ二分探索で縮める。
 5. バッチDeflateを実行する。
-6. GPU上の出力に対してバッチCRCを実行し、status・実際の展開サイズ・CRCをホストへ戻す。`extract`だけ展開データも戻す。
+6. GPU上の出力を既定1MiB区間に分けてCRCを計算し、status・実際の展開サイズ・CRCをホストへ戻す。区間CRC値だけをCPUで結合する。`extract`だけ展開データも戻す。
 7. バッチ全体のstatus・サイズ・CRCを確認した後、ホスト出力をファイルへ流し、検証済みファイルを確定する。
 
 GPU領域は256byte境界の単一arenaとし、必要容量が増えた場合だけ再確保します。旧arenaを解放してから新arenaを作り、Streamingへ移る場合にもarenaを解放します。固定化ホストバッファも再利用します。バッチ計画は候補全体を一度見積もり、予算を超える場合だけ二分探索で縮めます。
+
+通常のGPU auto／batchはStored・空・ディレクトリをCPUで先に処理してバッチ分断を抑えます。少数の64MiB以上と多数の1MiB以下が混ざる場合だけ、大ファイルを先頭へ安定分割します。検証・出力内容は変えず、確定順は変わり得ます。pipelineの物理順読み取りは保持します。
 
 ## I/Oパイプライン
 
@@ -57,6 +61,8 @@ Streaming APIは専用子プロセス内で動かします。既に検証した�
 
 callbackの例外後にnvCOMP内部の`std::thread::join`が終了しないことをGDBで確認しました。子は出力パスを一切持たず、親が100ms間隔で停止要求と無進捗timeoutを監視します。異常時は自分の子だけをSIGKILL／waitpidで回収してから、親が未確定出力を片付けます。親のSIGKILLにはPR_SET_PDEATHSIGで対応します。正常な連続Streamingは同じ子を再利用し、バッチへ戻る前に破棄します。プロセス分離は破損Deflateの安全性を保証するものではありません。
 
+Streaming＋CPU CRCだけで完結すると判断できる場合は、親でCUDAを初期化しません。子がデバイス要件とscratch予算を確認し、完了レコードでscratch量も返します。親はそのレコードと予算を照合し、不要な親コンテキストと4MiB GPU CRC領域を省きます。バッチを併用する場合は従来どおり親側の領域を予算から控除して子へ渡します。
+
 従来の二段階方式も`--stream-crc gpu`で比較できます。API完了後に出力を4MiBずつ読み直しGPU CRCを増分計算するため、`test`でも名前なし一時ファイルが必要です。nvCOMPのpersistent解凍カーネル実行中に、出力callbackから別CUDAストリームのCRCカーネルへ同期すると、32MiBの高圧縮率エントリで進行が止まりました。CRCを軽いwarpカーネルへ変えても解消しなかったため、GPU CRCを選ぶ場合は解凍とCRCを時間的に分離します。カーネル資源の競合が原因である可能性はありますが、ライブラリ内部の根本原因までは特定していません。
 
 Storedはデコードがないため、コピーしながら指定したCPU／GPU CRCを計算できます。Streamingの`decode_seconds`は公開APIの入出力とCPU CRC callbackを含み、バッチのCUDA eventによる純粋なdecode時間とは定義が異なります。
@@ -71,12 +77,12 @@ Storedはデコードがないため、コピーしながら指定したCPU／GP
 - Rapidgzipのchunk・worker設定は内部メモリの目安であり、RSSの厳密な上限ではありません。巨大な単一Deflateブロックではchunk上限を超えることがあります。自動的に有効にせず、明示した実験経路だけで使用します。
 - パイプラインはCPUの読み込み・GPU処理・CPUの書き込みを重畳します。GPU decodeとGPU CRC自体の並列化や、Streaming callbackとの並行CRCは行いません。
 
-## 次の実装順序
+## 残る調査対象
 
 1. 7-Zipとの比較、入力サイズ・エントリ数・圧縮率別の性能測定を広げる。
 2. 50GB実データの工程別測定に基づいて、固定化メモリ再確保、ファイル操作、ストレージの律速を詰める。
 3. GPU処理とDMAを複数CUDA streamで重ねる場合の予算・正確性を検証する。
-4. 大きい単一バッファのGzip LOOKAHEAD比較と、Streaming CRC二度読みを減らす組み込み方の調査。
-5. 不正圧縮入力の安全な検証、ファジング、キャンセル応答の改善。
+4. LOOKAHEAD・Rapidgzip・ISA-Lの得意な圧縮率を比較し、単一ストリームの選択則を他のデータへ検証する。
+5. 不正圧縮入力の安全なGPU事前検証と、バッチ内部停止の応答改善。CPUファジングとStreamingの停止分離は実装済みだが、GPUの不正入力安全性は未保証。
 
 依存API: [nvCOMP Native API](https://docs.nvidia.com/cuda/nvcomp/native_api.html)、[nvCOMP C API](https://docs.nvidia.com/cuda/nvcomp/c_api.html)、[nvlzcatの要件](https://docs.nvidia.com/cuda/nvcomp/nvlzcat.html)、[ZIP形式仕様](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT)。
