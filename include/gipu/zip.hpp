@@ -21,7 +21,7 @@ struct Entry {
 class Archive {
  public:
   explicit Archive(const std::filesystem::path& path, uint64_t metadata_limit = 256ULL << 20,
-                   size_t metadata_threads = 0);
+                   size_t metadata_threads = 0, uint64_t max_entries = 1000000);
   ~Archive();
   Archive(const Archive&) = delete;
   Archive& operator=(const Archive&) = delete;
@@ -36,6 +36,7 @@ class Archive {
   uint64_t size_ = 0;
   uint64_t metadata_limit_;
   size_t metadata_threads_;
+  uint64_t max_entries_;
   std::vector<Entry> entries_;
   void parse();
 };

@@ -19,6 +19,7 @@ CASES = {
     "single-large": (1, 8 << 30, "text"),
     "mixed": (8192, 4096, "mixed"),
     "many-tiny": (262144, 128, "text"),
+    "million-tiny": (1000001, 128, "text"),
     "many-small": (131072, 8192, "half"),
     "few-large": (32, 64 * MIB, "half"),
     "mixed-large": (32768, 4096, "mixed-large"),

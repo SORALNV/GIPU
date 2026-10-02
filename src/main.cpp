@@ -51,6 +51,7 @@ void help() {
                "  --cpu-buffer-limit 64M   CPU全量バッファの1worker上限（超過はStreaming）\n"
                "  --max-output 1T          合計展開サイズの上限\n"
                "  --metadata-limit 256M    中央ディレクトリのサイズ上限\n"
+               "  --max-entries N         ディレクトリ込みエントリ数上限（既定1000000）\n"
                "  --metadata-threads auto|N ローカルヘッダ検証worker数（既定auto、最大32）\n"
                "  --sync                   出力ファイルと親ディレクトリをfsync\n"
                "  --temp-mode auto|named   一時出力方式（既定auto、O_TMPFILEを試す）\n"
@@ -116,6 +117,12 @@ int main(int argc, char** argv) {
           opts.metadata_threads = static_cast<size_t>(count);
         }
       }
+      else if (arg == "--max-entries") {
+        auto text = value(); size_t used = 0;
+        if (text.empty() || text.front() < '0' || text.front() > '9') throw std::runtime_error("max-entriesが不正です");
+        opts.max_entries = std::stoull(text, &used);
+        if (used != text.size() || opts.max_entries == 0) throw std::runtime_error("max-entriesは1以上の整数です");
+      }
       else if (arg == "--threads" || arg == "--write-threads" || arg == "--batch-entries") {
         auto text = value(); size_t used = 0;
         if (text.empty() || text.front() < '0' || text.front() > '9') throw std::runtime_error("個数が不正です");
@@ -161,7 +168,7 @@ int main(int argc, char** argv) {
     if (command == "doctor") { std::cout << gipu::gpu_info(opts.gpu) << '\n'; return 0; }
     if (archive_path.empty()) throw std::runtime_error("ZIPファイルを指定してください");
     const auto start = std::chrono::steady_clock::now();
-    gipu::Archive archive(archive_path, opts.metadata_limit, opts.metadata_threads);
+    gipu::Archive archive(archive_path, opts.metadata_limit, opts.metadata_threads, opts.max_entries);
     const auto parsed = std::chrono::steady_clock::now();
     if (command == "list") {
       for (const auto& e : archive.entries()) std::cout << e.uncompressed << '\t' << e.compressed << '\t' << e.method << '\t' << e.name << '\n';

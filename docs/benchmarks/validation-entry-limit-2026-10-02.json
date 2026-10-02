@@ -1,0 +1,36 @@
+{
+  "binary_sha256": "06b40b43c95ed44af92d533f4a0979e054ca398c26961f67569239b45a83b482",
+  "integration_profiles": [
+    {
+      "profile": "build-unified",
+      "passed_suites": 11,
+      "attempted_test_slots": 595,
+      "skipped": 197,
+      "executed": 398,
+      "log_sha256": "6fe4b03dc6a6bb7a6bc8f5c407c5c9d22d485f9514de91d43f4ae089d3d69a87"
+    },
+    {
+      "profile": "build-sanitize",
+      "passed_suites": 6,
+      "attempted_test_slots": 300,
+      "skipped": 108,
+      "executed": 192,
+      "log_sha256": "323e0402662a03818e9f2e49e6cbb62ab150a1fbb595009cbc49c9129d7c7dee"
+    },
+    {
+      "profile": "build-minimal",
+      "passed_suites": 4,
+      "attempted_test_slots": 182,
+      "skipped": 65,
+      "executed": 117,
+      "log_sha256": "2812726d4a31d84228b20b06497403ad30bf69d57bbec83c960d7b4c404a1d5c"
+    }
+  ],
+  "note": "max-entriesと小ファイル容量事前検査を追加後。各統合スイート59項目と容量単体5項目、非該当skipを除いて707実行成功。build/gipuとbuild-unified/gipuは同じSHA256。前段のファジング・停止試験はvalidation-final-2026-10-02.jsonの別バイナリ。",
+  "entry_limit_boundary": {
+    "entries": 1000001,
+    "default_limit": 1000000,
+    "rejected_before_output_creation": true,
+    "stderr": "ZIPエントリ数が--max-entriesを超えています"
+  }
+}

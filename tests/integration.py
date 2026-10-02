@@ -519,6 +519,15 @@ class Integration(unittest.TestCase):
                      extra=("--metadata-limit", "1K"))
         self.assertFalse(self.out.exists())
 
+    def test_entry_count_limit(self):
+        data = zip_bytes([("dir/", b"")] + [(f"dir/{i}", b"count") for i in range(10)])
+        self.process(data, ok=False, extra=("--max-entries", "10"))
+        self.assertFalse(self.out.exists())
+        stats = json.loads(self.process(data, extra=("--max-entries", "11", "--json")).stdout)
+        self.assertEqual(stats["files"], 10)
+        for invalid in ("0", "-1", "2x", "18446744073709551616"):
+            self.run_cli("list", self.archive, "--max-entries", invalid, ok=False)
+
     def test_bad_headers(self):
         original = zip_bytes([("data", b"value")])
         cd = original.index(b"PK\x01\x02")

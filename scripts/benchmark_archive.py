@@ -5,12 +5,12 @@ import json
 import os
 from pathlib import Path
 import random
-import shutil
 import statistics
 import subprocess
 import tempfile
 import time
 import zipfile
+from benchmark_space import check_output_space, plan_output_space
 
 
 def main():
@@ -58,12 +58,14 @@ def main():
     if any(case not in cases for case in args.cases):
         p.error("不明な測定caseです")
     with zipfile.ZipFile(archive) as z:
-        entries = [info for info in z.infolist() if not info.is_dir()]
+        members = z.infolist()
+        entries = [info for info in members if not info.is_dir()]
         raw_bytes = sum(info.file_size for info in entries)
     if args.extract_root:
         args.extract_root.mkdir(parents=True, exist_ok=True)
-        if shutil.disk_usage(args.extract_root).free < raw_bytes + 20_000_000_000:
-            p.error("展開量に加えて20GBの空きが必要です")
+        space_plan = plan_output_space(args.extract_root,
+                                       ((e.filename, e.file_size) for e in members), 20_000_000_000)
+        check_output_space(args.extract_root, space_plan)
     report = {"archive_bytes": archive.stat().st_size, "raw_bytes": raw_bytes, "files": len(entries),
               "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
               "time_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -82,8 +84,8 @@ def main():
             # 2回目以降は順序を交互にし、一方向の温度・キャッシュ影響を減らす。
             order = args.cases if repeat % 2 == 0 else list(reversed(args.cases))
             for case in order:
-                if args.extract_root and shutil.disk_usage(args.extract_root).free < raw_bytes + 20_000_000_000:
-                    raise RuntimeError("次の反復を安全に展開する空き容量が不足しています")
+                if args.extract_root:
+                    check_output_space(args.extract_root, space_plan)
                 with tempfile.TemporaryDirectory(prefix="gipu-benchmark-", dir=args.extract_root) as temporary:
                     if args.cache == "drop-advised":
                         with archive.open("rb") as input_file:

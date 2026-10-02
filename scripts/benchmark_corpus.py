@@ -5,10 +5,10 @@ import json
 import os
 from pathlib import Path
 import random
-import shutil
 import subprocess
 import tempfile
 import time
+from benchmark_space import check_output_space, plan_output_space
 
 VARIANTS = {
     "auto": ["--backend", "auto"],
@@ -18,6 +18,9 @@ VARIANTS = {
     "auto-meta4": ["--backend", "auto", "--metadata-threads", "4"],
     "auto-meta8": ["--backend", "auto", "--metadata-threads", "8"],
     "auto-meta16": ["--backend", "auto", "--metadata-threads", "16"],
+    "auto-million": ["--backend", "auto", "--max-entries", "2000000"],
+    "auto-million-meta1": ["--backend", "auto", "--max-entries", "2000000", "--metadata-threads", "1"],
+    "auto-million-4threads": ["--backend", "auto", "--max-entries", "2000000", "--threads", "4"],
     "cpu": ["--backend", "cpu"],
     "isal": ["--backend", "isal"],
     "hybrid": ["--backend", "hybrid"],
@@ -110,12 +113,14 @@ def main():
         for case in args.cases:
             manifest = json.loads((args.corpus / f"{case}.json").read_text())
             archive = args.corpus / f"{case}.zip"
+            space_plan = plan_output_space(args.output_root,
+                                           ((e["name"], e["bytes"]) for e in manifest["entries"]), 2 << 30)
             for mode in args.modes:
                 for repeat in range(args.repeats):
                     variants = args.variants if repeat % 2 == 0 else list(reversed(args.variants))
                     for variant in variants:
-                        if mode == "extract" and shutil.disk_usage(args.output_root).free < manifest["uncompressed_bytes"] + (2 << 30):
-                            raise RuntimeError("展開先の空き容量が不足しています")
+                        if mode == "extract":
+                            check_output_space(args.output_root, space_plan)
                         binary = args.baseline if variant.startswith("baseline-") else args.binary
                         with tempfile.TemporaryDirectory(prefix="gipu-corpus-", dir=args.output_root) as temp:
                             destination = Path(temp) / "out"

@@ -1,0 +1,44 @@
+{
+  "source_log": "7zip-kaggle50-extract-20261002.jsonl",
+  "source_sha256": "77277e994f91cd5ca53c18948b6b0c6d29c87776303469a3f310ab9dfb8ef242",
+  "metadata": {
+    "archive_bytes": 50001081292,
+    "raw_bytes": 109556630214,
+    "files": 155925,
+    "binary_sha256": "3d52c92deb7e9f1bd059692eefc33f86a144cdc548acc4b6f4c809a4dd7bc369",
+    "time_utc": "2026-10-02T13:27:50Z",
+    "mode": "extract",
+    "durable": false,
+    "cache": "drop-advised",
+    "tool_version": "7-Zip (z) 26.03 (x64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-09-03",
+    "threads_option": 16,
+    "note": "DONTNEEDは対象ZIPへの助言でcoldを保証しない。-mmtは要求値で実際のCPU並列数ではない。"
+  },
+  "groups": [
+    {
+      "case": "7zip",
+      "runs": 3,
+      "wall_seconds": [
+        412.645823623001,
+        405.41242848,
+        407.8034045989989
+      ],
+      "median_seconds": 407.8034045989989,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "crc_verified_files": [
+        155925,
+        155925,
+        155925
+      ],
+      "median_stats": {
+        "peak_rss_kib": 65740,
+        "user_seconds": 371.92,
+        "system_seconds": 31.33
+      }
+    }
+  ]
+}

@@ -4,7 +4,7 @@ Ubuntu＋NVIDIA GPUで、通常のZIPを展開するCLIを開発しています�
 
 目標は、GPUとCPUを使い分け、大小・多数のファイルを含む標準ZIPを高速に展開することです。VRAMより大きいアーカイブや単一ファイルもストリーミング展開します。性能は解凍・CRCだけでなく、ファイル操作とI/Oを含めて実測で判断します。
 
-最新の50GB ZIP・SSD実展開3回中央値はCPU auto **50.56秒**、GPU pipeline **66.04秒**、hybrid **61.62秒**です。入力とストレージ状態で優劣が変わるため、通常はCPUを選ぶ`auto`を既定にしています。全条件で最速CPU比5倍を達成したものではありません。大小・多数・単一ファイルを含む[最新の測定と制約](docs/measurements-adaptive-2026-10-02.md)を参照してください。
+最新の50GB ZIP・SSD実展開3回中央値はCPU auto **50.56秒**、GPU pipeline **66.04秒**、hybrid **61.62秒**です。公式7-Zip 26.03は**407.80秒**で、この入力ではGPU約6.2倍、CPU auto約8.1倍でした（通常write完了まで、fsyncなし。7-ZipはDeflate解凍で実質1コア、属性復元等の機能差も含む比較）。入力とストレージ状態で優劣が変わるため、通常はCPUを選ぶ`auto`を既定にしています。全条件で最速CPU比5倍を達成したものではありません。大小・多数・単一ファイルを含む[最新の測定と制約](docs/measurements-adaptive-2026-10-02.md)を参照してください。
 
 ## 実装状況
 
@@ -111,13 +111,13 @@ build/gipu test archive.zip --backend rapidgzip --threads 16 --json
 
 Rapidgzipは大きな単一ファイル向けの実験経路で、小ファイルごとに起動すると不利です。`--host-limit`からworker数とchunkの目安を決め、不要な履歴を解放しますが、**ライブラリ内部のメモリに厳密な上限を設けるものではありません**。chunk上限もDeflateブロック境界でしか効かない場合があります。厳密に小さなデータバッファで処理したい場合は`isal`、`cpu`、または予算を小さくした`libdeflate`を選んでください。全出力を実際にデコードし、共通sinkでサイズとCPU CRCを独立検証します。
 
-中央ディレクトリは既定で256MiB／100万エントリまでです。`--metadata-limit`は前者を変更します。解析時の先読みバッファは中央256KiB・ローカルヘッダ4KiBですが、解析済みのエントリ・ファイル名一覧は別途RAMに保持します。
+中央ディレクトリは既定で256MiB／100万エントリまでです。`--metadata-limit`は前者、`--max-entries`はディレクトリを含むエントリ数上限を変更します。解析時の先読みバッファは中央256KiB・ローカルヘッダ4KiBですが、解析済みエントリ・ファイル名・衝突検査の一覧は別途RAMに保持します。多数の極小ファイルで上限を引き上げる場合は、メタデータ用RAMと展開先の空きinodeにも余裕を確保してください。`--host-limit`はこのメタデータ全体の上限ではありません。
 
 `--metadata-threads auto`は、4096件以上かつローカル領域の平均間隔4KiB以上なら最大8 worker、密集した16,384件以上なら最大4 workerでローカルヘッダを検証します。それより小さいZIPは直列の先読みを使います。CPU affinityも考慮します。`--metadata-threads 1`で従来同様の直列検証、1〜32の指定で比較できます。中央ディレクトリ・パス検証、全ローカルヘッダ・descriptor検証、重複範囲検査がすべて成功するまで出力先は開きません。JSONの`metadata_threads`は実際の最大worker数です。
 
 Rapidgzip内部の修正版ISA-Lを使う追加実験は、`bash scripts/bootstrap_rapidgzip.sh --with-isal`と`-DGIPU_RAPIDGZIP_ISAL=ON`で有効にできます。ビルドにはCコンパイラとNASMも必要です。通常のISA-Lとは`inflate_state`のABIが異なるため、同時リンクせず、GIPUのStreaming経路も同じ修正版ヘッダ／静的ライブラリへ揃えます。既定OFFで、速度と正確性を別途比較するための構成です。
 
-この作業環境では`build-unified/gipu`にGPU・libdeflate・Rapidgzip修正版ISA-Lを統合し、全10統合スイートを検証しています。単一の大きな実データは`--backend auto --auto-parallel`、既知の正しい多数ファイルでGPUを試す場合は`--backend auto --auto-gpu`を使えます。実験経路の明示許可とメモリ上限の制約は変わりません。
+この作業環境では`build/gipu`と`build-unified/gipu`にGPU・libdeflate・Rapidgzip修正版ISA-Lを統合し、10統合スイートと容量検査スイートの計11スイートを検証しています。単一の大きな実データは`--backend auto --auto-parallel`、既知の正しい多数ファイルでGPUを試す場合は`--backend auto --auto-gpu`を使えます。実験経路の明示許可とメモリ上限の制約は変わりません。
 
 `--pipeline`は全ファイルが非空Deflateバッチに収まるZIP専用の実験経路です。固定化ホスト入出力を二重化し、次バッチの読み込み・GPU処理・前バッチの書き込みを重畳します。GPU arenaは一つだけでVRAM予算は変わりませんが、ホストRAMの必要量はバッチ入出力の約2倍になります。Stored／空ファイル／Streamingが必要な入力にはこの指定を外してください。各バッチ全体のGPU CRC確認が済むまでは、そのバッチの出力を書き出しません。
 
@@ -151,7 +151,7 @@ CPU比較対象にはzlibとlibdeflateを使います。`test`はデコード＋
 
 `scripts/make_real_single.py`は既存バイナリの先頭N GiBを読み取り、単一エントリの比較用ZIP64を作ります。入力と既存出力を上書きしません。`scripts/fuzz_zip.py`はCPU経路に限り、固定seedでヘッダ・圧縮本体・切り詰め等の変異入力を試し、成功例をPython zipfileと照合します。GPUへの不正Deflate投入は行いません。
 
-進行中の多形状比較と制約は[適応型解凍の実測](docs/measurements-adaptive-2026-10-02.md)を参照してください。`tests/cancellation.py`は単一大ファイルの処理中にSIGINT／SIGTERM／SIGKILLを送り、未確定出力とworker残留を検査します。`--worker-faults`では所有するGPU子プロセスの停止／異常終了も試します。`/usr/bin/time`のピークRSSは、GPU Streamingの親子合計ピークではない点に注意してください。
+多形状比較と制約は[適応型解凍の実測](docs/measurements-adaptive-2026-10-02.md)を参照してください。`tests/cancellation.py`は単一大ファイルの処理中にSIGINT／SIGTERM／SIGKILLを送り、未確定出力とworker残留を検査します。`--worker-faults`では所有するGPU子プロセスの停止／異常終了も試します。`/usr/bin/time`のピークRSSは、GPU Streamingの親子合計ピークではない点に注意してください。
 
 `scripts/benchmark_7zip.py`は公式7-Zipの外部比較用です。CLIバージョン・バイナリSHA256・外部時間・CPU時間・RSSを記録します。`-mmt=16`は要求値で、Deflate解凍が16並列になる保証ではありません。実展開は各回新規の一時ディレクトリに限定し、全件サイズと指定元データ128件のSHA256を検査します。既知の正しい比較用ZIPにだけ使ってください。
 
@@ -170,6 +170,8 @@ python3 scripts/benchmark_archive.py --archive /optane/workspace/kaggle-50GB.zip
 ```
 
 容量は圧縮ZIPの10進GBです。生成には目標容量＋15GB、展開には展開量＋20GBの空きを要求します。試験が作った一時展開ディレクトリだけ終了後に削除し、ZIPと元データを残します。全エントリのCRC／サイズを検証し、実展開では全出力サイズと元データ128サンプルのSHA256も確認します。既定は対象ZIPへ`POSIX_FADV_DONTNEED`を助言しますが、完全なcold cacheを保証しません。繰り返し時は測定順序を交互にします。
+
+試験スクリプトは小ファイルの論理サイズだけでなく、filesystemのblock単位へ切り上げたデータ量、親ディレクトリ・inodeの見積もりも加え、各反復前に空き容量と空きinodeを確認します。filesystem固有の実使用量や、他プロセスとの空き容量競合まで保証するものではありません。
 
 実展開の既定は通常のwrite完了までで、永続化まで測る場合は`--sync`を指定します。GPUの`decode_seconds`／`crc_seconds`／`transfer_seconds`はCUDA event時間、読み込み／出力はCPU側の経過時間です。libdeflateの各工程時間はworkerの加算値で、並列時の実経過時間とは異なります。
 

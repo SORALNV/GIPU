@@ -5,13 +5,13 @@ import json
 import os
 from pathlib import Path
 import random
-import shutil
 import signal
 import statistics
 import subprocess
 import tempfile
 import time
 import zipfile
+from benchmark_space import check_output_space, plan_output_space
 
 
 def digest(path):
@@ -52,6 +52,8 @@ def main():
                 parser.error("暗号化なしのStored／Deflate比較用ZIPが必要です")
     if args.output_root:
         args.output_root.mkdir(parents=True, exist_ok=True)
+        space_plan = plan_output_space(args.output_root,
+                                       ((e.filename, e.file_size) for e in members), 20_000_000_000)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     rows = []
     metadata = {"kind": "metadata", "tool_version": next(line for line in version if line.startswith("7-Zip")),
@@ -63,8 +65,8 @@ def main():
     with args.report.open("x", encoding="utf-8", buffering=1) as report:
         report.write(json.dumps(metadata, ensure_ascii=False) + "\n")
         for repeat in range(args.repeats):
-            if args.output_root and shutil.disk_usage(args.output_root).free < raw_bytes + 20_000_000_000:
-                raise RuntimeError("展開量と20GBの余裕を確保できません")
+            if args.output_root:
+                check_output_space(args.output_root, space_plan)
             with tempfile.TemporaryDirectory(prefix="gipu-7zip-", dir=args.output_root) as temp:
                 destination = Path(temp) / "out"
                 usage = Path(temp) / "usage.txt"

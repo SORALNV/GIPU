@@ -24,6 +24,7 @@ struct Options {
   uint64_t gpu_crc_chunk = 1ULL << 20;
   uint64_t max_output = 1ULL << 40;
   uint64_t metadata_limit = 256ULL << 20;
+  uint64_t max_entries = 1000000;
   bool durable = false;
   bool pipeline = false;
   bool auto_gpu = false;

@@ -167,9 +167,10 @@ void install_signal_handlers() {
 }
 void request_cancel() { stop_requested.store(true, std::memory_order_relaxed); }
 void check_cancelled() { if (stop_requested.load(std::memory_order_relaxed)) throw std::runtime_error("処理をキャンセルしました"); }
-Archive::Archive(const std::filesystem::path& path, uint64_t metadata_limit, size_t metadata_threads)
-    : metadata_limit_(metadata_limit), metadata_threads_(metadata_threads) {
+Archive::Archive(const std::filesystem::path& path, uint64_t metadata_limit, size_t metadata_threads, uint64_t max_entries)
+    : metadata_limit_(metadata_limit), metadata_threads_(metadata_threads), max_entries_(max_entries) {
   require(metadata_threads <= 32, "metadata worker数が上限を超えています");
+  require(max_entries > 0, "max-entriesは1以上です");
   // FIFOを指定された場合もopenで待たず、直後のfstatで通常ファイル以外を拒否する。
   // O_NONBLOCKは通常ファイルのpread動作を変更しない。
   fd_ = ::open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK);
@@ -236,7 +237,8 @@ void Archive::parse() {
   range(cd_offset, cd_size, metadata_start);
   require(cd_offset + cd_size == metadata_start, "中央ディレクトリの終端が不正です");
   require(cd_size <= metadata_limit_, "中央ディレクトリが--metadata-limitを超えています");
-  require(count <= 1000000 && count <= cd_size / 46, "ZIPエントリ数が不正または上限100万を超えています");
+  require(count <= max_entries_, "ZIPエントリ数が--max-entriesを超えています");
+  require(count <= cd_size / 46 && count <= std::numeric_limits<size_t>::max(), "ZIPエントリ数が不正です");
   uint64_t pos = cd_offset;
   std::unordered_set<std::string> paths, files;
   paths.reserve(static_cast<size_t>(count)); files.reserve(static_cast<size_t>(count));
