@@ -12,11 +12,15 @@ import time
 
 VARIANTS = {
     "cpu": ["--backend", "cpu"],
+    "isal": ["--backend", "isal"],
     "libdeflate1": ["--backend", "libdeflate", "--threads", "1"],
     "libdeflate4": ["--backend", "libdeflate", "--threads", "4"],
     "libdeflate16": ["--backend", "libdeflate", "--threads", "16"],
     "libdeflate32": ["--backend", "libdeflate", "--threads", "32"],
     "libdeflate-stream": ["--backend", "libdeflate", "--threads", "16", "--host-limit", "32M"],
+    "rapidgzip1": ["--backend", "rapidgzip", "--threads", "1"],
+    "rapidgzip4": ["--backend", "rapidgzip", "--threads", "4"],
+    "rapidgzip16": ["--backend", "rapidgzip", "--threads", "16"],
     "gpu": ["--backend", "gpu"],
     "gpu-lookahead": ["--backend", "gpu", "--gpu-algorithm", "lookahead"],
     "gpu-lookahead16g": ["--backend", "gpu", "--gpu-algorithm", "lookahead", "--vram-limit", "16G"],
@@ -24,6 +28,8 @@ VARIANTS = {
     "gpu-stream-cpu": ["--backend", "gpu", "--gpu-mode", "stream", "--stream-crc", "cpu"],
     "gpu-stream-gpu": ["--backend", "gpu", "--gpu-mode", "stream", "--stream-crc", "gpu"],
     "baseline-gpu": ["--backend", "gpu"],
+    "baseline-cpu": ["--backend", "cpu"],
+    "baseline-libdeflate16": ["--backend", "libdeflate", "--threads", "16"],
 }
 
 
@@ -72,7 +78,7 @@ def main():
     metadata = {"kind": "metadata", "time_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "binary_sha256": sha256(args.binary), "cache": args.cache, "durable": args.sync,
                 "note": "warmはOSキャッシュを排除しない。drop-advisedもcoldを保証しない。異常終了は行に記録する。"}
-    if "baseline-gpu" in args.variants:
+    if any(v.startswith("baseline-") for v in args.variants):
         metadata["baseline_sha256"] = sha256(args.baseline)
     with args.report.open("x", encoding="utf-8", buffering=1) as report:
         report.write(json.dumps(metadata, ensure_ascii=False) + "\n")

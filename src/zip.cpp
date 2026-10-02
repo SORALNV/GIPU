@@ -7,7 +7,8 @@
 #include <fcntl.h>
 #include <iconv.h>
 #include <limits>
-#include <set>
+#include <string_view>
+#include <unordered_set>
 #include <stdexcept>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -21,37 +22,65 @@ uint16_t u16(const char* p) {
 }
 uint32_t u32(const char* p) { return uint32_t(u16(p)) | (uint32_t(u16(p + 2)) << 16); }
 uint64_t u64(const char* p) { return uint64_t(u32(p)) | (uint64_t(u32(p + 4)) << 32); }
-void require(bool condition, const std::string& message) {
-  if (!condition) throw std::runtime_error(message);
+void require(bool condition, std::string_view message) {
+  if (!condition) throw std::runtime_error(std::string(message));
 }
 void range(uint64_t start, uint64_t bytes, uint64_t end) {
   require(start <= end && bytes <= end - start, "ZIPのデータ範囲が不正です");
 }
 std::string filename(const std::string& raw, bool utf8) {
   require(!raw.empty() && raw.find('\0') == std::string::npos, "空またはNULを含むファイル名です");
-  auto cd = iconv_open("UTF-8", utf8 ? "UTF-8" : "CP437");
-  require(cd != reinterpret_cast<iconv_t>(-1), "ファイル名変換を初期化できません");
-  std::string out(raw.size() * 4, '\0');
-  char* in = const_cast<char*>(raw.data());
-  char* dest = out.data();
-  size_t inleft = raw.size(), outleft = out.size();
-  const auto result = iconv(cd, &in, &inleft, &dest, &outleft);
-  iconv_close(cd);
-  require(result != size_t(-1) && inleft == 0, "ファイル名の文字コードが不正です");
-  out.resize(out.size() - outleft);
-  require(out.front() != '/' && out.find('\\') == std::string::npos && out.find(':') == std::string::npos,
-          "危険なファイルパスです: " + out);
+  std::string out;
+  if (std::all_of(raw.begin(), raw.end(), [](unsigned char c) { return c < 128; })) {
+    out = raw; // ASCIIはUTF-8/CP437で同一。iconvの初期化・確保を省く。
+  } else {
+    auto cd = iconv_open("UTF-8", utf8 ? "UTF-8" : "CP437");
+    require(cd != reinterpret_cast<iconv_t>(-1), "ファイル名変換を初期化できません");
+    out.resize(raw.size() * 4);
+    char* in = const_cast<char*>(raw.data());
+    char* dest = out.data();
+    size_t inleft = raw.size(), outleft = out.size();
+    const auto result = iconv(cd, &in, &inleft, &dest, &outleft);
+    iconv_close(cd);
+    require(result != size_t(-1) && inleft == 0, "ファイル名の文字コードが不正です");
+    out.resize(out.size() - outleft);
+  }
+  if (out.front() == '/' || out.find('\\') != std::string::npos || out.find(':') != std::string::npos)
+    throw std::runtime_error("危険なファイルパスです: " + out);
   for (unsigned char c : out) require(c >= 32 && c != 127, "制御文字を含むファイル名です");
   size_t pos = 0;
   while (pos < out.size()) {
     auto end = out.find('/', pos);
     if (end == std::string::npos) end = out.size();
-    auto component = out.substr(pos, end - pos);
-    require(!component.empty() && component != "." && component != "..", "危険なファイルパスです: " + out);
+    auto component = std::string_view(out).substr(pos, end - pos);
+    if (component.empty() || component == "." || component == "..") throw std::runtime_error("危険なファイルパスです: " + out);
     pos = end + 1;
   }
   return out;
 }
+// 中央ディレクトリは順次先読み、散在するローカルヘッダは小さな窓で読む。
+// 圧縮本体を大幅に先読みせず、多数の短いpreadをまとめる。
+class MetadataReader {
+ public:
+  MetadataReader(const Archive& archive, size_t capacity) : archive_(archive), buffer_(capacity) {}
+  void read(uint64_t offset, std::span<char> output) {
+    range(offset, output.size(), archive_.file_size());
+    if (output.empty()) return;
+    if (output.size() > buffer_.size()) { archive_.read(offset, output); return; }
+    if (offset < start_ || offset - start_ > valid_ || output.size() > valid_ - static_cast<size_t>(offset - start_)) {
+      start_ = offset;
+      valid_ = static_cast<size_t>(std::min<uint64_t>(buffer_.size(), archive_.file_size() - offset));
+      archive_.read(start_, std::span<char>(buffer_).first(valid_));
+    }
+    range(offset - start_, output.size(), valid_);
+    std::copy_n(buffer_.data() + (offset - start_), output.size(), output.data());
+  }
+ private:
+  const Archive& archive_;
+  std::vector<char> buffer_;
+  uint64_t start_ = 0;
+  size_t valid_ = 0;
+};
 void zip64_extra(std::span<const char> extra, uint64_t& size, uint64_t& compressed,
                  uint64_t& offset, uint32_t& disk) {
   bool found = false;
@@ -87,7 +116,7 @@ void install_signal_handlers() {
   std::signal(SIGINT, on_signal); std::signal(SIGTERM, on_signal);
 }
 void check_cancelled() { if (cancelled) throw std::runtime_error("処理をキャンセルしました"); }
-Archive::Archive(const std::filesystem::path& path) {
+Archive::Archive(const std::filesystem::path& path, uint64_t metadata_limit) : metadata_limit_(metadata_limit) {
   fd_ = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
   if (fd_ < 0) throw std::runtime_error("ZIPを開けません: " + std::string(std::strerror(errno)));
   try {
@@ -150,19 +179,25 @@ void Archive::parse() {
   }
   range(cd_offset, cd_size, metadata_start);
   require(cd_offset + cd_size == metadata_start, "中央ディレクトリの終端が不正です");
+  require(cd_size <= metadata_limit_, "中央ディレクトリが--metadata-limitを超えています");
   require(count <= 1000000 && count <= cd_size / 46, "ZIPエントリ数が不正または上限100万を超えています");
   uint64_t pos = cd_offset;
-  std::set<std::string> paths, files;
+  std::unordered_set<std::string> paths, files;
+  paths.reserve(static_cast<size_t>(count)); files.reserve(static_cast<size_t>(count));
+  entries_.reserve(static_cast<size_t>(count));
   std::vector<std::pair<uint64_t, uint64_t>> occupied;
+  occupied.reserve(static_cast<size_t>(count));
+  MetadataReader central(*this, 256 << 10), locals(*this, 4096);
+  std::vector<char> variable, local_variable;
   for (uint64_t index = 0; index < count; ++index) {
     range(pos, 46, cd_offset + cd_size);
-    std::array<char, 46> h{}; read(pos, h); p = h.data();
+    std::array<char, 46> h{}; central.read(pos, h); p = h.data();
     require(u32(p) == 0x02014b50, "中央ディレクトリの署名が不正です");
     const auto name_len = u16(p + 28), extra_len = u16(p + 30), comment_len = u16(p + 32);
     require(name_len > 0, "空のファイル名です");
     const auto variable_size = uint64_t(name_len) + extra_len + comment_len;
     range(pos + 46, variable_size, cd_offset + cd_size);
-    std::vector<char> variable(static_cast<size_t>(variable_size)); read(pos + 46, variable);
+    variable.resize(static_cast<size_t>(variable_size)); central.read(pos + 46, variable);
     Entry e;
     e.raw_name.assign(variable.data(), name_len);
     e.flags = u16(p + 8); e.method = u16(p + 10); e.crc = u32(p + 16);
@@ -174,22 +209,22 @@ void Archive::parse() {
     e.name = filename(e.raw_name, (e.flags & 0x800) != 0);
     e.directory = e.name.back() == '/';
     auto key = e.directory ? e.name.substr(0, e.name.size() - 1) : e.name;
-    require(paths.insert(key).second, "重複する出力パスです: " + key);
+    if (!paths.insert(key).second) throw std::runtime_error("重複する出力パスです: " + key);
     if (!e.directory) files.insert(key);
     const auto host = static_cast<unsigned char>(p[5]);
     const auto type = (u32(p + 38) >> 16) & 0170000;
     if (host == 3 && type != 0) {
-      require(type == 0100000 || type == 0040000, "シンボリックリンク・特殊ファイルには対応していません: " + e.name);
+      if (type != 0100000 && type != 0040000) throw std::runtime_error("シンボリックリンク・特殊ファイルには対応していません: " + e.name);
       require((type == 0040000) == e.directory, "ディレクトリ属性と名前が一致しません");
     }
     if (e.directory) require(e.uncompressed == 0 && e.crc == 0, "ディレクトリにデータがあります");
     if (e.method == 0) require(e.compressed == e.uncompressed, "Storedのサイズが一致しません");
     range(e.local_offset, 30, cd_offset);
-    std::array<char, 30> local{}; read(e.local_offset, local); auto l = local.data();
+    std::array<char, 30> local{}; locals.read(e.local_offset, local); auto l = local.data();
     require(u32(l) == 0x04034b50 && u16(l + 6) == e.flags && u16(l + 8) == e.method, "ローカルヘッダが中央ディレクトリと一致しません");
     uint64_t local_len = uint64_t(u16(l + 26)) + u16(l + 28);
     range(e.local_offset + 30, local_len, cd_offset);
-    std::vector<char> local_variable(static_cast<size_t>(local_len)); read(e.local_offset + 30, local_variable);
+    local_variable.resize(static_cast<size_t>(local_len)); locals.read(e.local_offset + 30, local_variable);
     require(std::string(local_variable.data(), u16(l + 26)) == e.raw_name, "ローカルファイル名が一致しません");
     uint64_t local_size = u32(l + 22), local_compressed = u32(l + 18), ignored_offset = 0;
     uint32_t ignored_disk = 0;
@@ -201,11 +236,11 @@ void Archive::parse() {
     if (e.flags & 8) {
       // Descriptorの64bitサイズはローカルZIP64フィールドの存在で決まる。
       bool wide = u32(l + 18) == 0xffffffffU || u32(l + 22) == 0xffffffffU || e.compressed > 0xffffffffULL || e.uncompressed > 0xffffffffULL;
-      std::array<char, 4> signature{}; range(data_end, 4, cd_offset); read(data_end, signature);
+      std::array<char, 4> signature{}; range(data_end, 4, cd_offset); locals.read(data_end, signature);
       const bool signed_descriptor = u32(signature.data()) == 0x08074b50;
       const size_t length = (wide ? 20 : 12) + (signed_descriptor ? 4 : 0);
       range(data_end, length, cd_offset);
-      std::vector<char> descriptor(length); read(data_end, descriptor);
+      std::vector<char> descriptor(length); locals.read(data_end, descriptor);
       const auto d = descriptor.data() + (signed_descriptor ? 4 : 0);
       require(u32(d) == e.crc && (wide ? u64(d + 4) : u32(d + 4)) == e.compressed &&
               (wide ? u64(d + 12) : u32(d + 8)) == e.uncompressed, "Data Descriptorが一致しません");

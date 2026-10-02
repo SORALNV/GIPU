@@ -5,6 +5,9 @@
 #include <chrono>
 #include <stdexcept>
 #include <zlib.h>
+#ifdef GIPU_HAVE_ISAL
+#include <igzip_lib.h>
+#endif
 
 namespace gipu {
 namespace {
@@ -46,7 +49,42 @@ Stats run_cpu_selected(const Archive& archive, std::span<const Entry* const> ent
         read(e.data_offset + offset, std::span<char>(in).first(n));
         emit(in.data(), n); offset += n;
       }
-    } else if (e.method == 8) {
+    }
+#ifdef GIPU_HAVE_ISAL
+    else if (e.method == 8 && fast_checksum) {
+      auto state = std::make_unique<inflate_state>();
+      isal_inflate_init(state.get());
+      uint64_t read_bytes = 0;
+      while (state->block_state != ISAL_BLOCK_FINISH) {
+        check_cancelled();
+        if (state->avail_in == 0 && read_bytes < e.compressed) {
+          auto n = static_cast<size_t>(std::min<uint64_t>(in.size(), e.compressed - read_bytes));
+          read(e.data_offset + read_bytes, std::span<char>(in).first(n));
+          read_bytes += n;
+          state->next_in = reinterpret_cast<uint8_t*>(in.data()); state->avail_in = static_cast<uint32_t>(n);
+        }
+        state->next_out = reinterpret_cast<uint8_t*>(out.data()); state->avail_out = static_cast<uint32_t>(out.size());
+        auto before_in = state->avail_in;
+        auto before_state = state->block_state;
+        auto before_bits = state->read_in_length;
+        auto start = Clock::now();
+        int result = isal_inflate(state.get());
+        stats.decode_seconds += elapsed(start);
+        if (result != ISAL_DECOMP_OK) throw std::runtime_error("ISA-L: Deflateデータが破損しています");
+        auto n = out.size() - state->avail_out;
+        emit(out.data(), n);
+        if (state->block_state != ISAL_BLOCK_FINISH && !n && before_in == state->avail_in &&
+            before_state == state->block_state && before_bits == state->read_in_length)
+          throw std::runtime_error("Deflateストリームが途中で終了しています");
+      }
+      // ISA-Lは先読みした末尾バイトをbit reservoirに残す。丸々未使用のバイトを除外する。
+      uint64_t unused = state->avail_in + static_cast<uint64_t>(std::max(state->read_in_length, 0) / 8);
+      if (unused > read_bytes || read_bytes - unused != e.compressed)
+        throw std::runtime_error("Deflateストリームの後に余分なデータがあります");
+      ++stats.isal_files;
+    }
+#endif
+    else if (e.method == 8) {
       z_stream stream{};
       if (inflateInit2(&stream, -15) != Z_OK) throw std::runtime_error("zlibを初期化できません");
       try {
@@ -85,13 +123,21 @@ Stats run_cpu_selected(const Archive& archive, std::span<const Entry* const> ent
 }
 }
 Stats run_cpu(const Archive& archive, OutputRoot* root, const Options& opts) {
+  if (opts.backend == "isal" && !isal_available()) throw std::runtime_error("ISA-Lを有効にしたビルドが必要です");
   std::vector<const Entry*> entries;
   entries.reserve(archive.entries().size());
   for (const auto& e : archive.entries()) entries.push_back(&e);
-  return run_cpu_selected(archive, entries, root, opts, false);
+  return run_cpu_selected(archive, entries, root, opts, opts.backend == "isal");
 }
 Stats run_cpu_entry(const Archive& archive, const Entry& entry, OutputRoot* root, const Options& opts, bool fast_checksum) {
   const Entry* entries[] = {&entry};
   return run_cpu_selected(archive, entries, root, opts, fast_checksum);
+}
+bool isal_available() {
+#ifdef GIPU_HAVE_ISAL
+  return true;
+#else
+  return false;
+#endif
 }
 }

@@ -9,10 +9,14 @@
 | `src/gpu.cpp` | nvCOMPのバッチDeflate、Streaming Gzip、GPU CRC、再利用arena、I/Oパイプライン |
 | `src/cpu.cpp` | zlibのCPU参照実装。GPU失敗時の暗黙のフォールバックには使わない |
 | `src/libdeflate.cpp` | workerごとの予算付き全エントリCPU解凍、巨大ファイルのStreaming切替、CRC、原子的な出力 |
+| `src/rapidgzip.cpp` | seek可能な仮想Gzip、任意のRapidgzip依存による単一ストリームCPU並列実験 |
+| `src/checksum.cpp` | libdeflate／zlibのCPU増分CRC共通処理 |
 | `src/main.cpp` | CLI、合計出力上限、JSON統計 |
 | `tests/integration.py` | 標準zipfileで作ったZIPとの互換性、不正メタデータ、出力保護、予算による経路選択 |
 
 ## バッチ経路
+
+ZIP解析では中央ディレクトリ256KiBとローカルヘッダ4KiBの窓を使い、短い`pread`の繰り返しを抑えます。ASCII名はUTF-8／CP437共通なのでiconvを省き、非ASCII名には従来どおり変換と妥当性検査を適用します。中央ディレクトリの宣言サイズは確保前に`--metadata-limit`で確認します。
 
 1. 圧縮／展開サイズの上限を確認する。単一Deflateストリームを任意の位置では分割しない。
 2. APIでアラインメントとscratchサイズを取得する。
@@ -53,6 +57,7 @@ Storedはデコードがないため、コピーしながら指定したCPU／GP
 - GPUバッチでは解凍とCRCをGPUへ送り、Streamingでは既定でCPU CRCを併用します。名前処理、ZIPメタデータの検査、I/O、CRC値の最終比較などの制御処理はCPUです。nvCOMP内部の全処理を監査したわけではありません。
 - パス検証と展開後CRCは、破損DeflateをGPUへ渡したときのライブラリの安全性を保証しません。初期版のGPU経路は既知の正しい入力向けです。
 - SIGINT／SIGTERMは読み込み・出力・CRCの境界で検出します。長時間のライブラリ内部処理を即座に中断することは保証しません。
+- Rapidgzipのchunk・worker設定は内部メモリの目安であり、RSSの厳密な上限ではありません。巨大な単一Deflateブロックではchunk上限を超えることがあります。自動的に有効にせず、明示した実験経路だけで使用します。
 - パイプラインはCPUの読み込み・GPU処理・CPUの書き込みを重畳します。GPU decodeとGPU CRC自体の並列化や、Streaming callbackとの並行CRCは行いません。
 
 ## 次の実装順序

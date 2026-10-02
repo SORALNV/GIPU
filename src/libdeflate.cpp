@@ -54,6 +54,7 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
           auto stats = run_cpu_entry(archive, e, root, streaming, true);
           local.files += stats.files; local.bytes += stats.bytes; local.cpu_crc_bytes += stats.cpu_crc_bytes;
           local.cpu_stream_files += stats.cpu_stream_files;
+          local.isal_files += stats.isal_files;
           local.read_seconds += stats.read_seconds; local.write_seconds += stats.write_seconds;
           local.decode_seconds += stats.decode_seconds; local.crc_seconds += stats.crc_seconds;
           local.host_buffer_bytes = std::max(local.host_buffer_bytes, stats.host_buffer_bytes);
@@ -106,6 +107,7 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
     result.files += local.files; result.bytes += local.bytes;
     result.cpu_crc_bytes += local.cpu_crc_bytes;
     result.cpu_buffered_files += local.cpu_buffered_files; result.cpu_stream_files += local.cpu_stream_files;
+    result.isal_files += local.isal_files;
     result.host_buffer_bytes += local.host_buffer_bytes;
     result.allocation_seconds += local.allocation_seconds;
     // 複数workerの時間は加算値であり、実経過時間ではない。

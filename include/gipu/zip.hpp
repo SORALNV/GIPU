@@ -20,7 +20,7 @@ struct Entry {
 };
 class Archive {
  public:
-  explicit Archive(const std::filesystem::path& path);
+  explicit Archive(const std::filesystem::path& path, uint64_t metadata_limit = 256ULL << 20);
   ~Archive();
   Archive(const Archive&) = delete;
   Archive& operator=(const Archive&) = delete;
@@ -31,6 +31,7 @@ class Archive {
  private:
   int fd_ = -1;
   uint64_t size_ = 0;
+  uint64_t metadata_limit_;
   std::vector<Entry> entries_;
   void parse();
 };

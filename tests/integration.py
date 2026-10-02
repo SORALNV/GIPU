@@ -49,6 +49,20 @@ def full_zip64(data):
     return data[:end] + record + locator + eocd
 
 
+def replace_deflate(data, compressed):
+    """単一エントリのZIP構造を整合させたまま圧縮本体だけを置き換える。"""
+    old_cd = data.index(b"PK\x01\x02")
+    name_size, extra_size = struct.unpack_from("<HH", data, 26)
+    start = 30 + name_size + extra_size
+    result = bytearray(data[:start] + compressed + data[old_cd:])
+    cd = start + len(compressed)
+    struct.pack_into("<I", result, 18, len(compressed))
+    struct.pack_into("<I", result, cd + 20, len(compressed))
+    end = result.rfind(b"PK\x05\x06")
+    struct.pack_into("<I", result, end + 16, cd)
+    return result
+
+
 class Integration(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="gipu-test-")
@@ -92,6 +106,21 @@ class Integration(unittest.TestCase):
 
     def test_empty_archive(self):
         self.process(zip_bytes([]))
+
+    def test_metadata_read_windows(self):
+        data = io.BytesIO()
+        expected = {}
+        with zipfile.ZipFile(data, "w") as archive:
+            for i in range(8):
+                info = zipfile.ZipInfo(f"long-metadata-{i}.txt")
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.extra = struct.pack("<HH", 0xcafe, 65516) + b"x" * 65516
+                info.comment = b"c" * 65535
+                expected[info.filename] = f"payload {i}".encode()
+                archive.writestr(info, expected[info.filename])
+        self.process(data.getvalue())
+        for name, payload in expected.items():
+            self.assertEqual((self.out / name).read_bytes(), payload)
 
     def test_streaming_and_stored_blocks(self):
         payload = os.urandom(2 * 1024 * 1024 + 71)
@@ -243,8 +272,26 @@ class Integration(unittest.TestCase):
         self.assertFalse((self.out / "bad.bin").exists())
         self.assertEqual(list(self.out.glob("*.part")), [])
 
+    @unittest.skipUnless(BACKEND != "gpu", "不正DeflateはCPU経路でのみ検証する")
+    def test_corrupt_deflate_body(self):
+        original = zip_bytes([("bad.bin", b"a" * (4 << 20))])
+        cd = original.index(b"PK\x01\x02")
+        start = 30 + len("bad.bin")
+        valid = original[start:cd]
+        for compressed in (b"\x07", valid[:-1], valid + b"trailing", b""):
+            with self.subTest(compressed_bytes=len(compressed)):
+                self.process(replace_deflate(original, compressed), ok=False)
+                self.assertFalse((self.out / "bad.bin").exists())
+                self.assertEqual(list(self.out.glob("*.part")), [])
+                if BACKEND == "libdeflate":
+                    self.process(replace_deflate(original, compressed), ok=False,
+                                 extra=("--host-limit", "2M"))
+
     def test_limits(self):
         self.process(zip_bytes([("big", b"x" * 5000)]), ok=False, extra=("--max-output", "1K"))
+        self.assertFalse(self.out.exists())
+        self.process(zip_bytes([(f"{i}.txt", b"a") for i in range(100)]), ok=False,
+                     extra=("--metadata-limit", "1K"))
         self.assertFalse(self.out.exists())
 
     def test_bad_headers(self):
@@ -294,7 +341,7 @@ class Integration(unittest.TestCase):
         self.assertEqual(stats["cpu_stream_files"], 5)
         self.assertLessEqual(stats["host_buffer_bytes"], 8 << 20)
 
-    @unittest.skipUnless(BACKEND in ("cpu", "libdeflate"), "CPUの最小メモリ予算")
+    @unittest.skipUnless(BACKEND in ("cpu", "libdeflate", "isal"), "CPUの最小メモリ予算")
     def test_cpu_insufficient_memory_budget(self):
         self.process(zip_bytes([("x", b"x")]), extract=False, ok=False, extra=("--host-limit", "1M"))
 

@@ -15,6 +15,8 @@ Ubuntu＋NVIDIA GPUで、通常のZIPを展開するCLIを開発しています�
 - バッチarena／固定化ホストバッファの再利用、検証時の全展開データD2H転送の省略。
 - libdeflateによる並列CPU経路（1〜32 worker、任意の依存）。予算に収まらない単一ファイルは定量メモリのCPU Streamingで処理。
 - 大きな単一ファイル向けGzip LOOKAHEADバッチの比較経路（`--gpu-algorithm lookahead`、実験用）。
+- ISA-Lによる定量メモリCPU Streaming、Rapidgzipによる単一Deflateの並列CPU経路（後者は実験用・任意の依存）。
+- ZIPメタデータの先読み、ASCII名の高速処理、中央ディレクトリのサイズ上限。
 
 ## ビルド
 
@@ -52,6 +54,7 @@ build/gipu extract archive.zip --output ./out --vram-limit 4G
 build/gipu test archive.zip --gpu-mode stream --json
 build/gipu test archive.zip --backend cpu
 build/gipu test archive.zip --backend libdeflate --threads 16 --json
+build/gipu test archive.zip --backend isal --json
 build/gipu extract archive.zip --output ./out --pipeline --json
 ```
 
@@ -62,6 +65,21 @@ build/gipu extract archive.zip --output ./out --pipeline --json
 `--backend libdeflate`は任意のlibdeflate依存を見つけたビルドで使用できます。既存環境には`libdeflate`を追加して再ビルドしてください。`--threads`はこの経路のworker数です。`--host-limit`（既定8GiB、最小2MiB）をworker数で分配し、入力＋出力がworker予算に収まる場合だけ全バッファ解凍します。収まらないファイルはzlib Streaming＋高速CPU CRCで処理するため、従来の256MiB制限はありません。Storedは余分なコピーを省きます。`host_buffer_bytes`はworkerごとの最大データバッファ量の合計であり、ZIPメタデータ・ライブラリ内部・スレッドスタックを含むRSS全体の上限ではありません。現在このホスト予算はCPU経路に作用します。
 
 `--gpu-algorithm lookahead`はRaw DeflateへGzipの18バイトの外枠をメモリ上で付けて実行します。再圧縮や中間ファイルを作らず、scratchもVRAM予算に含めます。高圧縮率の繰り返しデータでは従来方式より遅い例を確認しているため、既定は`deflate`のままです。4GiBを超える単一出力もAPI上は扱えますが、入力・出力・scratchがVRAM予算に収まる必要があります。収まらなければautoモードではStreamingへ回します。
+
+ISA-Lを検出したビルドでは、`libdeflate`経路の巨大ファイルをISA-L Streamingで処理します。見つからなければzlib Streamingへ戻ります。`--backend isal`は比較用の単一CPU Streamingを明示します。`--backend cpu`は引き続きzlib解凍＋zlib CRCの基準経路です。各経路で展開サイズ・CRC・圧縮ストリームの消費量を確認し、宣言された圧縮範囲の末尾に余分なバイトがある場合も拒否します。
+
+単一Deflate内部の並列CPU実験は以下で有効にします。Rapidgzip 0.16.0のソースとサブモジュールを固定し、標準ZIPの圧縮本体をseek可能な仮想Gzipとして読ませます。再圧縮・中間Gzipは不要です。この構成のRapidgzip内部デコーダはzlibで、修正版ISA-Lはまだ使用していません。
+
+```bash
+bash scripts/bootstrap_rapidgzip.sh
+bash scripts/build.sh -DGIPU_ENABLE_RAPIDGZIP=ON \
+  -DRAPIDGZIP_ROOT="$PWD/.deps/rapidgzip/librapidarchive"
+build/gipu test archive.zip --backend rapidgzip --threads 16 --json
+```
+
+Rapidgzipは大きな単一ファイル向けの実験経路で、小ファイルごとに起動すると不利です。`--host-limit`からworker数とchunkの目安を決め、不要な履歴を解放しますが、**ライブラリ内部のメモリに厳密な上限を設けるものではありません**。chunk上限もDeflateブロック境界でしか効かない場合があります。厳密に小さなデータバッファで処理したい場合は`isal`、`cpu`、または予算を小さくした`libdeflate`を選んでください。全出力を実際にデコードし、共通sinkでサイズとCPU CRCを独立検証します。
+
+中央ディレクトリは既定で256MiB／100万エントリまでです。`--metadata-limit`は前者を変更します。解析時の先読みバッファは中央256KiB・ローカルヘッダ4KiBですが、解析済みのエントリ・ファイル名一覧は別途RAMに保持します。
 
 `--pipeline`は全ファイルが非空Deflateバッチに収まるZIP専用の実験経路です。固定化ホスト入出力を二重化し、次バッチの読み込み・GPU処理・前バッチの書き込みを重畳します。GPU arenaは一つだけでVRAM予算は変わりませんが、ホストRAMの必要量はバッチ入出力の約2倍になります。Stored／空ファイル／Streamingが必要な入力にはこの指定を外してください。各バッチ全体のGPU CRC確認が済むまでは、そのバッチの出力を書き出しません。
 

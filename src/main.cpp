@@ -26,7 +26,7 @@ void help() {
                "  gipu extract ARCHIVE.zip --output DIR [オプション]\n"
                "  gipu test ARCHIVE.zip [オプション]\n"
                "オプション:\n"
-               "  --backend gpu|cpu|libdeflate  既定gpu。CPUは比較・検証用\n"
+               "  --backend gpu|cpu|libdeflate|isal|rapidgzip  既定gpu、rapidgzipは実験用\n"
                "  --threads N              libdeflateのCPU worker数（既定1、最大32）\n"
                "  --write-threads N        GPUの1バッチ出力worker数（既定8、最大32）\n"
                "  --batch-entries N        GPUバッチの最大エントリ数（既定4096）\n"
@@ -38,6 +38,7 @@ void help() {
                "  --vram-limit 4G          GIPUが確保するGPU作業領域の上限\n"
                "  --host-limit 8G          CPUデータバッファ合計の予算\n"
                "  --max-output 1T          合計展開サイズの上限\n"
+               "  --metadata-limit 256M    中央ディレクトリのサイズ上限\n"
                "  --sync                   出力ファイルと親ディレクトリをfsync\n"
                "  --json                   結果をJSONで出力\n";
 }
@@ -75,6 +76,7 @@ int main(int argc, char** argv) {
       } else if (arg == "--vram-limit") opts.vram_limit = size_value(value());
       else if (arg == "--host-limit") opts.host_limit = size_value(value());
       else if (arg == "--max-output") opts.max_output = size_value(value());
+      else if (arg == "--metadata-limit") opts.metadata_limit = size_value(value());
       else if (arg == "--sync") opts.durable = true;
       else if (arg == "--pipeline") opts.pipeline = true;
       else if (arg == "--json") json = true;
@@ -82,7 +84,7 @@ int main(int argc, char** argv) {
       else if (archive_path.empty()) archive_path = arg;
       else throw std::runtime_error("位置引数が多すぎます");
     }
-    if (opts.backend != "gpu" && opts.backend != "cpu" && opts.backend != "libdeflate") throw std::runtime_error("backendはgpu/cpu/libdeflateです");
+    if (opts.backend != "gpu" && opts.backend != "cpu" && opts.backend != "libdeflate" && opts.backend != "isal" && opts.backend != "rapidgzip") throw std::runtime_error("backendはgpu/cpu/libdeflate/isal/rapidgzipです");
     if (opts.gpu_mode != "auto" && opts.gpu_mode != "stream" && opts.gpu_mode != "batch") throw std::runtime_error("gpu-modeはauto/stream/batchです");
     if (opts.gpu_algorithm != "deflate" && opts.gpu_algorithm != "lookahead") throw std::runtime_error("gpu-algorithmはdeflate/lookaheadです");
     if (opts.stream_crc != "cpu" && opts.stream_crc != "gpu") throw std::runtime_error("stream-crcはcpu/gpuです");
@@ -90,7 +92,7 @@ int main(int argc, char** argv) {
     if (command == "doctor") { std::cout << gipu::gpu_info(opts.gpu) << '\n'; return 0; }
     if (archive_path.empty()) throw std::runtime_error("ZIPファイルを指定してください");
     const auto start = std::chrono::steady_clock::now();
-    gipu::Archive archive(archive_path);
+    gipu::Archive archive(archive_path, opts.metadata_limit);
     const auto parsed = std::chrono::steady_clock::now();
     if (command == "list") {
       for (const auto& e : archive.entries()) std::cout << e.uncompressed << '\t' << e.compressed << '\t' << e.method << '\t' << e.name << '\n';
@@ -102,7 +104,8 @@ int main(int argc, char** argv) {
     if (command == "test" && !output_path.empty()) throw std::runtime_error("testには--outputを指定できません");
     std::unique_ptr<gipu::OutputRoot> root;
     if (command == "extract") root = std::make_unique<gipu::OutputRoot>(output_path);
-    auto stats = opts.backend == "cpu" ? gipu::run_cpu(archive, root.get(), opts) :
+    auto stats = (opts.backend == "cpu" || opts.backend == "isal") ? gipu::run_cpu(archive, root.get(), opts) :
+        opts.backend == "rapidgzip" ? gipu::run_rapidgzip(archive, root.get(), opts) :
         opts.backend == "libdeflate" ? gipu::run_libdeflate(archive, root.get(), opts) : gipu::run_gpu(archive, root.get(), opts);
     double seconds = std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
     double throughput = static_cast<double>(stats.bytes) / (1ULL << 30) / seconds;
@@ -117,6 +120,8 @@ int main(int argc, char** argv) {
                         << ",\"lookahead_batches\":" << stats.lookahead_batches
                         << ",\"host_buffer_bytes\":" << stats.host_buffer_bytes
                         << ",\"cpu_buffered_files\":" << stats.cpu_buffered_files << ",\"cpu_stream_files\":" << stats.cpu_stream_files
+                        << ",\"cpu_parallel_files\":" << stats.cpu_parallel_files
+                        << ",\"isal_files\":" << stats.isal_files
                         << ",\"allocation_seconds\":" << stats.allocation_seconds << "}\n";
     else std::cout << "完了: " << stats.files << "ファイル / " << stats.bytes << " bytes / " << seconds << "秒 / " << throughput
                    << " GiB/s（" << opts.backend << ", batch=" << stats.batches << ", stream=" << stats.streams << "）\n";
