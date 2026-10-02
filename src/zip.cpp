@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <iconv.h>
 #include <limits>
+#include <mutex>
+#include <thread>
 #include <string_view>
 #include <unordered_set>
 #include <stdexcept>
@@ -16,9 +18,9 @@
 
 namespace gipu {
 namespace {
-volatile std::sig_atomic_t cancelled = 0;
 std::atomic<bool> stop_requested{false};
-void on_signal(int) { cancelled = 1; }
+static_assert(std::atomic<bool>::is_always_lock_free);
+void on_signal(int) { stop_requested.store(true, std::memory_order_relaxed); }
 uint16_t u16(const char* p) {
   return static_cast<uint16_t>(static_cast<unsigned char>(p[0]) | (static_cast<unsigned char>(p[1]) << 8));
 }
@@ -113,14 +115,47 @@ void zip64_extra(std::span<const char> extra, uint64_t& size, uint64_t& compress
   require((size != 0xffffffffULL && compressed != 0xffffffffULL && offset != 0xffffffffULL && disk != 0xffff) || found,
           "ZIP64追加フィールドがありません");
 }
+uint64_t validate_local(Entry& e, uint64_t cd_offset,
+                        MetadataReader& locals, std::vector<char>& local_variable) {
+  range(e.local_offset, 30, cd_offset);
+  std::array<char, 30> local{}; locals.read(e.local_offset, local); auto l = local.data();
+  require(u32(l) == 0x04034b50 && u16(l + 6) == e.flags && u16(l + 8) == e.method, "ローカルヘッダが中央ディレクトリと一致しません");
+  uint64_t local_len = uint64_t(u16(l + 26)) + u16(l + 28);
+  range(e.local_offset + 30, local_len, cd_offset);
+  local_variable.resize(static_cast<size_t>(local_len)); locals.read(e.local_offset + 30, local_variable);
+  require(std::string(local_variable.data(), u16(l + 26)) == e.raw_name, "ローカルファイル名が一致しません");
+  uint64_t local_size = u32(l + 22), local_compressed = u32(l + 18), ignored_offset = 0;
+  uint32_t ignored_disk = 0;
+  zip64_extra(std::span<const char>(local_variable).subspan(u16(l + 26)), local_size, local_compressed, ignored_offset, ignored_disk);
+  if (!(e.flags & 8)) require(u32(l + 14) == e.crc && local_size == e.uncompressed && local_compressed == e.compressed, "ローカルサイズまたはCRCが一致しません");
+  e.data_offset = e.local_offset + 30 + local_len;
+  range(e.data_offset, e.compressed, cd_offset);
+  auto data_end = e.data_offset + e.compressed;
+  if (e.flags & 8) {
+    // Descriptorの64bitサイズはローカルZIP64フィールドの存在で決まる。
+    bool wide = u32(l + 18) == 0xffffffffU || u32(l + 22) == 0xffffffffU || e.compressed > 0xffffffffULL || e.uncompressed > 0xffffffffULL;
+    std::array<char, 4> signature{}; range(data_end, 4, cd_offset); locals.read(data_end, signature);
+    const bool signed_descriptor = u32(signature.data()) == 0x08074b50;
+    const size_t length = (wide ? 20 : 12) + (signed_descriptor ? 4 : 0);
+    range(data_end, length, cd_offset);
+    std::vector<char> descriptor(length); locals.read(data_end, descriptor);
+    const auto d = descriptor.data() + (signed_descriptor ? 4 : 0);
+    require(u32(d) == e.crc && (wide ? u64(d + 4) : u32(d + 4)) == e.compressed &&
+            (wide ? u64(d + 12) : u32(d + 8)) == e.uncompressed, "Data Descriptorが一致しません");
+    data_end += length;
+  }
+  return data_end;
+}
 }
 void install_signal_handlers() {
   std::signal(SIGINT, on_signal); std::signal(SIGTERM, on_signal);
   std::signal(SIGPIPE, SIG_IGN);
 }
 void request_cancel() { stop_requested.store(true, std::memory_order_relaxed); }
-void check_cancelled() { if (cancelled || stop_requested.load(std::memory_order_relaxed)) throw std::runtime_error("処理をキャンセルしました"); }
-Archive::Archive(const std::filesystem::path& path, uint64_t metadata_limit) : metadata_limit_(metadata_limit) {
+void check_cancelled() { if (stop_requested.load(std::memory_order_relaxed)) throw std::runtime_error("処理をキャンセルしました"); }
+Archive::Archive(const std::filesystem::path& path, uint64_t metadata_limit, size_t metadata_threads)
+    : metadata_limit_(metadata_limit), metadata_threads_(metadata_threads) {
+  require(metadata_threads <= 32, "metadata worker数が上限を超えています");
   fd_ = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
   if (fd_ < 0) throw std::runtime_error("ZIPを開けません: " + std::string(std::strerror(errno)));
   try {
@@ -190,9 +225,9 @@ void Archive::parse() {
   paths.reserve(static_cast<size_t>(count)); files.reserve(static_cast<size_t>(count));
   entries_.reserve(static_cast<size_t>(count));
   std::vector<std::pair<uint64_t, uint64_t>> occupied;
-  occupied.reserve(static_cast<size_t>(count));
-  MetadataReader central(*this, 256 << 10), locals(*this, 4096);
-  std::vector<char> variable, local_variable;
+  occupied.resize(static_cast<size_t>(count));
+  MetadataReader central(*this, 256 << 10);
+  std::vector<char> variable;
   for (uint64_t index = 0; index < count; ++index) {
     range(pos, 46, cd_offset + cd_size);
     std::array<char, 46> h{}; central.read(pos, h); p = h.data();
@@ -223,37 +258,49 @@ void Archive::parse() {
     }
     if (e.directory) require(e.uncompressed == 0 && e.crc == 0, "ディレクトリにデータがあります");
     if (e.method == 0) require(e.compressed == e.uncompressed, "Storedのサイズが一致しません");
-    range(e.local_offset, 30, cd_offset);
-    std::array<char, 30> local{}; locals.read(e.local_offset, local); auto l = local.data();
-    require(u32(l) == 0x04034b50 && u16(l + 6) == e.flags && u16(l + 8) == e.method, "ローカルヘッダが中央ディレクトリと一致しません");
-    uint64_t local_len = uint64_t(u16(l + 26)) + u16(l + 28);
-    range(e.local_offset + 30, local_len, cd_offset);
-    local_variable.resize(static_cast<size_t>(local_len)); locals.read(e.local_offset + 30, local_variable);
-    require(std::string(local_variable.data(), u16(l + 26)) == e.raw_name, "ローカルファイル名が一致しません");
-    uint64_t local_size = u32(l + 22), local_compressed = u32(l + 18), ignored_offset = 0;
-    uint32_t ignored_disk = 0;
-    zip64_extra(std::span<const char>(local_variable).subspan(u16(l + 26)), local_size, local_compressed, ignored_offset, ignored_disk);
-    if (!(e.flags & 8)) require(u32(l + 14) == e.crc && local_size == e.uncompressed && local_compressed == e.compressed, "ローカルサイズまたはCRCが一致しません");
-    e.data_offset = e.local_offset + 30 + local_len;
-    range(e.data_offset, e.compressed, cd_offset);
-    auto data_end = e.data_offset + e.compressed;
-    if (e.flags & 8) {
-      // Descriptorの64bitサイズはローカルZIP64フィールドの存在で決まる。
-      bool wide = u32(l + 18) == 0xffffffffU || u32(l + 22) == 0xffffffffU || e.compressed > 0xffffffffULL || e.uncompressed > 0xffffffffULL;
-      std::array<char, 4> signature{}; range(data_end, 4, cd_offset); locals.read(data_end, signature);
-      const bool signed_descriptor = u32(signature.data()) == 0x08074b50;
-      const size_t length = (wide ? 20 : 12) + (signed_descriptor ? 4 : 0);
-      range(data_end, length, cd_offset);
-      std::vector<char> descriptor(length); locals.read(data_end, descriptor);
-      const auto d = descriptor.data() + (signed_descriptor ? 4 : 0);
-      require(u32(d) == e.crc && (wide ? u64(d + 4) : u32(d + 4)) == e.compressed &&
-              (wide ? u64(d + 12) : u32(d + 8)) == e.uncompressed, "Data Descriptorが一致しません");
-      data_end += length;
-    }
-    occupied.emplace_back(e.local_offset, data_end);
     entries_.push_back(std::move(e)); pos += 46 + variable_size;
   }
   require(pos == cd_offset + cd_size, "中央ディレクトリに余分なデータがあります");
+  // 小規模は4KiB窓で直列、密集した多数ヘッダは4、大きく散在するヘッダは8 worker。
+  // 中央・名前の検証を終え、全ローカル検証と重複検査が成功するまで出力は開かない。
+  if (metadata_threads_ == 0)
+    metadata_threads_ = std::min<size_t>(available_cpu_threads(),
+        count >= 4096 && cd_offset / count >= 4096 ? 8 : count >= 16384 ? 4 : 1);
+  metadata_threads_ = std::min<size_t>(metadata_threads_, std::max<size_t>(1, (entries_.size() + 255) / 256));
+  auto validate_range = [&](size_t first, size_t last, MetadataReader& locals, std::vector<char>& extra) {
+    for (size_t i = first; i < last; ++i) {
+      auto& e = entries_[i];
+      occupied[i] = {e.local_offset, validate_local(e, cd_offset, locals, extra)};
+    }
+  };
+  if (metadata_threads_ == 1) {
+    MetadataReader locals(*this, 4096);
+    std::vector<char> extra;
+    validate_range(0, entries_.size(), locals, extra);
+  } else {
+    std::atomic<size_t> next{0};
+    std::atomic<bool> stop{false};
+    std::mutex error_lock;
+    std::exception_ptr error;
+    std::vector<std::jthread> workers;
+    for (size_t i = 0; i < metadata_threads_; ++i) workers.emplace_back([&] {
+      try {
+        MetadataReader locals(*this, 4096);
+        std::vector<char> extra;
+        while (!stop.load(std::memory_order_relaxed)) {
+          const size_t first = next.fetch_add(256, std::memory_order_relaxed);
+          if (first >= entries_.size()) break;
+          validate_range(first, std::min(entries_.size(), first + 256), locals, extra);
+        }
+      } catch (...) {
+        stop.store(true, std::memory_order_relaxed);
+        std::lock_guard guard(error_lock);
+        if (!error) error = std::current_exception();
+      }
+    });
+    workers.clear();
+    if (error) std::rethrow_exception(error);
+  }
   std::sort(occupied.begin(), occupied.end());
   for (size_t i = 1; i < occupied.size(); ++i) require(occupied[i - 1].second <= occupied[i].first, "ZIPエントリのデータが重複しています");
   for (const auto& path : paths) {

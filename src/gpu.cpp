@@ -7,6 +7,7 @@
 #include <nvcomp/gzip.h>
 #include <nvcomp/native/streaming_gzip.hpp>
 #include <nvcomp/version.h>
+#include <zlib.h>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -152,6 +153,7 @@ struct Batch {
   std::vector<const Entry*> entries;
   std::vector<size_t> input_offsets, output_offsets;
   size_t input = 0, output = 0, max_output = 0, total_output = 0, scratch = 0, memory = 0;
+  size_t crc_chunk = 0, crc_count = 0;
   bool gzip = false;
 };
 struct Codec {
@@ -189,8 +191,8 @@ struct Codec {
                                                        output, deflate, status, stream));
   }
 };
-Batch plan(const std::vector<const Entry*>& entries, const Codec& codec) {
-  Batch b; b.entries = entries; b.gzip = codec.gzip;
+Batch plan(const std::vector<const Entry*>& entries, const Codec& codec, uint64_t crc_chunk) {
+  Batch b; b.entries = entries; b.gzip = codec.gzip; b.crc_chunk = checked_size(crc_chunk);
   const auto requirements = codec.alignments();
   for (const auto* e : entries) {
     b.input_offsets.push_back(b.input); b.output_offsets.push_back(b.output);
@@ -198,12 +200,15 @@ Batch plan(const std::vector<const Entry*>& entries, const Codec& codec) {
     b.output += aligned(std::max<size_t>(checked_size(e->uncompressed), 1), std::max<size_t>(requirements.output, 8));
     b.max_output = std::max(b.max_output, checked_size(e->uncompressed));
     b.total_output += checked_size(e->uncompressed);
+    b.crc_count += b.crc_chunk ? (checked_size(e->uncompressed) - 1) / b.crc_chunk + 1 : 1;
   }
   b.scratch = codec.scratch_size(entries.size(), b.max_output, b.total_output);
   // 一つの再利用arenaに置く各領域を256byte境界に揃える。
   b.memory = aligned(b.input, 256) + aligned(b.output, 256) + aligned(std::max<size_t>(b.scratch, 1), 256)
       + 5 * aligned(entries.size() * sizeof(size_t), 256)
-      + 2 * aligned(entries.size() * sizeof(nvcompStatus_t), 256) + aligned(entries.size() * sizeof(uint32_t), 256);
+      + aligned(entries.size() * sizeof(nvcompStatus_t), 256)
+      + 2 * aligned(b.crc_count * sizeof(size_t), 256)
+      + aligned(b.crc_count * sizeof(nvcompStatus_t), 256) + aligned(b.crc_count * sizeof(uint32_t), 256);
   return b;
 }
 struct BatchHost {
@@ -308,20 +313,32 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
   auto capacities = static_cast<size_t*>(take(n * sizeof(size_t)));
   auto actual_sizes = static_cast<size_t*>(take(n * sizeof(size_t)));
   auto statuses = static_cast<nvcompStatus_t*>(take(n * sizeof(nvcompStatus_t)));
-  auto crc_statuses = static_cast<nvcompStatus_t*>(take(n * sizeof(nvcompStatus_t)));
-  auto checksums = static_cast<uint32_t*>(take(n * sizeof(uint32_t)));
+  auto crc_ptrs = static_cast<const void**>(take(b.crc_count * sizeof(void*)));
+  auto crc_sizes = static_cast<size_t*>(take(b.crc_count * sizeof(size_t)));
+  auto crc_statuses = static_cast<nvcompStatus_t*>(take(b.crc_count * sizeof(nvcompStatus_t)));
+  auto checksums = static_cast<uint32_t*>(take(b.crc_count * sizeof(uint32_t)));
   if (offset != b.memory) throw std::runtime_error("GPU arenaの見積もりが一致しません");
   std::vector<const void*> in_ptrs(n);
   std::vector<void*> out_ptrs(n);
   std::vector<size_t> sizes(n), limits(n), actual(n);
-  std::vector<nvcompStatus_t> status(n), crc_status(n);
-  std::vector<uint32_t> crc(n);
+  std::vector<nvcompStatus_t> status(n), crc_status(b.crc_count);
+  std::vector<uint32_t> crc(b.crc_count);
+  std::vector<const void*> checksum_ptrs;
+  std::vector<size_t> checksum_sizes;
+  checksum_ptrs.reserve(b.crc_count); checksum_sizes.reserve(b.crc_count);
   for (size_t i = 0; i < n; ++i) {
     const auto& e = *b.entries[i];
     in_ptrs[i] = static_cast<char*>(input) + b.input_offsets[i];
     out_ptrs[i] = static_cast<char*>(output) + b.output_offsets[i];
     sizes[i] = codec.input_size(e); limits[i] = checked_size(e.uncompressed);
+    for (size_t at = 0; at < limits[i];) {
+      size_t length = b.crc_chunk ? std::min(b.crc_chunk, limits[i] - at) : limits[i];
+      checksum_ptrs.push_back(static_cast<char*>(out_ptrs[i]) + at);
+      checksum_sizes.push_back(length);
+      at += length;
+    }
   }
+  if (checksum_ptrs.size() != b.crc_count) throw std::runtime_error("GPU CRC区間の見積もりが一致しません");
   auto& events = buffers.events;
   events.mark(0, stream);
   upload(input, host.input(), b.input, stream);
@@ -329,17 +346,19 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
   upload(output_ptrs, out_ptrs.data(), n * sizeof(void*), stream);
   upload(compressed_sizes, sizes.data(), n * sizeof(size_t), stream);
   upload(capacities, limits.data(), n * sizeof(size_t), stream);
+  upload(crc_ptrs, checksum_ptrs.data(), b.crc_count * sizeof(void*), stream);
+  upload(crc_sizes, checksum_sizes.data(), b.crc_count * sizeof(size_t), stream);
   events.mark(1, stream);
   codec.decode(input_ptrs, compressed_sizes, capacities, actual_sizes, n, scratch, b.scratch, output_ptrs, statuses, stream);
   events.mark(2, stream);
-  auto crc_opts = crc_options(n, b.max_output, stream);
-  nv_check(nvcompBatchedCRC32Async(static_cast<const void**>(static_cast<void*>(output_ptrs)), capacities, n, checksums, crc_opts,
+  auto crc_opts = crc_options(b.crc_count, b.crc_chunk ? std::min(b.crc_chunk, b.max_output) : b.max_output, stream);
+  nv_check(nvcompBatchedCRC32Async(crc_ptrs, crc_sizes, b.crc_count, checksums, crc_opts,
                                  nvcompCRC32OnlySegment, crc_statuses, stream));
   events.mark(3, stream);
   download(status.data(), statuses, n * sizeof(nvcompStatus_t), stream);
   download(actual.data(), actual_sizes, n * sizeof(size_t), stream);
-  download(crc.data(), checksums, n * sizeof(uint32_t), stream);
-  download(crc_status.data(), crc_statuses, n * sizeof(nvcompStatus_t), stream);
+  download(crc.data(), checksums, b.crc_count * sizeof(uint32_t), stream);
+  download(crc_status.data(), crc_statuses, b.crc_count * sizeof(nvcompStatus_t), stream);
   // testでは検証結果だけ戻す。展開データ全量のD2H転送は不要。
   if (root) download(host.output(b), output, b.output, stream);
   events.mark(4, stream);
@@ -347,12 +366,23 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
   stats.transfer_seconds += events.elapsed(0, 1) + events.elapsed(3, 4);
   stats.decode_seconds += events.elapsed(1, 2); stats.crc_seconds += events.elapsed(2, 3);
   // バッチ全体のCRCを検証してから各ファイルを確定する。
+  // 区間CRCはGPUで計算し、CPUでは短いチェックサム値だけを順に結合する。
+  auto combine_start = std::chrono::steady_clock::now();
+  size_t chunk = 0;
   for (size_t i = 0; i < n; ++i) {
     nv_check(status[i]);
     if (actual[i] != limits[i]) throw std::runtime_error("GPU展開サイズが一致しません: " + b.entries[i]->name);
-    nv_check(crc_status[i]);
-    if (crc[i] != b.entries[i]->crc) throw std::runtime_error("GPU CRC32が一致しません: " + b.entries[i]->name);
+    uint32_t combined = 0;
+    for (size_t at = 0; at < limits[i];) {
+      nv_check(crc_status[chunk]);
+      auto length = checksum_sizes[chunk];
+      combined = at == 0 ? crc[chunk] : static_cast<uint32_t>(::crc32_combine(combined, crc[chunk], static_cast<z_off_t>(length)));
+      at += length; ++chunk;
+    }
+    if (combined != b.entries[i]->crc) throw std::runtime_error("GPU CRC32が一致しません: " + b.entries[i]->name);
   }
+  stats.crc_combine_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - combine_start).count();
+  stats.gpu_crc_chunks += b.crc_count;
   if (!defer_write) stats.write_seconds += write_batch(b, host, root, opts);
   for (size_t i = 0; i < n; ++i) {
     check_cancelled();
@@ -377,14 +407,14 @@ Batch choose_batch(EntrySelection entries, size_t i, const Options& opts,
     pending.push_back(&e); payload += e.compressed + e.uncompressed;
   }
   if (pending.empty()) return {};
-  auto chosen = plan(pending, codec);
+  auto chosen = plan(pending, codec, opts.gpu_crc_chunk);
   if (fits_batch(chosen, opts, extracting)) return chosen;
   size_t lo = 0, hi = pending.size();
   chosen = Batch{};
   while (lo + 1 < hi) {
     auto mid = lo + (hi - lo) / 2;
     std::vector<const Entry*> prefix(pending.begin(), pending.begin() + static_cast<ptrdiff_t>(mid));
-    auto attempt = plan(prefix, codec);
+    auto attempt = plan(prefix, codec, opts.gpu_crc_chunk);
     if (fits_batch(attempt, opts, extracting)) { lo = mid; chosen = std::move(attempt); }
     else hi = mid;
   }

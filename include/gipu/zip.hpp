@@ -20,7 +20,8 @@ struct Entry {
 };
 class Archive {
  public:
-  explicit Archive(const std::filesystem::path& path, uint64_t metadata_limit = 256ULL << 20);
+  explicit Archive(const std::filesystem::path& path, uint64_t metadata_limit = 256ULL << 20,
+                   size_t metadata_threads = 0);
   ~Archive();
   Archive(const Archive&) = delete;
   Archive& operator=(const Archive&) = delete;
@@ -28,15 +29,18 @@ class Archive {
   const std::vector<Entry>& entries() const { return entries_; }
   uint64_t total_size() const;
   uint64_t file_size() const { return size_; }
+  size_t metadata_threads() const { return metadata_threads_; }
   int native_handle() const { return fd_; } // read-only、所有権はArchiveに残る。
  private:
   int fd_ = -1;
   uint64_t size_ = 0;
   uint64_t metadata_limit_;
+  size_t metadata_threads_;
   std::vector<Entry> entries_;
   void parse();
 };
 void check_cancelled();
 void request_cancel();
 void install_signal_handlers();
+size_t available_cpu_threads();
 }

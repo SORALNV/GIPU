@@ -109,7 +109,11 @@ Rapidgzipは大きな単一ファイル向けの実験経路で、小ファイ�
 
 中央ディレクトリは既定で256MiB／100万エントリまでです。`--metadata-limit`は前者を変更します。解析時の先読みバッファは中央256KiB・ローカルヘッダ4KiBですが、解析済みのエントリ・ファイル名一覧は別途RAMに保持します。
 
+`--metadata-threads auto`は、4096件以上かつローカル領域の平均間隔4KiB以上なら最大8 worker、密集した16,384件以上なら最大4 workerでローカルヘッダを検証します。それより小さいZIPは直列の先読みを使います。CPU affinityも考慮します。`--metadata-threads 1`で従来同様の直列検証、1〜32の指定で比較できます。中央ディレクトリ・パス検証、全ローカルヘッダ・descriptor検証、重複範囲検査がすべて成功するまで出力先は開きません。JSONの`metadata_threads`は実際の最大worker数です。
+
 Rapidgzip内部の修正版ISA-Lを使う追加実験は、`bash scripts/bootstrap_rapidgzip.sh --with-isal`と`-DGIPU_RAPIDGZIP_ISAL=ON`で有効にできます。ビルドにはCコンパイラとNASMも必要です。通常のISA-Lとは`inflate_state`のABIが異なるため、同時リンクせず、GIPUのStreaming経路も同じ修正版ヘッダ／静的ライブラリへ揃えます。既定OFFで、速度と正確性を別途比較するための構成です。
+
+この作業環境では`build-unified/gipu`にGPU・libdeflate・Rapidgzip修正版ISA-Lを統合し、全10統合スイートを検証しています。単一の大きな実データは`--backend auto --auto-parallel`、既知の正しい多数ファイルでGPUを試す場合は`--backend auto --auto-gpu`を使えます。実験経路の明示許可とメモリ上限の制約は変わりません。
 
 `--pipeline`は全ファイルが非空Deflateバッチに収まるZIP専用の実験経路です。固定化ホスト入出力を二重化し、次バッチの読み込み・GPU処理・前バッチの書き込みを重畳します。GPU arenaは一つだけでVRAM予算は変わりませんが、ホストRAMの必要量はバッチ入出力の約2倍になります。Stored／空ファイル／Streamingが必要な入力にはこの指定を外してください。各バッチ全体のGPU CRC確認が済むまでは、そのバッチの出力を書き出しません。
 
@@ -118,6 +122,8 @@ GPUバッチ出力は`--write-threads`（既定8、最大32）で並列化しま
 `--vram-limit`は、GIPUが明示的に確保する入力・出力・nvCOMP作業領域・メタデータ・CRC領域の合計を制限します。CUDAコンテキストやライブラリ内部の割り当て、他プロセスの使用量は含まれません。総VRAMの厳密な上限を保証するオプションではありません。ホストRAMにはバッチ入出力と同程度の固定化メモリが必要です。Streaming経路はアーカイブ／展開量の全体バッファを確保しません。
 
 公開Streaming APIの出力はホスト上です。解凍カーネルが稼働中にGPU CRCカーネルを同期実行すると、大量出力で処理が進まなくなることを3090で確認しました。現在の既定`--stream-crc cpu`は出力callbackでCPU CRCを増分計算し、二度読み・CRC用のGPU再転送を省きます。libdeflateがあればその高速CRC、なければzlib CRCを使用します。バッチ経路は展開済みVRAM上でCRCを計算します。`cpu_crc_bytes`と`gpu_crc_bytes`で分担を記録します。従来の二度読み方式は`--stream-crc gpu`で選べます。どちらもRAM／VRAMを展開量に比例して確保しません。
+
+バッチCRCは既定1MiBの区間へ分け、GPU上の展開済みデータを並列に検査します。CPUは区間のCRC値だけを`crc32_combine`でファイル順に結合するため、展開本体をCPUへ戻す必要はありません。大小のファイルが混ざったバッチで、最大ファイルだけを基準にしたCRCカーネル設定が不利になるのを避ける狙いです。`--gpu-crc-chunk whole`でファイル単位方式、4KiB〜64MiBのサイズ指定で比較できます。追加のGPU配列はVRAM予算に含みます。`gpu_crc_chunks`と`crc_combine_seconds`が区間数とCPU結合時間です。
 
 GPU Streamingは専用workerプロセスで実行し、親へpipeで出力を送ります。親が展開サイズ・CPU CRC・一時ファイル・確定を管理します。連続したStreamingエントリではworkerを再利用し、GPUバッチへ戻る前に破棄してscratchとarenaの同時保持を防ぎます。nvCOMPのI/O callbackから例外を投げると内部joinで停止する事象を確認したための分離です。停止・出力エラー・worker異常時は親が自分のworkerだけを終了／回収します。親が強制終了した場合もLinuxのparent-death signalでworkerを止めます。`--stream-timeout`（既定120秒）はpipe出力が来ない時間の上限です。子は入力のread-only FDとpipeだけを受け取り、出力パスを開きません。`/proc/self/exe`が必要で、CUDAコンテキストは親子それぞれに作られます。
 

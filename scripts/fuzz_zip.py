@@ -11,7 +11,7 @@ import time
 import zipfile
 
 
-def fixtures():
+def fixtures(many_files=False):
     result = []
     rng = random.Random(3090)
     for method in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
@@ -19,6 +19,12 @@ def fixtures():
             out = io.BytesIO()
             with zipfile.ZipFile(out, "w", compression=method) as archive:
                 archive.writestr("folder/日本語.bin", payload)
+            result.append(out.getvalue())
+        if many_files:
+            out = io.BytesIO()
+            with zipfile.ZipFile(out, "w", compression=method) as archive:
+                for index in range(1024):
+                    archive.writestr(f"many/{index:04d}", bytes([index % 256]) * 64)
             result.append(out.getvalue())
     return result
 
@@ -66,13 +72,15 @@ def main():
     parser.add_argument("--iterations", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=3090)
     parser.add_argument("--timeout", type=float, default=5)
+    parser.add_argument("--many-files", action="store_true", help="並列ヘッダ検証用に1024件のseed ZIPを追加")
+    parser.add_argument("--metadata-threads", type=int, choices=range(1, 33), default=4)
     parser.add_argument("--results", type=Path, required=True)
     args = parser.parse_args()
     if args.iterations <= 0 or args.timeout <= 0 or args.results.exists():
         parser.error("正の反復数／時間と未使用のresultsを指定してください")
     args.results.parent.mkdir(parents=True, exist_ok=True)
     rng = random.Random(args.seed)
-    bases = fixtures()
+    bases = fixtures(args.many_files)
     counts = {"accepted": 0, "rejected": 0}
     start = time.perf_counter()
     environment = dict(os.environ, ASAN_OPTIONS="detect_leaks=1:abort_on_error=1",
@@ -84,7 +92,7 @@ def main():
             path.write_bytes(data)
             command = [str(args.binary.resolve()), "test", str(path), "--backend", args.backend,
                        "--threads", "4", "--max-output", "64M", "--host-limit", "64M",
-                       "--metadata-limit", "4M", "--json"]
+                       "--metadata-limit", "4M", "--metadata-threads", str(args.metadata_threads), "--json"]
             failure = None
             try:
                 result = subprocess.run(command, capture_output=True, text=True, timeout=args.timeout, env=environment)
@@ -118,6 +126,7 @@ def main():
             if i and i % 500 == 0:
                 print(json.dumps({"iteration": i, **counts}), flush=True)
     report = {"backend": args.backend, "seed": args.seed, "iterations": args.iterations,
+              "metadata_threads": args.metadata_threads, "many_files": args.many_files,
               "valid_fixtures": len(bases), "seconds": time.perf_counter() - start, **counts, "failure": None}
     with args.results.open("x", encoding="utf-8") as output:
         json.dump(report, output, ensure_ascii=False, indent=2)

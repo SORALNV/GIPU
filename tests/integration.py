@@ -111,6 +111,26 @@ class Integration(unittest.TestCase):
     def test_empty_archive(self):
         self.process(zip_bytes([]))
 
+    def test_parallel_metadata_validation(self):
+        original = zip_bytes([(f"meta/{i:04d}", b"x" * 64) for i in range(1024)], descriptor=True, force_zip64=True)
+        self.archive.write_bytes(original)
+        expected = self.run_cli("list", self.archive, "--metadata-threads", "1").stdout
+        self.assertEqual(self.run_cli("list", self.archive, "--metadata-threads", "4").stdout, expected)
+        stats = json.loads(self.run_cli("test", self.archive, "--backend", "cpu",
+                                      "--metadata-threads", "4", "--json").stdout)
+        self.assertEqual(stats["metadata_threads"], 4)
+        self.assertEqual(stats["files"], 1024)
+        with zipfile.ZipFile(io.BytesIO(original)) as archive:
+            offset = archive.infolist()[700].header_offset
+        damaged = bytearray(original)
+        damaged[offset + 30] ^= 1
+        self.archive.write_bytes(damaged)
+        self.run_cli("extract", self.archive, "--backend", BACKEND, "--metadata-threads", "4",
+                     "--output", self.out, ok=False)
+        self.assertFalse(self.out.exists())
+        for value in ("0", "33", "-1", "2x"):
+            self.run_cli("list", self.archive, "--metadata-threads", value, ok=False)
+
     def test_anonymous_output(self):
         result = self.process(zip_bytes([(f"{i}.bin", b"value" * 1000) for i in range(10)]),
                               extra=("--temp-mode", "auto", "--json", "--sync"))
@@ -227,6 +247,21 @@ class Integration(unittest.TestCase):
     @unittest.skipUnless(BACKEND == "gpu", "GPU予算のテスト")
     def test_insufficient_gpu_budget(self):
         self.process(zip_bytes([("file", b"data")]), extract=False, ok=False, extra=("--vram-limit", "4M"))
+
+    @unittest.skipUnless(BACKEND == "gpu" and MODE != "stream", "GPU CRCの区間結合")
+    def test_gpu_crc_chunk_boundaries(self):
+        sizes = [1, 4095, 4096, 4097, (1 << 20) - 1, 1 << 20, (1 << 20) + 1, (3 << 20) + 39]
+        entries = [(f"crc/{i}", (bytes(range(251)) * (size // 251 + 1))[:size]) for i, size in enumerate(sizes)]
+        data = zip_bytes(entries)
+        for chunk, width in (("4K", 4096), ("1M", 1 << 20), ("64M", 64 << 20), ("whole", None)):
+            result = self.process(data, extract=False, extra=("--gpu-crc-chunk", chunk, "--json"))
+            stats = json.loads(result.stdout)
+            expected = sum((size + width - 1) // width for size in sizes) if width else len(sizes)
+            self.assertEqual(stats["gpu_crc_chunks"], expected)
+            self.assertEqual(stats["gpu_crc_bytes"], sum(sizes))
+        self.process(data, extra=("--gpu-crc-chunk", "1M"))
+        for name, payload in entries:
+            self.assertEqual((self.out / name).read_bytes(), payload)
 
     def test_cp437(self):
         data = zip_bytes([("x.txt", b"cp437")]).replace(b"x.txt", b"\x82.txt")

@@ -22,6 +22,10 @@ CASES = {
     "many-small": (131072, 8192, "half"),
     "few-large": (32, 64 * MIB, "half"),
     "mixed-large": (32768, 4096, "mixed-large"),
+    "flat-tiny": (131072, 128, "text"),
+    "flat-small": (65536, 4096, "half"),
+    "deep-tiny": (32768, 128, "text"),
+    "wide-tiny": (32768, 128, "text"),
 }
 
 
@@ -72,7 +76,14 @@ def create(root, name, level):
                     entry_size = 0
                 elif i % 4 == 0:
                     method = zipfile.ZIP_STORED
-            info = zipfile.ZipInfo(f"group-{i % 64:02d}/entry-{i:05d}.bin", date_time=(2026, 1, 1, 0, 0, 0))
+            filename = f"group-{i % 64:02d}/entry-{i:05d}.bin"
+            if name.startswith("flat-"):
+                filename = f"entry-{i:06d}.bin"
+            elif name == "deep-tiny":
+                filename = f"group-{i % 64:02d}/" + "/".join(f"level-{depth}" for depth in range(8)) + f"/entry-{i:05d}.bin"
+            elif name == "wide-tiny":
+                filename = f"group-{i % 64:02d}/folder-{i:05d}/entry.bin"
+            info = zipfile.ZipInfo(filename, date_time=(2026, 1, 1, 0, 0, 0))
             info.compress_type = method
             info._compresslevel = level
             info.external_attr = 0o100644 << 16

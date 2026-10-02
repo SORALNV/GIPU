@@ -31,6 +31,9 @@ def main():
         p.error("繰り返し回数またはsource指定が不正です")
     cases = {
         "auto": ["--backend", "auto"],
+        "auto-meta1": ["--backend", "auto", "--metadata-threads", "1"],
+        "auto-meta4": ["--backend", "auto", "--metadata-threads", "4"],
+        "auto-meta16": ["--backend", "auto", "--metadata-threads", "16"],
         "auto-experimental": ["--backend", "auto", "--auto-gpu", "--auto-parallel"],
         "cpu": ["--backend", "cpu"],
         "libdeflate1": ["--backend", "libdeflate", "--threads", "1"],
@@ -62,6 +65,8 @@ def main():
         if shutil.disk_usage(args.extract_root).free < raw_bytes + 20_000_000_000:
             p.error("展開量に加えて20GBの空きが必要です")
     report = {"archive_bytes": archive.stat().st_size, "raw_bytes": raw_bytes, "files": len(entries),
+              "binary_sha256": hashlib.sha256(args.binary.read_bytes()).hexdigest(),
+              "time_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
               "mode": "extract" if args.extract_root else "test", "durable": args.sync,
               "cache": args.cache, "cache_note": "DONTNEEDは対象ZIPだけへの助言。完全なcold cacheは保証しない。",
               "runs": [], "median_wall_seconds": {}}

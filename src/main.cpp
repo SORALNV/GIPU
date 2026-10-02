@@ -41,12 +41,14 @@ void help() {
                "  --gpu-mode auto|stream|batch  GPU経路（既定auto）\n"
                "  --gpu-algorithm deflate|lookahead  バッチ方式（既定deflate）\n"
                "  --stream-crc cpu|gpu     StreamingのCRC（既定cpu、再読み込み不要）\n"
+               "  --gpu-crc-chunk 1M|whole バッチCRCの区間サイズ（4K〜64M、既定1M）\n"
                "  --stream-timeout N       GPU Streamingの無進捗timeout秒（既定120）\n"
                "  --vram-limit 4G          GIPUが確保するGPU作業領域の上限\n"
                "  --host-limit 8G          CPU/GPUのホストデータバッファ合計予算\n"
                "  --cpu-buffer-limit 64M   CPU全量バッファの1worker上限（超過はStreaming）\n"
                "  --max-output 1T          合計展開サイズの上限\n"
                "  --metadata-limit 256M    中央ディレクトリのサイズ上限\n"
+               "  --metadata-threads auto|N ローカルヘッダ検証worker数（既定auto、最大32）\n"
                "  --sync                   出力ファイルと親ディレクトリをfsync\n"
                "  --temp-mode auto|named   一時出力方式（既定auto、O_TMPFILEを試す）\n"
                "  --path-mode auto|portable 親ディレクトリの安全な探索（既定auto）\n"
@@ -79,6 +81,12 @@ int main(int argc, char** argv) {
         opts.cpu_percent = static_cast<unsigned>(percent);
       }
       else if (arg == "--stream-crc") opts.stream_crc = value();
+      else if (arg == "--gpu-crc-chunk") {
+        auto text = value();
+        opts.gpu_crc_chunk = text == "whole" ? 0 : size_value(text);
+        if (opts.gpu_crc_chunk && (opts.gpu_crc_chunk < 4096 || opts.gpu_crc_chunk > (64ULL << 20)))
+          throw std::runtime_error("gpu-crc-chunkはwholeまたは4K〜64Mです");
+      }
       else if (arg == "--stream-timeout") {
         auto text = value(); size_t used = 0;
         auto seconds = std::stoul(text, &used);
@@ -88,6 +96,17 @@ int main(int argc, char** argv) {
       }
       else if (arg == "--temp-mode") opts.temp_mode = value();
       else if (arg == "--path-mode") opts.path_mode = value();
+      else if (arg == "--metadata-threads") {
+        auto text = value();
+        if (text == "auto") opts.metadata_threads = 0;
+        else {
+          size_t used = 0;
+          auto count = std::stoull(text, &used);
+          if (used != text.size() || text.empty() || text.front() < '0' || text.front() > '9' || count == 0 || count > 32)
+            throw std::runtime_error("metadata-threadsはautoまたは1〜32です");
+          opts.metadata_threads = static_cast<size_t>(count);
+        }
+      }
       else if (arg == "--threads" || arg == "--write-threads" || arg == "--batch-entries") {
         auto text = value(); size_t used = 0;
         if (text.empty() || text.front() < '0' || text.front() > '9') throw std::runtime_error("個数が不正です");
@@ -128,7 +147,7 @@ int main(int argc, char** argv) {
     if (command == "doctor") { std::cout << gipu::gpu_info(opts.gpu) << '\n'; return 0; }
     if (archive_path.empty()) throw std::runtime_error("ZIPファイルを指定してください");
     const auto start = std::chrono::steady_clock::now();
-    gipu::Archive archive(archive_path, opts.metadata_limit);
+    gipu::Archive archive(archive_path, opts.metadata_limit, opts.metadata_threads);
     const auto parsed = std::chrono::steady_clock::now();
     if (command == "list") {
       for (const auto& e : archive.entries()) std::cout << e.uncompressed << '\t' << e.compressed << '\t' << e.method << '\t' << e.name << '\n';
@@ -151,6 +170,7 @@ int main(int argc, char** argv) {
                         << ",\"seconds\":" << seconds << ",\"gib_per_second\":" << throughput << ",\"gpu_batches\":" << stats.batches
                         << ",\"gpu_streams\":" << stats.streams << ",\"workspace_bytes\":" << stats.workspace
                         << ",\"parse_seconds\":" << std::chrono::duration<double>(parsed - start).count()
+                        << ",\"metadata_threads\":" << archive.metadata_threads()
                         << ",\"read_seconds\":" << stats.read_seconds << ",\"write_seconds\":" << stats.write_seconds
                         << ",\"decode_seconds\":" << stats.decode_seconds << ",\"crc_seconds\":" << stats.crc_seconds
                         << ",\"transfer_seconds\":" << stats.transfer_seconds
@@ -158,6 +178,8 @@ int main(int argc, char** argv) {
                         << ",\"lookahead_batches\":" << stats.lookahead_batches
                         << ",\"pipeline_overlap_waits\":" << stats.pipeline_overlap_waits
                         << ",\"gpu_stream_workers\":" << stats.gpu_stream_workers
+                        << ",\"gpu_crc_chunks\":" << stats.gpu_crc_chunks
+                        << ",\"crc_combine_seconds\":" << stats.crc_combine_seconds
                         << ",\"host_buffer_bytes\":" << stats.host_buffer_bytes
                         << ",\"cpu_buffered_files\":" << stats.cpu_buffered_files << ",\"cpu_stream_files\":" << stats.cpu_stream_files
                         << ",\"cpu_parallel_files\":" << stats.cpu_parallel_files

@@ -11,6 +11,7 @@ struct Options {
   std::string path_mode = "auto";
   int gpu = 0;
   size_t threads = 1;
+  size_t metadata_threads = 0;
   size_t write_threads = 8;
   size_t batch_entries = 4096;
   unsigned cpu_percent = 50;
@@ -18,6 +19,7 @@ struct Options {
   uint64_t vram_limit = 4ULL << 30;
   uint64_t host_limit = 8ULL << 30;
   uint64_t cpu_buffer_limit = 64ULL << 20;
+  uint64_t gpu_crc_chunk = 1ULL << 20;
   uint64_t max_output = 1ULL << 40;
   uint64_t metadata_limit = 256ULL << 20;
   bool durable = false;
@@ -31,11 +33,13 @@ struct Stats {
   uint64_t lookahead_batches = 0;
   uint64_t pipeline_overlap_waits = 0;
   uint64_t gpu_stream_workers = 0;
+  uint64_t gpu_crc_chunks = 0;
   uint64_t host_buffer_bytes = 0, cpu_buffered_files = 0, cpu_stream_files = 0;
   uint64_t cpu_parallel_files = 0;
   uint64_t isal_files = 0;
   double read_seconds = 0, write_seconds = 0, decode_seconds = 0, crc_seconds = 0, transfer_seconds = 0;
   double allocation_seconds = 0;
+  double crc_combine_seconds = 0;
   std::string selected_backend, selection_reason;
 };
 using EntrySelection = std::span<const Entry* const>;
@@ -69,7 +73,6 @@ inline Stats run_gpu(const Archive& a, OutputRoot* r, const Options& o) {
 void add_stats(Stats& total, const Stats& other, bool concurrent = false);
 Stats run_hybrid(const Archive&, OutputRoot*, const Options&);
 Stats run_auto(const Archive&, OutputRoot*, const Options&);
-size_t available_cpu_threads();
 uint64_t gpu_free_memory(int device);
 std::string gpu_info(int device);
 }
