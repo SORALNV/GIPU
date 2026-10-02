@@ -418,6 +418,109 @@ class Integration(unittest.TestCase):
         self.process(data)
         self.assertEqual((self.out / "é.txt").read_bytes(), b"cp437")
 
+    def unicode_path_zip(self, unicode_name, *, crc=None, version=1, duplicate=False):
+        raw = b"legacy.txt"
+        if crc is None:
+            crc = zlib.crc32(raw)
+        payload = bytes([version]) + struct.pack("<I", crc) + unicode_name
+        extra = struct.pack("<HH", 0x7075, len(payload)) + payload
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            info = zipfile.ZipInfo(raw.decode())
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.extra = extra * (2 if duplicate else 1)
+            archive.writestr(info, b"unicode path payload")
+        return buffer.getvalue()
+
+    def test_unicode_path_extra(self):
+        name = "日本語/café/模型🧪.txt"
+        self.process(self.unicode_path_zip(name.encode()))
+        self.assertEqual((self.out / name).read_bytes(), b"unicode path payload")
+        self.assertFalse((self.out / "legacy.txt").exists())
+
+    def test_unicode_path_stale_extra_falls_back(self):
+        for index, options in enumerate(({"crc": 1234}, {"version": 2})):
+            self.out = self.root / f"fallback-{index}"
+            self.process(self.unicode_path_zip("日本語.txt".encode(), **options))
+            self.assertEqual((self.out / "legacy.txt").read_bytes(), b"unicode path payload")
+
+    def test_unicode_path_unsafe_and_duplicate_rejected(self):
+        for index, name in enumerate((b"", b"../escape", b"/absolute", b"a\\b", b"a\0b", b"\xff")):
+            self.out = self.root / f"bad-unicode-{index}"
+            self.process(self.unicode_path_zip(name), ok=False)
+            self.assertFalse(self.out.exists())
+        self.process(self.unicode_path_zip(b"valid", duplicate=True), ok=False)
+        self.assertFalse(self.out.exists())
+
+    def test_unicode_path_short_version1_rejected(self):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            info = zipfile.ZipInfo("legacy.txt")
+            info.extra = struct.pack("<HHB", 0x7075, 1, 1)
+            archive.writestr(info, b"payload")
+        self.process(buffer.getvalue(), ok=False)
+        self.assertFalse(self.out.exists())
+
+    def test_actual_bzip2_and_lzma_rejected(self):
+        for index, method in enumerate((zipfile.ZIP_BZIP2, zipfile.ZIP_LZMA)):
+            self.out = self.root / f"unsupported-codec-{index}"
+            self.process(zip_bytes([("data", b"payload" * 1024)], method=method), ok=False)
+            self.assertFalse(self.out.exists())
+
+    @unittest.skipUnless(BACKEND == "cpu", "外部producerはCPU参照経路で検証")
+    def test_external_zip_producers(self):
+        official = Path(__file__).resolve().parents[1] / ".deps/7zip-26.03/7zz"
+        sevenzip = os.environ.get("GIPU_TEST_7ZIP_PATH") or shutil.which("7zz")
+        if not sevenzip and official.is_file():
+            sevenzip = str(official)
+        infozip = shutil.which("zip")
+        if not sevenzip and not infozip:
+            self.skipTest("7zzまたはzipが必要です")
+        source = self.root / "producer-input"
+        source.mkdir()
+        payloads = {"data.bin": bytes(range(256)) * 4096, "empty": b"", "space name.txt": b"text" * 1024}
+        for name, payload in payloads.items():
+            (source / name).write_bytes(payload)
+        producers = []
+        if infozip:
+            producers.append(("infozip", [infozip]))
+        if sevenzip:
+            producers.append(("7zip", [sevenzip]))
+        for producer, tool in producers:
+            for level in (0, 1, 6, 9):
+                archive = self.root / f"{producer}-{level}.zip"
+                command = ([*tool, f"-{level}", "-q", str(archive), *payloads] if producer == "infozip" else
+                           [*tool, "a", "-tzip", "-mm=Deflate", f"-mx={level}", str(archive), *payloads])
+                subprocess.run(command, cwd=source, capture_output=True, check=True, timeout=30)
+                self.out = self.root / f"{producer}-{level}-out"
+                self.process(archive.read_bytes())
+                for name, payload in payloads.items():
+                    self.assertEqual((self.out / name).read_bytes(), payload)
+
+    @unittest.skipUnless(BACKEND == "cpu", "暗号化入力はCPUの事前拒否を検証")
+    def test_actual_zipcrypto_rejected_before_output(self):
+        tool = shutil.which("zip")
+        if not tool:
+            self.skipTest("zipが必要です")
+        (self.root / "secret.txt").write_bytes(b"public test fixture")
+        archive = self.root / "encrypted.zip"
+        subprocess.run([tool, "-q", "-P", "public-test-password", str(archive), "secret.txt"],
+                       cwd=self.root, capture_output=True, check=True, timeout=30)
+        self.process(archive.read_bytes(), ok=False)
+        self.assertFalse(self.out.exists())
+
+    def test_all_unimplemented_method_ids_rejected_before_output(self):
+        # 圧縮本体の正当性を主張する試験ではなく、ヘッダ段階の拒否を網羅する。
+        original = zip_bytes([("data", b"payload")])
+        cd = original.index(b"PK\x01\x02")
+        for method in (1, 2, 3, 4, 5, 6, 7, 9, 10, 12, 14, 16, 18, 19, 20, 93, 94, 95, 96, 97, 98, 99, 65535):
+            data = bytearray(original)
+            struct.pack_into("<H", data, 8, method)
+            struct.pack_into("<H", data, cd + 10, method)
+            result = self.process(data, ok=False)
+            self.assertIn("未対応の圧縮方式", result.stderr)
+            self.assertFalse(self.out.exists())
+
     def test_many_entries(self):
         entries = [(f"entries/{i}.txt", (f"value={i}\n" * 1000).encode()) for i in range(48)]
         self.process(zip_bytes(entries))

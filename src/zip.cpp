@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <zlib.h>
 
 namespace gipu {
 namespace {
@@ -65,6 +66,36 @@ std::string filename(const std::string& raw, bool utf8) {
     pos = end + 1;
   }
   return out;
+}
+std::string decoded_filename(const std::string& raw, bool utf8, std::span<const char> extra) {
+  require(!raw.empty() && raw.find('\0') == std::string::npos, "空またはNULを含むファイル名です");
+  if (utf8) return filename(raw, true);
+  // Info-ZIP Unicode Pathは元の名前のCRCが一致する版1だけを採用する。
+  // 補助情報が古い／不一致の場合はUTF-8を推測せず、CP437へ戻す。
+  std::string unicode;
+  bool found = false, use_unicode = false;
+  size_t pos = 0;
+  while (pos < extra.size()) {
+    require(extra.size() - pos >= 4, "ZIP追加フィールドが切れています");
+    const auto id = u16(extra.data() + pos), len = u16(extra.data() + pos + 2);
+    pos += 4;
+    require(len <= extra.size() - pos, "ZIP追加フィールドの長さが不正です");
+    if (id == 0x7075) {
+      require(!found, "Unicode Path追加フィールドが重複しています");
+      found = true;
+      require(len >= 1, "Unicode Path追加フィールドが切れています");
+      if (static_cast<unsigned char>(extra[pos]) == 1) {
+        require(len >= 5, "Unicode Path追加フィールドが不足しています");
+        const auto crc = ::crc32(0, reinterpret_cast<const Bytef*>(raw.data()), static_cast<uInt>(raw.size()));
+        if (u32(extra.data() + pos + 1) == crc) {
+          unicode.assign(extra.data() + pos + 5, len - 5);
+          use_unicode = true;
+        }
+      }
+    }
+    pos += len;
+  }
+  return filename(use_unicode ? unicode : raw, use_unicode);
 }
 // 中央ディレクトリは順次先読み、散在するローカルヘッダは小さな窓で読む。
 // 圧縮本体を大幅に先読みせず、多数の短いpreadをまとめる。
@@ -265,7 +296,8 @@ void Archive::parse() {
     zip64_extra(std::span<const char>(variable).subspan(name_len, extra_len), e.uncompressed, e.compressed, e.local_offset, disk);
     require(disk == 0, "分割ZIPには対応していません");
     require((e.flags & ~(uint16_t(0x080e))) == 0, "暗号化または未対応のZIPフラグです");
-    e.name = filename(e.raw_name, (e.flags & 0x800) != 0);
+    e.name = decoded_filename(e.raw_name, (e.flags & 0x800) != 0,
+                              std::span<const char>(variable).subspan(name_len, extra_len));
     e.directory = e.name.back() == '/';
     auto key = e.directory ? e.name.substr(0, e.name.size() - 1) : e.name;
     if (!paths.insert(key).second) throw std::runtime_error("重複する出力パスです: " + key);
