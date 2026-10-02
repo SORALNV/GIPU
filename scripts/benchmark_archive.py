@@ -32,14 +32,22 @@ def main():
     cases = {
         "cpu": ["--backend", "cpu"],
         "libdeflate1": ["--backend", "libdeflate", "--threads", "1"],
+        "libdeflate8": ["--backend", "libdeflate", "--threads", "8"],
         "libdeflate16": ["--backend", "libdeflate", "--threads", "16"],
+        "libdeflate16-anonymous": ["--backend", "libdeflate", "--threads", "16", "--temp-mode", "auto"],
         "libdeflate32": ["--backend", "libdeflate", "--threads", "32"],
+        "hybrid": ["--backend", "hybrid"],
+        "hybrid25": ["--backend", "hybrid", "--cpu-percent", "25"],
+        "hybrid75": ["--backend", "hybrid", "--cpu-percent", "75"],
+        "hybrid16": ["--backend", "hybrid", "--threads", "16"],
+        "hybrid-anonymous": ["--backend", "hybrid", "--temp-mode", "auto"],
         "gpu256": ["--backend", "gpu", "--batch-entries", "256"],
         "gpu1024": ["--backend", "gpu", "--batch-entries", "1024"],
         "gpu4096": ["--backend", "gpu", "--batch-entries", "4096"],
         "gpupipeline": ["--backend", "gpu", "--pipeline", "--batch-entries", "4096"],
-        "gpupipeline8g": ["--backend", "gpu", "--pipeline", "--batch-entries", "8192", "--vram-limit", "8G"],
-        "gpupipeline16g": ["--backend", "gpu", "--pipeline", "--batch-entries", "16384", "--vram-limit", "16G"],
+        "gpupipeline-anonymous": ["--backend", "gpu", "--pipeline", "--batch-entries", "4096", "--temp-mode", "auto"],
+        "gpupipeline8g": ["--backend", "gpu", "--pipeline", "--batch-entries", "8192", "--vram-limit", "8G", "--host-limit", "24G"],
+        "gpupipeline16g": ["--backend", "gpu", "--pipeline", "--batch-entries", "16384", "--vram-limit", "16G", "--host-limit", "40G"],
     }
     if any(case not in cases for case in args.cases):
         p.error("不明な測定caseです")

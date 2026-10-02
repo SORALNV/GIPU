@@ -40,9 +40,11 @@ void help() {
                "  --stream-crc cpu|gpu     StreamingのCRC（既定cpu、再読み込み不要）\n"
                "  --vram-limit 4G          GIPUが確保するGPU作業領域の上限\n"
                "  --host-limit 8G          CPU/GPUのホストデータバッファ合計予算\n"
+               "  --cpu-buffer-limit 64M   CPU全量バッファの1worker上限（超過はStreaming）\n"
                "  --max-output 1T          合計展開サイズの上限\n"
                "  --metadata-limit 256M    中央ディレクトリのサイズ上限\n"
                "  --sync                   出力ファイルと親ディレクトリをfsync\n"
+               "  --temp-mode named|auto   一時出力方式（既定named、autoはO_TMPFILEを試す）\n"
                "  --json                   結果をJSONで出力\n";
 }
 }
@@ -71,6 +73,7 @@ int main(int argc, char** argv) {
         opts.cpu_percent = static_cast<unsigned>(percent);
       }
       else if (arg == "--stream-crc") opts.stream_crc = value();
+      else if (arg == "--temp-mode") opts.temp_mode = value();
       else if (arg == "--threads" || arg == "--write-threads" || arg == "--batch-entries") {
         auto text = value(); size_t used = 0;
         if (text.empty() || text.front() < '0' || text.front() > '9') throw std::runtime_error("個数が不正です");
@@ -85,6 +88,7 @@ int main(int argc, char** argv) {
         if (used != text.size() || opts.gpu < 0) throw std::runtime_error("GPU番号が不正です");
       } else if (arg == "--vram-limit") opts.vram_limit = size_value(value());
       else if (arg == "--host-limit") opts.host_limit = size_value(value());
+      else if (arg == "--cpu-buffer-limit") opts.cpu_buffer_limit = size_value(value());
       else if (arg == "--max-output") opts.max_output = size_value(value());
       else if (arg == "--metadata-limit") opts.metadata_limit = size_value(value());
       else if (arg == "--sync") opts.durable = true;
@@ -99,6 +103,7 @@ int main(int argc, char** argv) {
     if (opts.gpu_mode != "auto" && opts.gpu_mode != "stream" && opts.gpu_mode != "batch") throw std::runtime_error("gpu-modeはauto/stream/batchです");
     if (opts.gpu_algorithm != "deflate" && opts.gpu_algorithm != "lookahead") throw std::runtime_error("gpu-algorithmはdeflate/lookaheadです");
     if (opts.stream_crc != "cpu" && opts.stream_crc != "gpu") throw std::runtime_error("stream-crcはcpu/gpuです");
+    if (opts.temp_mode != "named" && opts.temp_mode != "auto") throw std::runtime_error("temp-modeはnamed/autoです");
     if (opts.pipeline && ((opts.backend != "gpu" && opts.backend != "hybrid") || opts.gpu_mode == "stream")) throw std::runtime_error("pipelineはGPU/hybrid auto/batch専用です");
     if (command == "doctor") { std::cout << gipu::gpu_info(opts.gpu) << '\n'; return 0; }
     if (archive_path.empty()) throw std::runtime_error("ZIPファイルを指定してください");
@@ -114,7 +119,7 @@ int main(int argc, char** argv) {
     if (command == "extract" && output_path.empty()) throw std::runtime_error("--outputで展開先を指定してください");
     if (command == "test" && !output_path.empty()) throw std::runtime_error("testには--outputを指定できません");
     std::unique_ptr<gipu::OutputRoot> root;
-    if (command == "extract") root = std::make_unique<gipu::OutputRoot>(output_path);
+    if (command == "extract") root = std::make_unique<gipu::OutputRoot>(output_path, opts.temp_mode == "auto");
     auto stats = (opts.backend == "cpu" || opts.backend == "isal") ? gipu::run_cpu(archive, root.get(), opts) :
         opts.backend == "hybrid" ? gipu::run_hybrid(archive, root.get(), opts) :
         opts.backend == "rapidgzip" ? gipu::run_rapidgzip(archive, root.get(), opts) :
@@ -136,6 +141,8 @@ int main(int argc, char** argv) {
                         << ",\"isal_files\":" << stats.isal_files
                         << ",\"selected_backend\":\"" << (stats.selected_backend.empty() ? opts.backend : stats.selected_backend)
                         << "\",\"selection_reason\":\"" << stats.selection_reason << "\""
+                        << ",\"anonymous_output_files\":" << (root ? root->anonymous_files() : 0)
+                        << ",\"named_output_files\":" << (root ? root->named_files() : 0)
                         << ",\"allocation_seconds\":" << stats.allocation_seconds << "}\n";
     else std::cout << "完了: " << stats.files << "ファイル / " << stats.bytes << " bytes / " << seconds << "秒 / " << throughput
                    << " GiB/s（" << opts.backend << ", batch=" << stats.batches << ", stream=" << stats.streams << "）\n";

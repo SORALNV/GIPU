@@ -19,12 +19,14 @@ int descend(int fd, const std::string& component) {
   return next;
 }
 }
-OutputRoot::OutputRoot(const std::filesystem::path& path) {
+OutputRoot::OutputRoot(const std::filesystem::path& path, bool anonymous) {
   std::filesystem::create_directories(path);
   fd_ = ::open(path.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
   if (fd_ < 0) fail("出力先を開けません");
+  // /procがない環境では従来の名前付き一時ファイルへ戻る。
+  if (anonymous) proc_fds_ = ::open("/proc/self/fd", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 }
-OutputRoot::~OutputRoot() { if (fd_ >= 0) ::close(fd_); }
+OutputRoot::~OutputRoot() { if (proc_fds_ >= 0) ::close(proc_fds_); if (fd_ >= 0) ::close(fd_); }
 int OutputRoot::parent(const std::string& name) const {
   int current = ::fcntl(fd_, F_DUPFD_CLOEXEC, 0);
   if (current < 0) fail("出力先を複製できません");
@@ -58,11 +60,21 @@ OutputFile::OutputFile(const OutputRoot& root, const Entry& entry, bool durable)
     if (::fstatat(parent_, target_.c_str(), &st, AT_SYMLINK_NOFOLLOW) == 0)
       throw std::runtime_error("既存ファイルは上書きしません: " + entry.name);
     if (errno != ENOENT) fail("出力先を検査できません");
+    if (root.proc_fds() >= 0) {
+      fd_ = ::openat(parent_, ".", O_TMPFILE | O_RDWR | O_CLOEXEC, 0600);
+      if (fd_ >= 0) {
+        anonymous_ = true; proc_fds_ = root.proc_fds(); root.record_temporary(true); return;
+      }
+      // サポートしないfilesystem／古いkernelだけfallbackする。容量・FD不足は隠さない。
+      if (errno != EOPNOTSUPP && errno != EINVAL && errno != EISDIR && errno != ENOENT && errno != ENOSYS)
+        fail("名前なし一時ファイルを作成できません");
+    }
     uint64_t random = 0;
     if (::getrandom(&random, sizeof(random), 0) != sizeof(random)) fail("一時名を生成できません");
     temporary_ = ".gipu-" + std::to_string(random) + ".part";
     fd_ = ::openat(parent_, temporary_.c_str(), O_RDWR | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600);
     if (fd_ < 0) fail("一時ファイルを作成できません");
+    root.record_temporary(false);
   } catch (...) { ::close(parent_); parent_ = -1; throw; }
 }
 OutputFile::~OutputFile() {
@@ -99,9 +111,16 @@ void OutputFile::commit() {
   if (::fchmod(fd_, 0644) != 0) fail("ファイル権限を設定できません");
   if (durable_ && ::fsync(fd_) != 0) fail("ファイルを同期できません");
   // linkatは既存名を置き換えない。検査から確定までの競合も防ぐ。
-  if (::linkat(parent_, temporary_.c_str(), parent_, target_.c_str(), 0) != 0) fail("検証済みファイルを確定できません");
-  if (::unlinkat(parent_, temporary_.c_str(), 0) != 0) fail("一時ファイル名を削除できません");
-  temporary_.clear();
+  if (anonymous_) {
+    // AT_EMPTY_PATHの権限を要求せず、自プロセスの保持中FDだけを参照する。
+    auto source = std::to_string(fd_);
+    if (::linkat(proc_fds_, source.c_str(), parent_, target_.c_str(), AT_SYMLINK_FOLLOW) != 0)
+      fail("名前なし一時ファイルを確定できません");
+  } else {
+    if (::linkat(parent_, temporary_.c_str(), parent_, target_.c_str(), 0) != 0) fail("検証済みファイルを確定できません");
+    if (::unlinkat(parent_, temporary_.c_str(), 0) != 0) fail("一時ファイル名を削除できません");
+    temporary_.clear();
+  }
   if (durable_ && ::fsync(parent_) != 0) fail("ディレクトリを同期できません");
 }
 Sink::Sink(uint64_t expected, OutputFile* file, std::function<void(std::span<const char>)> checksum)

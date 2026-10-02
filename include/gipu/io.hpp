@@ -1,6 +1,7 @@
 #pragma once
 #include "gipu/zip.hpp"
 #include <array>
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <ostream>
@@ -9,14 +10,22 @@
 namespace gipu {
 class OutputRoot {
  public:
-  explicit OutputRoot(const std::filesystem::path& path);
+  explicit OutputRoot(const std::filesystem::path& path, bool anonymous = false);
   ~OutputRoot();
   OutputRoot(const OutputRoot&) = delete;
   OutputRoot& operator=(const OutputRoot&) = delete;
   int parent(const std::string& name) const;
   void directory(const std::string& name) const;
+  int proc_fds() const { return proc_fds_; }
+  void record_temporary(bool anonymous) const {
+    (anonymous ? anonymous_files_ : named_files_).fetch_add(1, std::memory_order_relaxed);
+  }
+  uint64_t anonymous_files() const { return anonymous_files_.load(std::memory_order_relaxed); }
+  uint64_t named_files() const { return named_files_.load(std::memory_order_relaxed); }
  private:
   int fd_ = -1;
+  int proc_fds_ = -1;
+  mutable std::atomic<uint64_t> anonymous_files_{0}, named_files_{0};
 };
 // 同一ディレクトリ内に一時ファイルを作り、検証後だけ確定する。
 class OutputFile {
@@ -33,6 +42,8 @@ class OutputFile {
   int parent_ = -1, fd_ = -1;
   std::string target_, temporary_;
   bool durable_ = false;
+  int proc_fds_ = -1;
+  bool anonymous_ = false;
 };
 class Sink : public std::streambuf {
  public:

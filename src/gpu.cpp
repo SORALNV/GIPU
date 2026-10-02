@@ -389,26 +389,34 @@ Stats pipeline_decode(const Archive& archive, OutputRoot* root, const Options& o
                       const Codec& codec, BatchBuffers& buffers, EntrySelection entries) {
   BatchHost hosts[2];
   std::vector<Batch> batches;
-  for (size_t i = 0; i < entries.size();) {
-    if (entries[i]->directory) { ++i; continue; }
-    auto b = choose_batch(entries, i, opts, codec, root != nullptr);
-    if (b.entries.empty()) throw std::runtime_error("pipelineは全ファイルが予算内の非空Deflateバッチに収まるZIP専用です");
-    i += b.entries.size(); batches.push_back(std::move(b));
+  Options planning = opts;
+  size_t max_input = 0, max_output = 0, max_memory = 0;
+  auto slot_budget = (opts.host_limit - host_fixed_buffers) / 2;
+  for (;;) {
+    check_cancelled();
+    batches.clear(); max_input = 0; max_output = 0; max_memory = 0;
+    size_t max_entries = 0;
+    for (size_t i = 0; i < entries.size();) {
+      if (entries[i]->directory) { ++i; continue; }
+      auto b = choose_batch(entries, i, planning, codec, root != nullptr);
+      if (b.entries.empty()) throw std::runtime_error("pipelineは全ファイルが予算内の非空Deflateバッチに収まるZIP専用です");
+      max_input = std::max(max_input, b.input); max_output = std::max(max_output, b.output);
+      max_memory = std::max(max_memory, b.memory); max_entries = std::max(max_entries, b.entries.size());
+      i += b.entries.size(); batches.push_back(std::move(b));
+    }
+    size_t output = root ? max_output : 0;
+    if (max_input <= slot_budget && output <= slot_budget - max_input) break;
+    if (max_entries <= 1)
+      throw std::runtime_error("pipelineの最大固定化バッファが--host-limitを超えています。pipelineを外すかホスト予算を増やしてください");
+    // 入力最大・出力最大が異なるバッチでも、全スロットを予算内に置く。
+    planning.batch_entries = std::max<size_t>(1, max_entries / 2);
   }
   if (root) for (const auto* e : entries) if (e->directory) root->directory(e->name);
   Stats stats; stats.workspace = StreamingCrc::memory;
   if (batches.empty()) return stats;
   // 全計画の最大容量を先に確保。先読み中のcudaMallocHostがGPU/DMAを同期するのを避ける。
   auto allocate_start = std::chrono::steady_clock::now();
-  size_t max_input = 0, max_output = 0, max_memory = 0;
-  for (const auto& b : batches) {
-    max_input = std::max(max_input, b.input); max_output = std::max(max_output, b.output);
-    max_memory = std::max(max_memory, b.memory);
-  }
-  auto slot_budget = (opts.host_limit - host_fixed_buffers) / 2;
   size_t output = root ? max_output : 0;
-  if (max_input > slot_budget || output > slot_budget - max_input)
-    throw std::runtime_error("pipelineの最大固定化バッファが--host-limitを超えています。--vram-limitを下げてください");
   buffers.arena.reserve(max_memory);
   for (auto& host : hosts) {
     host.input.reserve(max_input);
@@ -534,14 +542,12 @@ Stats run_gpu(const Archive& archive, OutputRoot* root, const Options& opts, Ent
     if (e.method == 0 || opts.gpu_mode == "stream" || !codec.supported(e) || e.uncompressed == 0) {
       if (opts.gpu_mode == "batch" && e.method == 8 && e.uncompressed != 0) throw std::runtime_error("エントリがバッチAPIのサイズ上限を超えています");
       buffers.arena.release(); // Streamingのscratchとarenaを同時に保持しない。
-      host.input.release(); host.output.release();
       stream_decode(archive, e, root, opts, crc, stream, stats); ++i; continue;
     }
     auto chosen = choose_batch(entries, i, opts, codec, root != nullptr);
     if (chosen.entries.empty()) {
       if (opts.gpu_mode == "batch") throw std::runtime_error("エントリが--vram-limit内のバッチに収まりません");
       buffers.arena.release();
-      host.input.release(); host.output.release();
       stream_decode(archive, e, root, opts, crc, stream, stats); ++i;
     } else {
       batch_decode(archive, chosen, root, opts, stream, codec, buffers, host, stats); i += chosen.entries.size();

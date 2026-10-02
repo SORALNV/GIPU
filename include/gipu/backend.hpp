@@ -7,6 +7,7 @@ struct Options {
   std::string gpu_mode = "auto";
   std::string gpu_algorithm = "deflate";
   std::string stream_crc = "cpu";
+  std::string temp_mode = "named";
   int gpu = 0;
   size_t threads = 1;
   size_t write_threads = 8;
@@ -14,6 +15,7 @@ struct Options {
   unsigned cpu_percent = 50;
   uint64_t vram_limit = 4ULL << 30;
   uint64_t host_limit = 8ULL << 30;
+  uint64_t cpu_buffer_limit = 64ULL << 20;
   uint64_t max_output = 1ULL << 40;
   uint64_t metadata_limit = 256ULL << 20;
   bool durable = false;

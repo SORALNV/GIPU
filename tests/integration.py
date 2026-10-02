@@ -85,6 +85,7 @@ class Integration(unittest.TestCase):
         self.archive.write_bytes(data)
         args = ["extract" if extract else "test", self.archive, "--backend", BACKEND, "--gpu-mode", MODE,
                 "--gpu-algorithm", ALGORITHM,
+                "--temp-mode", os.environ.get("GIPU_TEST_TEMP_MODE", "named"),
                 "--threads", os.environ.get("GIPU_TEST_THREADS", "1")]
         if extract:
             args += ["--output", self.out]
@@ -106,6 +107,23 @@ class Integration(unittest.TestCase):
 
     def test_empty_archive(self):
         self.process(zip_bytes([]))
+
+    def test_anonymous_output(self):
+        result = self.process(zip_bytes([(f"{i}.bin", b"value" * 1000) for i in range(10)]),
+                              extra=("--temp-mode", "auto", "--json", "--sync"))
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["anonymous_output_files"] + stats["named_output_files"], 10)
+        if hasattr(os, "O_TMPFILE") and Path("/proc/self/fd").is_dir():
+            try:
+                fd = os.open(self.out, os.O_TMPFILE | os.O_RDWR, 0o600)
+            except OSError:
+                pass
+            else:
+                os.close(fd)
+                self.assertEqual(stats["anonymous_output_files"], 10)
+        self.assertEqual(list(self.out.glob("*.part")), [])
+        for i in range(10):
+            self.assertEqual((self.out / f"{i}.bin").read_bytes(), b"value" * 1000)
 
     def test_metadata_read_windows(self):
         data = io.BytesIO()
@@ -394,6 +412,17 @@ class Integration(unittest.TestCase):
         result = self.process(zip_bytes([("large", b"x" * (32 << 20))]), extract=False,
                               extra=("--host-limit", "12M", "--json"))
         self.assertEqual(json.loads(result.stdout)["gpu_streams"], 1)
+
+    @unittest.skipUnless(BACKEND == "gpu" and MODE == "auto", "pipelineの入力／出力最大値の予算")
+    def test_pipeline_host_budget_replanning(self):
+        entries = [(f"random-{i}", os.urandom(1 << 20)) for i in range(4)]
+        entries += [(f"zeros-{i}", b"\0" * (2 << 20)) for i in range(4)]
+        result = self.process(zip_bytes(entries), extra=("--pipeline", "--host-limit", "30M", "--json"))
+        stats = json.loads(result.stdout)
+        self.assertLessEqual(stats["host_buffer_bytes"], 30 << 20)
+        self.assertGreater(stats["gpu_batches"], 2)
+        for name, payload in entries:
+            self.assertEqual((self.out / name).read_bytes(), payload)
 
     @unittest.skipUnless(BACKEND == "gpu" and ALGORITHM == "lookahead", "LOOKAHEADの選択確認")
     def test_lookahead_selected(self):

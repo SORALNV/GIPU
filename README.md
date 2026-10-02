@@ -18,6 +18,7 @@ Ubuntu＋NVIDIA GPUで、通常のZIPを展開するCLIを開発しています�
 - ISA-Lによる定量メモリCPU Streaming、Rapidgzipによる単一Deflateの並列CPU経路（後者は実験用・任意の依存）。
 - ZIPメタデータの先読み、ASCII名の高速処理、中央ディレクトリのサイズ上限。
 - CPUとGPUが異なるエントリ集合を同時処理する`hybrid`経路と、固定化ホストメモリの予算化。
+- Linuxの名前なし一時出力（`--temp-mode auto`）と、CPU全量バッファ／Streamingの切り替え。
 
 ## ビルド
 
@@ -68,7 +69,13 @@ build/gipu extract archive.zip --output ./out --pipeline --json
 
 `--backend hybrid`はStored・空ファイル・32KiB未満・64MiB超・ほぼ非圧縮のファイルをCPUへ送り、残りを`--cpu-percent`（既定50%）の展開バイト割合を目安に分割します。GPUに渡す配列からCPU担当ファイルを除くため、混在データでもGPUバッチが分断されません。CPUは既定最大8 worker、GPUはバッチI/Oパイプラインを使い、同時に処理します。片側が失敗すると他方にも停止を要求し、両方をjoinしてから最初のエラーを返します。CPU向きの入力だけ、予算が小さい、GPUが利用不能な場合はCPUだけで完結します。`selected_backend`と`selection_reason`で実際の選択を確認できます。この分割則は調整中で、最速を保証するものではありません。
 
-GPU経路にも`--host-limit`を適用します。バッチ入出力の固定化メモリと、固定バッファ分として保守的に予約する12MiBを予算化します。pipelineは2組の固定化バッファを含み、全計画の最大入力・最大出力が別バッチに現れるケースも事前に確認します。通常経路は必要なら古い固定化バッファを解放して予算を守り、Streamingへ移る前にも解放します。hybridはCPUに1/4、GPUに残りのホスト予算を分け、GPUバッチの最悪ケースを考慮してVRAM予算も縮めます。GPUの`host_buffer_bytes`は固定分の予約を含む上限見積もりです。
+CPUの全量バッファには、worker予算に加えて`--cpu-buffer-limit`（既定64MiB）を適用します。巨大ファイルでは全量のメモリ確保・コピーを避けた方が速かった測定から採用しました。超過時も定量メモリのStreamingへ切り替えるため、ファイルサイズ制限ではありません。
+
+`--temp-mode auto`はLinuxの`O_TMPFILE`を試し、検証済みのファイルだけ`linkat`で確定します。未確定ファイルは名前を持たないため、強制終了でも一時名が残りません。対応しないfilesystemや`/proc/self/fd`を開けない環境では、従来の名前付き`.part`へ戻ります。既定は比較のため`named`です。どちらも既存出力を上書きせず、容量不足・FD不足を成功扱いしません。JSONの`anonymous_output_files`／`named_output_files`で実際の方式を確認できます。
+
+pipelineの事前計画では、最大入力・最大出力が別バッチに現れてホスト予算を超える場合、バッチのエントリ数を減らして再計画します。一つのエントリでも収まらない場合は、出力を書き始める前にエラーを返します。
+
+GPU経路にも`--host-limit`を適用します。バッチ入出力の固定化メモリと、固定バッファ分として保守的に予約する12MiBを予算化します。pipelineは2組の固定化バッファを含み、全計画の最大入力・最大出力が別バッチに現れるケースも事前に確認します。通常経路は必要なら古い固定化バッファを解放して予算を守ります。固定分を常に予約しているため、Stored／Streamingを挟んでも予算内の固定化バッファは再利用できます。hybridはCPUに1/4、GPUに残りのホスト予算を分け、GPUバッチの最悪ケースを考慮してVRAM予算も縮めます。GPUの`host_buffer_bytes`は固定分の予約を含む上限見積もりです。
 
 `--gpu-algorithm lookahead`はRaw DeflateへGzipの18バイトの外枠をメモリ上で付けて実行します。再圧縮や中間ファイルを作らず、scratchもVRAM予算に含めます。高圧縮率の繰り返しデータでは従来方式より遅い例を確認しているため、既定は`deflate`のままです。4GiBを超える単一出力もAPI上は扱えますが、入力・出力・scratchがVRAM予算に収まる必要があります。収まらなければautoモードではStreamingへ回します。
 
@@ -108,6 +115,8 @@ python3 scripts/verify_large.py --binary build/gipu --gib 26 --vram-limit 64M
 CPU比較対象にはzlibとlibdeflateを使います。`test`はデコード＋CRC（比較用`--stream-crc gpu`のStreaming時は一時出力のI/Oも含む）の測定で、`benchmark.py --extract`はZIP解析・ファイル生成・書き込みも含む測定です。CUDA初期化を含むCLI全体時間を外部から測り、CLI内部時間も保存します。速度倍率を一般的なZIPや7-Zipへの倍率として解釈しないでください。
 
 `scripts/make_corpus.py`と`scripts/benchmark_corpus.py`で、極小・小・中・単一大ファイル、高低圧縮率、Stored／空ファイル混在を再現比較できます。後者はピークRSS・CLI全体時間・内部工程・全出力サイズ・固定seedのSHA256サンプルを記録し、元ZIPを残して自分の一時展開先だけを削除します。5時間の改善作業は[研究・実験ログ](docs/research-2026-10-02.md)に記録します。
+
+`scripts/make_real_single.py`は既存バイナリの先頭N GiBを読み取り、単一エントリの比較用ZIP64を作ります。入力と既存出力を上書きしません。`scripts/fuzz_zip.py`はCPU経路に限り、固定seedでヘッダ・圧縮本体・切り詰め等の変異入力を試し、成功例をPython zipfileと照合します。GPUへの不正Deflate投入は行いません。
 
 ### Kaggle実データの大容量測定
 

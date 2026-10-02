@@ -34,6 +34,7 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
   if (!files) return {};
   auto count = std::min({opts.threads, files, static_cast<size_t>(opts.host_limit / (2ULL << 20))});
   const uint64_t worker_budget = opts.host_limit / count;
+  const uint64_t buffer_budget = std::min(worker_budget, opts.cpu_buffer_limit);
   std::atomic<size_t> next{0};
   std::atomic<bool> stop{false};
   std::mutex lock;
@@ -55,7 +56,7 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
         if (e.directory) continue;
         check_cancelled();
         uint64_t output_bytes = e.method == 8 ? std::max<uint64_t>(e.uncompressed, 1) : 0;
-        if (e.compressed > worker_budget || output_bytes > worker_budget - e.compressed) {
+        if (e.compressed > buffer_budget || output_bytes > buffer_budget - e.compressed) {
           // 残っている全量バッファを解放してからStreaming用2MiBを確保する。
           buffer.reset(); capacity = 0;
           Options streaming = opts; streaming.host_limit = worker_budget;
