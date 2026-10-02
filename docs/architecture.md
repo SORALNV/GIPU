@@ -8,7 +8,7 @@
 | `src/io.cpp` | 出力パスを`openat`／`O_NOFOLLOW`でたどる処理、一時出力、サイズ制限付きsink、仮想Gzip入力 |
 | `src/gpu.cpp` | nvCOMPのバッチDeflate、Streaming Gzip、GPU CRC、再利用arena、I/Oパイプライン |
 | `src/cpu.cpp` | zlibのCPU参照実装。GPU失敗時の暗黙のフォールバックには使わない |
-| `src/libdeflate.cpp` | workerごとの全エントリCPU解凍、CRC、原子的な出力。比較用の1〜32 worker経路 |
+| `src/libdeflate.cpp` | workerごとの予算付き全エントリCPU解凍、巨大ファイルのStreaming切替、CRC、原子的な出力 |
 | `src/main.cpp` | CLI、合計出力上限、JSON統計 |
 | `tests/integration.py` | 標準zipfileで作ったZIPとの互換性、不正メタデータ、出力保護、予算による経路選択 |
 
@@ -48,7 +48,7 @@ Storedはデコードがないため、コピーしながら指定したCPU／GP
 
 ## 保証範囲
 
-- GPU経路はアーカイブ本体やVRAMを超える単一展開データをRAM／VRAMへ一括で確保しません。中央ディレクトリのエントリ一覧はCPUメモリに保持するため、その部分はエントリ数に比例します（上限100万）。比較用libdeflateだけはworkerごとにエントリ全体をCPU RAMへ置き、圧縮／展開サイズ各256MiBまでに制限します。
+- GPU経路はVRAM予算を超える単一展開データをRAM／VRAMへ一括で確保しません。中央ディレクトリのエントリ一覧はCPUメモリに保持するため、その部分はエントリ数に比例します（上限100万）。libdeflateは`--host-limit`をworker間で分配し、予算を超える単一ファイルだけCPU Streamingへ切り替えます。全量バッファを解放してから2MiBのStreamingバッファを確保し、同時保持しません。バッファのゼロ初期化を省き、Storedの不要なコピーも省きます。
 - `--vram-limit`はアプリの明示的な確保量の上限です。CUDA／nvCOMP内部、他アプリを含む総VRAMの上限ではありません。
 - GPUバッチでは解凍とCRCをGPUへ送り、Streamingでは既定でCPU CRCを併用します。名前処理、ZIPメタデータの検査、I/O、CRC値の最終比較などの制御処理はCPUです。nvCOMP内部の全処理を監査したわけではありません。
 - パス検証と展開後CRCは、破損DeflateをGPUへ渡したときのライブラリの安全性を保証しません。初期版のGPU経路は既知の正しい入力向けです。

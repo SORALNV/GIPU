@@ -14,6 +14,7 @@ import zlib
 BINARY = str(Path(sys.argv.pop(1)).resolve())
 BACKEND = os.environ.get("GIPU_TEST_BACKEND", "cpu")
 MODE = os.environ.get("GIPU_TEST_MODE", "auto")
+ALGORITHM = os.environ.get("GIPU_TEST_ALGORITHM", "deflate")
 
 
 class Unseekable(io.BytesIO):
@@ -69,6 +70,7 @@ class Integration(unittest.TestCase):
     def process(self, data, *, ok=True, extract=True, extra=()):
         self.archive.write_bytes(data)
         args = ["extract" if extract else "test", self.archive, "--backend", BACKEND, "--gpu-mode", MODE,
+                "--gpu-algorithm", ALGORITHM,
                 "--threads", os.environ.get("GIPU_TEST_THREADS", "1")]
         if extract:
             args += ["--output", self.out]
@@ -146,12 +148,12 @@ class Integration(unittest.TestCase):
         self.assertEqual(stats["gpu_batches"], 0)
         self.assertLessEqual(stats["workspace_bytes"], 16 << 20)
         # バッチの後にStreamingを選んでもarenaを解放して予算を守る。
-        result = self.process(zip_bytes([("small", b"a" * (8 << 20)), ("large", b"b" * (32 << 20))]), extract=False,
-                              extra=("--vram-limit", "16M", "--json"))
+        result = self.process(zip_bytes([("small", b"a" * (8 << 20)), ("large", b"b" * (64 << 20))]), extract=False,
+                              extra=("--vram-limit", "32M", "--json"))
         stats = json.loads(result.stdout)
         self.assertEqual(stats["gpu_batches"], 1)
         self.assertEqual(stats["gpu_streams"], 1)
-        self.assertLessEqual(stats["workspace_bytes"], 16 << 20)
+        self.assertLessEqual(stats["workspace_bytes"], 32 << 20)
 
     @unittest.skipUnless(BACKEND == "gpu", "GPU予算のテスト")
     def test_insufficient_gpu_budget(self):
@@ -273,6 +275,35 @@ class Integration(unittest.TestCase):
     def test_test_writes_nothing(self):
         self.process(zip_bytes([("file", b"data")]), extract=False)
         self.assertFalse(self.out.exists())
+
+    @unittest.skipUnless(BACKEND == "libdeflate", "CPUの共有メモリ予算")
+    def test_cpu_memory_budget_and_streaming(self):
+        small = os.urandom(1 << 20)
+        large = b"large-file" * (2 << 20)
+        result = self.process(zip_bytes([("small", small), ("large", large)]),
+                              extra=("--host-limit", "4M", "--threads", "1", "--json"))
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["cpu_buffered_files"], 1)
+        self.assertEqual(stats["cpu_stream_files"], 1)
+        self.assertLessEqual(stats["host_buffer_bytes"], 4 << 20)
+        self.assertEqual((self.out / "small").read_bytes(), small)
+        self.assertEqual((self.out / "large").read_bytes(), large)
+        result = self.process(zip_bytes([(f"{i}", large) for i in range(5)]), extract=False,
+                              extra=("--host-limit", "8M", "--threads", "32", "--json"))
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["cpu_stream_files"], 5)
+        self.assertLessEqual(stats["host_buffer_bytes"], 8 << 20)
+
+    @unittest.skipUnless(BACKEND in ("cpu", "libdeflate"), "CPUの最小メモリ予算")
+    def test_cpu_insufficient_memory_budget(self):
+        self.process(zip_bytes([("x", b"x")]), extract=False, ok=False, extra=("--host-limit", "1M"))
+
+    @unittest.skipUnless(BACKEND == "gpu" and ALGORITHM == "lookahead", "LOOKAHEADの選択確認")
+    def test_lookahead_selected(self):
+        result = self.process(zip_bytes([("data", b"lookahead" * (1 << 20))]), extract=False, extra=("--json",))
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["lookahead_batches"], 1)
+        self.assertEqual(stats["gpu_crc_bytes"], 9 << 20)
 
     @unittest.skipUnless(BACKEND == "gpu" and MODE == "stream", "Streaming CRCの併用検証")
     def test_stream_cpu_crc_without_spool(self):

@@ -1,4 +1,5 @@
 #include "gipu/backend.hpp"
+#include "gipu/checksum.hpp"
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -9,11 +10,14 @@ namespace gipu {
 namespace {
 using Clock = std::chrono::steady_clock;
 double elapsed(Clock::time_point start) { return std::chrono::duration<double>(Clock::now() - start).count(); }
-}
-Stats run_cpu(const Archive& archive, OutputRoot* root, const Options& opts) {
+Stats run_cpu_selected(const Archive& archive, std::span<const Entry* const> entries, OutputRoot* root,
+                       const Options& opts, bool fast_checksum) {
+  if (opts.host_limit < (2ULL << 20)) throw std::runtime_error("CPU Streamingには--host-limit 2M以上が必要です");
   Stats stats;
   std::vector<char> in(1 << 20), out(1 << 20);
-  for (const auto& e : archive.entries()) {
+  stats.host_buffer_bytes = in.size() + out.size();
+  for (const auto* entry : entries) {
+    const auto& e = *entry;
     check_cancelled();
     if (e.directory) { if (root) root->directory(e.name); continue; }
     std::unique_ptr<OutputFile> file;
@@ -23,7 +27,8 @@ Stats run_cpu(const Archive& archive, OutputRoot* root, const Options& opts) {
     uint32_t crc = 0;
     Sink sink(e.uncompressed, file.get(), [&](std::span<const char> b) {
       auto start = Clock::now();
-      crc = static_cast<uint32_t>(crc32_z(crc, reinterpret_cast<const Bytef*>(b.data()), b.size()));
+      crc = fast_checksum ? cpu_crc32(crc, b.data(), b.size()) :
+          static_cast<uint32_t>(crc32_z(crc, reinterpret_cast<const Bytef*>(b.data()), b.size()));
       stats.crc_seconds += elapsed(start);
     });
     std::ostream output(&sink); output.exceptions(std::ios::badbit | std::ios::failbit);
@@ -74,7 +79,19 @@ Stats run_cpu(const Archive& archive, OutputRoot* root, const Options& opts) {
     if (file) file->commit();
     stats.write_seconds += elapsed(file_start);
     ++stats.files; stats.bytes += e.uncompressed; stats.cpu_crc_bytes += e.uncompressed;
+    ++stats.cpu_stream_files;
   }
   return stats;
+}
+}
+Stats run_cpu(const Archive& archive, OutputRoot* root, const Options& opts) {
+  std::vector<const Entry*> entries;
+  entries.reserve(archive.entries().size());
+  for (const auto& e : archive.entries()) entries.push_back(&e);
+  return run_cpu_selected(archive, entries, root, opts, false);
+}
+Stats run_cpu_entry(const Archive& archive, const Entry& entry, OutputRoot* root, const Options& opts, bool fast_checksum) {
+  const Entry* entries[] = {&entry};
+  return run_cpu_selected(archive, entries, root, opts, fast_checksum);
 }
 }

@@ -13,7 +13,8 @@ Ubuntu＋NVIDIA GPUで、通常のZIPを展開するCLIを開発しています�
 - バッチではGPU CRC32、Streamingでは既定で高速CPU CRCを併用。従来の増分GPU CRCも比較用に選択できます。
 - JSONの処理時間・展開量・バッチ数・ストリーム数・作業領域の出力。
 - バッチarena／固定化ホストバッファの再利用、検証時の全展開データD2H転送の省略。
-- libdeflateによる比較用CPU経路（1〜32 worker、任意の依存）。
+- libdeflateによる並列CPU経路（1〜32 worker、任意の依存）。予算に収まらない単一ファイルは定量メモリのCPU Streamingで処理。
+- 大きな単一ファイル向けGzip LOOKAHEADバッチの比較経路（`--gpu-algorithm lookahead`、実験用）。
 
 ## ビルド
 
@@ -58,7 +59,9 @@ build/gipu extract archive.zip --output ./out --pipeline --json
 
 `--gpu-mode auto`は予算内の最大4096エントリをまとめ、収まらないエントリをストリーミングへ回します。`--batch-entries`で上限を変更できます。`stream`は全DeflateをStreaming Gzipへ、`batch`はサイズ・予算内のDeflateだけをバッチへ送ります。Storedはコピー＋CRCです。空のDeflateエントリはストリーミング経路で処理します。
 
-比較用の`--backend libdeflate`は任意のlibdeflate依存を見つけたビルドで使用できます。既存環境には`libdeflate`を追加して再ビルドしてください。エントリ全体をCPU RAMに置くため、1エントリの圧縮／展開サイズは各256MiBまでです。`--threads`はこの経路だけに作用します。
+`--backend libdeflate`は任意のlibdeflate依存を見つけたビルドで使用できます。既存環境には`libdeflate`を追加して再ビルドしてください。`--threads`はこの経路のworker数です。`--host-limit`（既定8GiB、最小2MiB）をworker数で分配し、入力＋出力がworker予算に収まる場合だけ全バッファ解凍します。収まらないファイルはzlib Streaming＋高速CPU CRCで処理するため、従来の256MiB制限はありません。Storedは余分なコピーを省きます。`host_buffer_bytes`はworkerごとの最大データバッファ量の合計であり、ZIPメタデータ・ライブラリ内部・スレッドスタックを含むRSS全体の上限ではありません。現在このホスト予算はCPU経路に作用します。
+
+`--gpu-algorithm lookahead`はRaw DeflateへGzipの18バイトの外枠をメモリ上で付けて実行します。再圧縮や中間ファイルを作らず、scratchもVRAM予算に含めます。高圧縮率の繰り返しデータでは従来方式より遅い例を確認しているため、既定は`deflate`のままです。4GiBを超える単一出力もAPI上は扱えますが、入力・出力・scratchがVRAM予算に収まる必要があります。収まらなければautoモードではStreamingへ回します。
 
 `--pipeline`は全ファイルが非空Deflateバッチに収まるZIP専用の実験経路です。固定化ホスト入出力を二重化し、次バッチの読み込み・GPU処理・前バッチの書き込みを重畳します。GPU arenaは一つだけでVRAM予算は変わりませんが、ホストRAMの必要量はバッチ入出力の約2倍になります。Stored／空ファイル／Streamingが必要な入力にはこの指定を外してください。各バッチ全体のGPU CRC確認が済むまでは、そのバッチの出力を書き出しません。
 

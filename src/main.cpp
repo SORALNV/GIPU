@@ -33,8 +33,10 @@ void help() {
                "  --pipeline               GPUバッチ専用、読み込み・GPU・書き込みを重畳\n"
                "  --gpu N                  CUDAデバイス番号（既定0）\n"
                "  --gpu-mode auto|stream|batch  GPU経路（既定auto）\n"
+               "  --gpu-algorithm deflate|lookahead  バッチ方式（既定deflate）\n"
                "  --stream-crc cpu|gpu     StreamingのCRC（既定cpu、再読み込み不要）\n"
                "  --vram-limit 4G          GIPUが確保するGPU作業領域の上限\n"
+               "  --host-limit 8G          CPUデータバッファ合計の予算\n"
                "  --max-output 1T          合計展開サイズの上限\n"
                "  --sync                   出力ファイルと親ディレクトリをfsync\n"
                "  --json                   結果をJSONで出力\n";
@@ -56,6 +58,7 @@ int main(int argc, char** argv) {
       if (arg == "--output" || arg == "-o") output_path = value();
       else if (arg == "--backend") opts.backend = value();
       else if (arg == "--gpu-mode") opts.gpu_mode = value();
+      else if (arg == "--gpu-algorithm") opts.gpu_algorithm = value();
       else if (arg == "--stream-crc") opts.stream_crc = value();
       else if (arg == "--threads" || arg == "--write-threads" || arg == "--batch-entries") {
         auto text = value(); size_t used = 0;
@@ -70,6 +73,7 @@ int main(int argc, char** argv) {
         auto text = value(); size_t used = 0; opts.gpu = std::stoi(text, &used);
         if (used != text.size() || opts.gpu < 0) throw std::runtime_error("GPU番号が不正です");
       } else if (arg == "--vram-limit") opts.vram_limit = size_value(value());
+      else if (arg == "--host-limit") opts.host_limit = size_value(value());
       else if (arg == "--max-output") opts.max_output = size_value(value());
       else if (arg == "--sync") opts.durable = true;
       else if (arg == "--pipeline") opts.pipeline = true;
@@ -80,6 +84,7 @@ int main(int argc, char** argv) {
     }
     if (opts.backend != "gpu" && opts.backend != "cpu" && opts.backend != "libdeflate") throw std::runtime_error("backendはgpu/cpu/libdeflateです");
     if (opts.gpu_mode != "auto" && opts.gpu_mode != "stream" && opts.gpu_mode != "batch") throw std::runtime_error("gpu-modeはauto/stream/batchです");
+    if (opts.gpu_algorithm != "deflate" && opts.gpu_algorithm != "lookahead") throw std::runtime_error("gpu-algorithmはdeflate/lookaheadです");
     if (opts.stream_crc != "cpu" && opts.stream_crc != "gpu") throw std::runtime_error("stream-crcはcpu/gpuです");
     if (opts.pipeline && (opts.backend != "gpu" || opts.gpu_mode == "stream")) throw std::runtime_error("pipelineはGPU auto/batch専用です");
     if (command == "doctor") { std::cout << gipu::gpu_info(opts.gpu) << '\n'; return 0; }
@@ -109,6 +114,9 @@ int main(int argc, char** argv) {
                         << ",\"decode_seconds\":" << stats.decode_seconds << ",\"crc_seconds\":" << stats.crc_seconds
                         << ",\"transfer_seconds\":" << stats.transfer_seconds
                         << ",\"cpu_crc_bytes\":" << stats.cpu_crc_bytes << ",\"gpu_crc_bytes\":" << stats.gpu_crc_bytes
+                        << ",\"lookahead_batches\":" << stats.lookahead_batches
+                        << ",\"host_buffer_bytes\":" << stats.host_buffer_bytes
+                        << ",\"cpu_buffered_files\":" << stats.cpu_buffered_files << ",\"cpu_stream_files\":" << stats.cpu_stream_files
                         << ",\"allocation_seconds\":" << stats.allocation_seconds << "}\n";
     else std::cout << "完了: " << stats.files << "ファイル / " << stats.bytes << " bytes / " << seconds << "秒 / " << throughput
                    << " GiB/s（" << opts.backend << ", batch=" << stats.batches << ", stream=" << stats.streams << "）\n";

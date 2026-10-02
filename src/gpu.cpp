@@ -3,6 +3,7 @@
 #include <cuda_runtime_api.h>
 #include <nvcomp/crc32.h>
 #include <nvcomp/deflate.h>
+#include <nvcomp/gzip.h>
 #include <nvcomp/native/streaming_gzip.hpp>
 #include <nvcomp/version.h>
 #include <algorithm>
@@ -142,19 +143,54 @@ struct Batch {
   std::vector<const Entry*> entries;
   std::vector<size_t> input_offsets, output_offsets;
   size_t input = 0, output = 0, max_output = 0, total_output = 0, scratch = 0, memory = 0;
+  bool gzip = false;
 };
-Batch plan(const std::vector<const Entry*>& entries, nvcompBatchedDeflateDecompressOpts_t opts) {
-  Batch b; b.entries = entries;
-  nvcompAlignmentRequirements_t requirements{};
-  nv_check(nvcompBatchedDeflateDecompressGetRequiredAlignments(opts, &requirements));
+struct Codec {
+  bool gzip;
+  nvcompBatchedDeflateDecompressOpts_t deflate = nvcompBatchedDeflateDecompressDefaultOpts;
+  nvcompBatchedGzipDecompressOpts_t lookahead = nvcompBatchedGzipDecompressDefaultOpts;
+  explicit Codec(bool use_gzip) : gzip(use_gzip) {
+    deflate.backend = NVCOMP_DECOMPRESS_BACKEND_CUDA;
+    lookahead.backend = NVCOMP_DECOMPRESS_BACKEND_CUDA;
+    lookahead.algorithm = NVCOMP_GZIP_DECOMPRESS_ALGORITHM_LOOKAHEAD;
+  }
+  bool supported(const Entry& e) const {
+    auto limit = gzip ? nvcompGzipLookaheadDecompressionMaxAllowedChunkSize : nvcompDeflateDecompressionMaxAllowedChunkSize;
+    return e.uncompressed <= limit && e.compressed <= limit - (gzip ? 18 : 0);
+  }
+  size_t input_size(const Entry& e) const { return checked_size(e.compressed) + (gzip ? 18 : 0); }
+  nvcompAlignmentRequirements_t alignments() const {
+    nvcompAlignmentRequirements_t requirements{};
+    nv_check(gzip ? nvcompBatchedGzipDecompressGetRequiredAlignments(lookahead, &requirements) :
+                    nvcompBatchedDeflateDecompressGetRequiredAlignments(deflate, &requirements));
+    return requirements;
+  }
+  size_t scratch_size(size_t count, size_t maximum, size_t total) const {
+    size_t bytes = 0;
+    nv_check(gzip ? nvcompBatchedGzipDecompressGetTempSizeAsync(count, maximum, lookahead, &bytes, total) :
+                    nvcompBatchedDeflateDecompressGetTempSizeAsync(count, maximum, deflate, &bytes, total));
+    return bytes;
+  }
+  void decode(const void* const* input, const size_t* sizes, const size_t* capacities, size_t* actual,
+              size_t count, void* scratch, size_t scratch_bytes, void* const* output,
+              nvcompStatus_t* status, cudaStream_t stream) const {
+    nv_check(gzip ? nvcompBatchedGzipDecompressAsync(input, sizes, capacities, actual, count, scratch, scratch_bytes,
+                                                    output, lookahead, status, stream) :
+                    nvcompBatchedDeflateDecompressAsync(input, sizes, capacities, actual, count, scratch, scratch_bytes,
+                                                       output, deflate, status, stream));
+  }
+};
+Batch plan(const std::vector<const Entry*>& entries, const Codec& codec) {
+  Batch b; b.entries = entries; b.gzip = codec.gzip;
+  const auto requirements = codec.alignments();
   for (const auto* e : entries) {
     b.input_offsets.push_back(b.input); b.output_offsets.push_back(b.output);
-    b.input += aligned(std::max<size_t>(checked_size(e->compressed), 1), std::max<size_t>(requirements.input, 8));
+    b.input += aligned(std::max<size_t>(codec.input_size(*e), 1), std::max<size_t>(requirements.input, 8));
     b.output += aligned(std::max<size_t>(checked_size(e->uncompressed), 1), std::max<size_t>(requirements.output, 8));
     b.max_output = std::max(b.max_output, checked_size(e->uncompressed));
     b.total_output += checked_size(e->uncompressed);
   }
-  nv_check(nvcompBatchedDeflateDecompressGetTempSizeAsync(entries.size(), b.max_output, opts, &b.scratch, b.total_output));
+  b.scratch = codec.scratch_size(entries.size(), b.max_output, b.total_output);
   // 一つの再利用arenaに置く各領域を256byte境界に揃える。
   b.memory = aligned(b.input, 256) + aligned(b.output, 256) + aligned(std::max<size_t>(b.scratch, 1), 256)
       + 5 * aligned(entries.size() * sizeof(size_t), 256)
@@ -171,8 +207,20 @@ struct BatchBuffers {
 double read_batch(const Archive& archive, const Batch& b, BatchHost& host) {
   auto start = std::chrono::steady_clock::now();
   host.input.reserve(b.input);
-  for (size_t i = 0; i < b.entries.size(); ++i)
-    archive.read(b.entries[i]->data_offset, std::span<char>(host.input.data() + b.input_offsets[i], checked_size(b.entries[i]->compressed)));
+  for (size_t i = 0; i < b.entries.size(); ++i) {
+    const auto& e = *b.entries[i];
+    char* target = host.input.data() + b.input_offsets[i];
+    if (b.gzip) {
+      constexpr unsigned char header[10] = {0x1f, 0x8b, 8, 0, 0, 0, 0, 0, 0, 255};
+      std::copy_n(header, 10, target);
+      for (size_t byte = 0; byte < 4; ++byte) {
+        target[10 + checked_size(e.compressed) + byte] = static_cast<char>((e.crc >> (8 * byte)) & 255);
+        target[14 + checked_size(e.compressed) + byte] = static_cast<char>((e.uncompressed >> (8 * byte)) & 255);
+      }
+      target += 10;
+    }
+    archive.read(e.data_offset, std::span<char>(target, checked_size(e.compressed)));
+  }
   return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
 }
 double write_batch(const Batch& b, const BatchHost& host, OutputRoot* root, const Options& opts) {
@@ -213,7 +261,7 @@ double write_batch(const Batch& b, const BatchHost& host, OutputRoot* root, cons
   return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
 }
 void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, const Options& opts, cudaStream_t stream,
-                  nvcompBatchedDeflateDecompressOpts_t decompress_opts, BatchBuffers& buffers, BatchHost& host, Stats& stats,
+                  const Codec& codec, BatchBuffers& buffers, BatchHost& host, Stats& stats,
                   bool preloaded = false, bool defer_write = false) {
   size_t n = b.entries.size();
   auto allocate_start = std::chrono::steady_clock::now();
@@ -245,7 +293,7 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
     const auto& e = *b.entries[i];
     in_ptrs[i] = static_cast<char*>(input) + b.input_offsets[i];
     out_ptrs[i] = static_cast<char*>(output) + b.output_offsets[i];
-    sizes[i] = checked_size(e.compressed); limits[i] = checked_size(e.uncompressed);
+    sizes[i] = codec.input_size(e); limits[i] = checked_size(e.uncompressed);
   }
   auto& events = buffers.events;
   events.mark(0, stream);
@@ -255,8 +303,7 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
   upload(compressed_sizes, sizes.data(), n * sizeof(size_t), stream);
   upload(capacities, limits.data(), n * sizeof(size_t), stream);
   events.mark(1, stream);
-  nv_check(nvcompBatchedDeflateDecompressAsync(input_ptrs, compressed_sizes, capacities,
-      actual_sizes, n, scratch, b.scratch, output_ptrs, decompress_opts, statuses, stream));
+  codec.decode(input_ptrs, compressed_sizes, capacities, actual_sizes, n, scratch, b.scratch, output_ptrs, statuses, stream);
   events.mark(2, stream);
   auto crc_opts = crc_options(n, b.max_output, stream);
   nv_check(nvcompBatchedCRC32Async(static_cast<const void**>(static_cast<void*>(output_ptrs)), capacities, n, checksums, crc_opts,
@@ -287,42 +334,43 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
   }
   stats.workspace = std::max<uint64_t>(stats.workspace, buffers.arena.capacity() + StreamingCrc::memory);
   ++stats.batches;
+  if (codec.gzip) ++stats.lookahead_batches;
 }
 Batch choose_batch(const std::vector<Entry>& entries, size_t i, const Options& opts,
-                   nvcompBatchedDeflateDecompressOpts_t decompress_opts) {
+                   const Codec& codec) {
   std::vector<const Entry*> pending;
   uint64_t payload = 0;
   const auto remaining = opts.vram_limit - StreamingCrc::memory;
   for (size_t j = i; j < entries.size() && pending.size() < opts.batch_entries; ++j) {
     const auto& e = entries[j];
     if (e.directory || e.method != 8 || e.uncompressed == 0 ||
-        e.uncompressed > nvcompDeflateDecompressionMaxAllowedChunkSize || e.compressed > nvcompDeflateDecompressionMaxAllowedChunkSize) break;
+        !codec.supported(e)) break;
     if (e.compressed > remaining || e.uncompressed > remaining || e.compressed > remaining - e.uncompressed ||
         payload > remaining - e.compressed - e.uncompressed) break;
     pending.push_back(&e); payload += e.compressed + e.uncompressed;
   }
   if (pending.empty()) return {};
-  auto chosen = plan(pending, decompress_opts);
+  auto chosen = plan(pending, codec);
   if (chosen.memory <= remaining) return chosen;
   size_t lo = 0, hi = pending.size();
   chosen = Batch{};
   while (lo + 1 < hi) {
     auto mid = lo + (hi - lo) / 2;
     std::vector<const Entry*> prefix(pending.begin(), pending.begin() + static_cast<ptrdiff_t>(mid));
-    auto attempt = plan(prefix, decompress_opts);
+    auto attempt = plan(prefix, codec);
     if (attempt.memory <= remaining) { lo = mid; chosen = std::move(attempt); }
     else hi = mid;
   }
   return chosen;
 }
 Stats pipeline_decode(const Archive& archive, OutputRoot* root, const Options& opts, cudaStream_t stream,
-                      nvcompBatchedDeflateDecompressOpts_t decompress_opts, BatchBuffers& buffers) {
+                      const Codec& codec, BatchBuffers& buffers) {
   BatchHost hosts[2];
   std::vector<Batch> batches;
   const auto& entries = archive.entries();
   for (size_t i = 0; i < entries.size();) {
     if (entries[i].directory) { ++i; continue; }
-    auto b = choose_batch(entries, i, opts, decompress_opts);
+    auto b = choose_batch(entries, i, opts, codec);
     if (b.entries.empty()) throw std::runtime_error("pipelineは全ファイルが予算内の非空Deflateバッチに収まるZIP専用です");
     i += b.entries.size(); batches.push_back(std::move(b));
   }
@@ -354,7 +402,7 @@ Stats pipeline_decode(const Archive& archive, OutputRoot* root, const Options& o
       return read_batch(archive, batches[next], hosts[next % 2]);
     });
     // GPU arenaは一つだけ。ホスト側を二重化しVRAM予算は変えない。
-    batch_decode(archive, batches[i], root, opts, stream, decompress_opts, buffers, hosts[slot], stats, true, true);
+    batch_decode(archive, batches[i], root, opts, stream, codec, buffers, hosts[slot], stats, true, true);
     if (root) writers[slot] = std::async(std::launch::async, [&, i, slot] {
       return write_batch(batches[i], hosts[slot], root, opts);
     });
@@ -442,27 +490,25 @@ Stats run_gpu(const Archive& archive, OutputRoot* root, const Options& opts) {
   BatchBuffers buffers;
   BatchHost host;
   Stats stats; stats.workspace = StreamingCrc::memory;
-  auto decompress_opts = nvcompBatchedDeflateDecompressDefaultOpts;
-  decompress_opts.backend = NVCOMP_DECOMPRESS_BACKEND_CUDA;
-  if (opts.pipeline) return pipeline_decode(archive, root, opts, stream, decompress_opts, buffers);
+  Codec codec(opts.gpu_algorithm == "lookahead");
+  if (opts.pipeline) return pipeline_decode(archive, root, opts, stream, codec, buffers);
   const auto& entries = archive.entries();
   for (size_t i = 0; i < entries.size();) {
     check_cancelled();
     const auto& e = entries[i];
     if (e.directory) { if (root) root->directory(e.name); ++i; continue; }
-    if (e.method == 0 || opts.gpu_mode == "stream" || e.uncompressed > nvcompDeflateDecompressionMaxAllowedChunkSize ||
-        e.compressed > nvcompDeflateDecompressionMaxAllowedChunkSize || e.uncompressed == 0) {
+    if (e.method == 0 || opts.gpu_mode == "stream" || !codec.supported(e) || e.uncompressed == 0) {
       if (opts.gpu_mode == "batch" && e.method == 8 && e.uncompressed != 0) throw std::runtime_error("エントリがバッチAPIのサイズ上限を超えています");
       buffers.arena.release(); // Streamingのscratchとarenaを同時に保持しない。
       stream_decode(archive, e, root, opts, crc, stream, stats); ++i; continue;
     }
-    auto chosen = choose_batch(entries, i, opts, decompress_opts);
+    auto chosen = choose_batch(entries, i, opts, codec);
     if (chosen.entries.empty()) {
       if (opts.gpu_mode == "batch") throw std::runtime_error("エントリが--vram-limit内のバッチに収まりません");
       buffers.arena.release();
       stream_decode(archive, e, root, opts, crc, stream, stats); ++i;
     } else {
-      batch_decode(archive, chosen, root, opts, stream, decompress_opts, buffers, host, stats); i += chosen.entries.size();
+      batch_decode(archive, chosen, root, opts, stream, codec, buffers, host, stats); i += chosen.entries.size();
     }
   }
   return stats;
