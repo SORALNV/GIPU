@@ -277,6 +277,32 @@ class Integration(unittest.TestCase):
         self.assertEqual(disabled["gpu_size_reorders"], 0)
         self.assertEqual(enabled["bytes"], disabled["bytes"])
 
+    @unittest.skipUnless(BACKEND == "gpu" and MODE != "stream", "GPU出力の小窓転送とhost予算")
+    def test_gpu_windowed_output(self):
+        payload = bytes(range(251)) * 100001
+        entries = [(f"window/{i}", payload + bytes([i])) for i in range(3)]
+        result = self.process(zip_bytes(entries), extra=("--gpu-output", "stream", "--host-limit", "16M",
+                              "--write-threads", "2", "--gpu-mode", "batch", "--json"))
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["gpu_streamed_output_bytes"], sum(len(p) for _, p in entries))
+        self.assertLessEqual(stats["host_buffer_bytes"], 16 << 20)
+        self.assertGreater(stats["gpu_batches"], 0)
+        for name, payload in entries:
+            self.assertEqual((self.out / name).read_bytes(), payload)
+        self.run_cli("test", self.archive, "--gpu-output", "stream", "--pipeline", ok=False)
+
+    @unittest.skipUnless(BACKEND == "gpu" and MODE != "stream", "小窓転送中の出力失敗")
+    def test_gpu_windowed_output_failure_cleanup(self):
+        self.archive.write_bytes(zip_bytes([(f"failed/{i}", b"limit" * (1 << 19)) for i in range(3)]))
+        def limits():
+            resource.setrlimit(resource.RLIMIT_FSIZE, (1024, 1024))
+            signal.signal(signal.SIGXFSZ, signal.SIG_IGN)
+        result = subprocess.run([BINARY, "extract", str(self.archive), "--backend", "gpu", "--gpu-mode", "batch",
+                                 "--gpu-output", "stream", "--temp-mode", "named", "--output", str(self.out)],
+                                preexec_fn=limits, capture_output=True, text=True, timeout=120)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual([p for p in self.out.rglob("*") if p.is_file()], [])
+
     def test_cp437(self):
         data = zip_bytes([("x.txt", b"cp437")]).replace(b"x.txt", b"\x82.txt")
         self.process(data)

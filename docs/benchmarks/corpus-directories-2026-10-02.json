@@ -1,0 +1,1976 @@
+{
+  "source_log": "corpus-directories-20261002.jsonl",
+  "source_sha256": "8567eeb91423393d1cc363d9e61633a85447b05a36703fb54e73ee96cbb47624",
+  "metadata": [
+    {
+      "kind": "metadata",
+      "time_utc": "2026-10-02T12:33:16Z",
+      "binary_sha256": "eb9c68bd6eff96a74d71a612deda037dbc67cccc4b9c02ef0d1a7e20c8ea7b38",
+      "cache": "warm",
+      "durable": false,
+      "note": "warmはOSキャッシュを排除しない。drop-advisedもcoldを保証しない。異常終了は行に記録する。"
+    }
+  ],
+  "groups": [
+    {
+      "case": "flat-tiny",
+      "mode": "extract",
+      "variant": "auto",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 16777216,
+      "archive_bytes": 24117346,
+      "wall_seconds": [
+        1.8831779069987533,
+        1.7017584919994988,
+        1.7299846040004923
+      ],
+      "median_seconds": 1.7299846040004923,
+      "min_seconds": 1.7017584919994988,
+      "max_seconds": 1.8831779069987533,
+      "files": 131072,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        61652,
+        61520,
+        61692
+      ],
+      "user_seconds": [
+        0.59,
+        0.59,
+        0.59
+      ],
+      "system_seconds": [
+        12.88,
+        13.6,
+        14.12
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0869049,
+        "metadata_threads": 4,
+        "read_seconds": 0.132283,
+        "write_seconds": 25.8736,
+        "decode_seconds": 0.028404,
+        "crc_seconds": 0.00408109,
+        "allocation_seconds": 7.143e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 131072,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 2944,
+        "cpu_crc_bytes": 16777216,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 131072,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 131072
+      }
+    },
+    {
+      "case": "flat-tiny",
+      "mode": "extract",
+      "variant": "auto-portable",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 16777216,
+      "archive_bytes": 24117346,
+      "wall_seconds": [
+        1.8175909780002257,
+        1.7714444169996568,
+        1.9460329899993667
+      ],
+      "median_seconds": 1.8175909780002257,
+      "min_seconds": 1.7714444169996568,
+      "max_seconds": 1.9460329899993667,
+      "files": 131072,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        61148,
+        61448,
+        61192
+      ],
+      "user_seconds": [
+        0.59,
+        0.6,
+        0.61
+      ],
+      "system_seconds": [
+        13.02,
+        13.58,
+        12.56
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0940294,
+        "metadata_threads": 4,
+        "read_seconds": 0.131059,
+        "write_seconds": 27.0763,
+        "decode_seconds": 0.0289157,
+        "crc_seconds": 0.00408735,
+        "allocation_seconds": 6.697e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 131072,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 2944,
+        "cpu_crc_bytes": 16777216,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 131072,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 131072
+      }
+    },
+    {
+      "case": "flat-tiny",
+      "mode": "extract",
+      "variant": "libdeflate1",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 16777216,
+      "archive_bytes": 24117346,
+      "wall_seconds": [
+        4.000180979001016,
+        3.8920557589990494,
+        3.9936174470003607
+      ],
+      "median_seconds": 3.9936174470003607,
+      "min_seconds": 3.8920557589990494,
+      "max_seconds": 4.000180979001016,
+      "files": 131072,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        61960,
+        61620,
+        61424
+      ],
+      "user_seconds": [
+        0.55,
+        0.53,
+        0.54
+      ],
+      "system_seconds": [
+        3.43,
+        3.35,
+        3.44
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0938336,
+        "metadata_threads": 4,
+        "read_seconds": 0.108507,
+        "write_seconds": 3.73432,
+        "decode_seconds": 0.0240715,
+        "crc_seconds": 0.00340878,
+        "allocation_seconds": 2.234e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 131072,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 184,
+        "cpu_crc_bytes": 16777216,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 131072,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 131072
+      }
+    },
+    {
+      "case": "flat-tiny",
+      "mode": "extract",
+      "variant": "libdeflate4",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 16777216,
+      "archive_bytes": 24117346,
+      "wall_seconds": [
+        1.8714096579988109,
+        1.9743132869989495,
+        1.825509765998504
+      ],
+      "median_seconds": 1.8714096579988109,
+      "min_seconds": 1.825509765998504,
+      "max_seconds": 1.9743132869989495,
+      "files": 131072,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        61120,
+        61128,
+        61052
+      ],
+      "user_seconds": [
+        0.61,
+        0.66,
+        0.6
+      ],
+      "system_seconds": [
+        5.41,
+        5.68,
+        5.58
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0925588,
+        "metadata_threads": 4,
+        "read_seconds": 0.120459,
+        "write_seconds": 6.90019,
+        "decode_seconds": 0.0266403,
+        "crc_seconds": 0.00370844,
+        "allocation_seconds": 3.798e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 131072,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 736,
+        "cpu_crc_bytes": 16777216,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 131072,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 131072
+      }
+    },
+    {
+      "case": "flat-tiny",
+      "mode": "extract",
+      "variant": "libdeflate8",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 16777216,
+      "archive_bytes": 24117346,
+      "wall_seconds": [
+        1.7942607720015076,
+        1.7952738340009091,
+        1.749755232998723
+      ],
+      "median_seconds": 1.7942607720015076,
+      "min_seconds": 1.749755232998723,
+      "max_seconds": 1.7952738340009091,
+      "files": 131072,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        61268,
+        61432,
+        61612
+      ],
+      "user_seconds": [
+        0.65,
+        0.6,
+        0.59
+      ],
+      "system_seconds": [
+        9.09,
+        8.74,
+        8.76
+      ],
+      "median_stats": {
+        "parse_seconds": 0.094918,
+        "metadata_threads": 4,
+        "read_seconds": 0.127167,
+        "write_seconds": 13.2525,
+        "decode_seconds": 0.0275223,
+        "crc_seconds": 0.00381119,
+        "allocation_seconds": 5.441e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 131072,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 1472,
+        "cpu_crc_bytes": 16777216,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 131072,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 131072
+      }
+    },
+    {
+      "case": "flat-tiny",
+      "mode": "extract",
+      "variant": "libdeflate16",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 16777216,
+      "archive_bytes": 24117346,
+      "wall_seconds": [
+        1.719583676000184,
+        1.844147380999857,
+        1.7600716770011786
+      ],
+      "median_seconds": 1.7600716770011786,
+      "min_seconds": 1.719583676000184,
+      "max_seconds": 1.844147380999857,
+      "files": 131072,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        61628,
+        61304,
+        61800
+      ],
+      "user_seconds": [
+        0.62,
+        0.61,
+        0.6
+      ],
+      "system_seconds": [
+        12.77,
+        13.25,
+        13.5
+      ],
+      "median_stats": {
+        "parse_seconds": 0.093123,
+        "metadata_threads": 4,
+        "read_seconds": 0.132902,
+        "write_seconds": 26.1742,
+        "decode_seconds": 0.0288122,
+        "crc_seconds": 0.00406139,
+        "allocation_seconds": 5.79e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 131072,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 2944,
+        "cpu_crc_bytes": 16777216,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 131072,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 131072
+      }
+    },
+    {
+      "case": "flat-tiny",
+      "mode": "extract",
+      "variant": "libdeflate32",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 16777216,
+      "archive_bytes": 24117346,
+      "wall_seconds": [
+        2.58315951700024,
+        2.655794740001511,
+        2.5063689979997434
+      ],
+      "median_seconds": 2.58315951700024,
+      "min_seconds": 2.5063689979997434,
+      "max_seconds": 2.655794740001511,
+      "files": 131072,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        61192,
+        61812,
+        61132
+      ],
+      "user_seconds": [
+        0.74,
+        0.68,
+        0.71
+      ],
+      "system_seconds": [
+        8.94,
+        8.95,
+        9.41
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0973068,
+        "metadata_threads": 4,
+        "read_seconds": 0.131225,
+        "write_seconds": 78.7008,
+        "decode_seconds": 0.0370812,
+        "crc_seconds": 0.00412728,
+        "allocation_seconds": 8.358e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 131072,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 5888,
+        "cpu_crc_bytes": 16777216,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 131072,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 131072
+      }
+    },
+    {
+      "case": "flat-small",
+      "mode": "extract",
+      "variant": "auto",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 268435456,
+      "archive_bytes": 146706123,
+      "wall_seconds": [
+        1.1047935699989466,
+        0.868684476999988,
+        1.2249696969993238
+      ],
+      "median_seconds": 1.1047935699989466,
+      "min_seconds": 0.868684476999988,
+      "max_seconds": 1.2249696969993238,
+      "files": 65536,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        33872,
+        33468,
+        33568
+      ],
+      "user_seconds": [
+        0.84,
+        0.83,
+        0.81
+      ],
+      "system_seconds": [
+        6.09,
+        6.89,
+        5.6
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0509582,
+        "metadata_threads": 4,
+        "read_seconds": 0.0760422,
+        "write_seconds": 15.994,
+        "decode_seconds": 0.527648,
+        "crc_seconds": 0.00567582,
+        "allocation_seconds": 6.2575e-05,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 65536,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 99418,
+        "cpu_crc_bytes": 268435456,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 65536,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 65536
+      }
+    },
+    {
+      "case": "flat-small",
+      "mode": "extract",
+      "variant": "auto-portable",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 268435456,
+      "archive_bytes": 146706123,
+      "wall_seconds": [
+        0.8757418339992,
+        0.8913088009994681,
+        1.0312247630008642
+      ],
+      "median_seconds": 0.8913088009994681,
+      "min_seconds": 0.8757418339992,
+      "max_seconds": 1.0312247630008642,
+      "files": 65536,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        33572,
+        33632,
+        34044
+      ],
+      "user_seconds": [
+        0.78,
+        0.82,
+        0.82
+      ],
+      "system_seconds": [
+        6.71,
+        7.22,
+        6.8
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0497756,
+        "metadata_threads": 4,
+        "read_seconds": 0.075263,
+        "write_seconds": 12.6991,
+        "decode_seconds": 0.526063,
+        "crc_seconds": 0.00561208,
+        "allocation_seconds": 5.5642e-05,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 65536,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 99418,
+        "cpu_crc_bytes": 268435456,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 65536,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 65536
+      }
+    },
+    {
+      "case": "flat-small",
+      "mode": "extract",
+      "variant": "libdeflate1",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 268435456,
+      "archive_bytes": 146706123,
+      "wall_seconds": [
+        2.460056762000022,
+        2.4899202209999203,
+        2.4955728749991977
+      ],
+      "median_seconds": 2.4899202209999203,
+      "min_seconds": 2.460056762000022,
+      "max_seconds": 2.4955728749991977,
+      "files": 65536,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        34292,
+        33832,
+        33788
+      ],
+      "user_seconds": [
+        0.75,
+        0.79,
+        0.78
+      ],
+      "system_seconds": [
+        1.72,
+        1.71,
+        1.73
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0495031,
+        "metadata_threads": 4,
+        "read_seconds": 0.0644368,
+        "write_seconds": 1.83805,
+        "decode_seconds": 0.516411,
+        "crc_seconds": 0.00505511,
+        "allocation_seconds": 6.232e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 65536,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 6215,
+        "cpu_crc_bytes": 268435456,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 65536,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 65536
+      }
+    },
+    {
+      "case": "flat-small",
+      "mode": "extract",
+      "variant": "libdeflate4",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 268435456,
+      "archive_bytes": 146706123,
+      "wall_seconds": [
+        0.9425675930015132,
+        0.9744025910003984,
+        1.0227152050010773
+      ],
+      "median_seconds": 0.9744025910003984,
+      "min_seconds": 0.9425675930015132,
+      "max_seconds": 1.0227152050010773,
+      "files": 65536,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        33744,
+        34112,
+        34276
+      ],
+      "user_seconds": [
+        0.87,
+        0.84,
+        0.84
+      ],
+      "system_seconds": [
+        2.38,
+        2.52,
+        2.69
+      ],
+      "median_stats": {
+        "parse_seconds": 0.052814,
+        "metadata_threads": 4,
+        "read_seconds": 0.0708971,
+        "write_seconds": 3.01996,
+        "decode_seconds": 0.53113,
+        "crc_seconds": 0.00536956,
+        "allocation_seconds": 1.6338e-05,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 65536,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 24858,
+        "cpu_crc_bytes": 268435456,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 65536,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 65536
+      }
+    },
+    {
+      "case": "flat-small",
+      "mode": "extract",
+      "variant": "libdeflate8",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 268435456,
+      "archive_bytes": 146706123,
+      "wall_seconds": [
+        0.9188438669989409,
+        0.9263771930000075,
+        0.8536228850007319
+      ],
+      "median_seconds": 0.9188438669989409,
+      "min_seconds": 0.8536228850007319,
+      "max_seconds": 0.9263771930000075,
+      "files": 65536,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        33752,
+        33824,
+        33912
+      ],
+      "user_seconds": [
+        0.89,
+        0.88,
+        0.86
+      ],
+      "system_seconds": [
+        4.36,
+        4.17,
+        3.97
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0542227,
+        "metadata_threads": 4,
+        "read_seconds": 0.0736658,
+        "write_seconds": 6.22995,
+        "decode_seconds": 0.530506,
+        "crc_seconds": 0.0059508,
+        "allocation_seconds": 2.7204e-05,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 65536,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 49713,
+        "cpu_crc_bytes": 268435456,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 65536,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 65536
+      }
+    },
+    {
+      "case": "flat-small",
+      "mode": "extract",
+      "variant": "libdeflate16",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 268435456,
+      "archive_bytes": 146706123,
+      "wall_seconds": [
+        0.9072365800002444,
+        1.0236161899993022,
+        0.858633297999404
+      ],
+      "median_seconds": 0.9072365800002444,
+      "min_seconds": 0.858633297999404,
+      "max_seconds": 1.0236161899993022,
+      "files": 65536,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        33836,
+        33876,
+        34056
+      ],
+      "user_seconds": [
+        0.81,
+        0.87,
+        0.8
+      ],
+      "system_seconds": [
+        7.16,
+        6.66,
+        6.65
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0544511,
+        "metadata_threads": 4,
+        "read_seconds": 0.0751763,
+        "write_seconds": 12.8682,
+        "decode_seconds": 0.525505,
+        "crc_seconds": 0.00560473,
+        "allocation_seconds": 4.6919e-05,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 65536,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 99419,
+        "cpu_crc_bytes": 268435456,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 65536,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 65536
+      }
+    },
+    {
+      "case": "flat-small",
+      "mode": "extract",
+      "variant": "libdeflate32",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 268435456,
+      "archive_bytes": 146706123,
+      "wall_seconds": [
+        1.3075369199996203,
+        1.278878518000056,
+        1.4266888669990294
+      ],
+      "median_seconds": 1.3075369199996203,
+      "min_seconds": 1.278878518000056,
+      "max_seconds": 1.4266888669990294,
+      "files": 65536,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        34080,
+        34276,
+        33748
+      ],
+      "user_seconds": [
+        0.96,
+        0.81,
+        0.89
+      ],
+      "system_seconds": [
+        4.24,
+        4.26,
+        4.15
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0498535,
+        "metadata_threads": 4,
+        "read_seconds": 0.0786788,
+        "write_seconds": 39.3397,
+        "decode_seconds": 0.532725,
+        "crc_seconds": 0.00571489,
+        "allocation_seconds": 9.4439e-05,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 65536,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 198824,
+        "cpu_crc_bytes": 268435456,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 65536,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 65536
+      }
+    },
+    {
+      "case": "deep-tiny",
+      "mode": "extract",
+      "variant": "auto",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 10747926,
+      "wall_seconds": [
+        0.14335498600121355,
+        0.14117130500017083,
+        0.14260578700123006
+      ],
+      "median_seconds": 0.14260578700123006,
+      "min_seconds": 0.14117130500017083,
+      "max_seconds": 0.14335498600121355,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        28936,
+        29456,
+        29448
+      ],
+      "user_seconds": [
+        0.16,
+        0.18,
+        0.15
+      ],
+      "system_seconds": [
+        1.26,
+        1.23,
+        1.23
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0407948,
+        "metadata_threads": 4,
+        "read_seconds": 0.0347091,
+        "write_seconds": 1.39263,
+        "decode_seconds": 0.00672995,
+        "crc_seconds": 0.000951187,
+        "allocation_seconds": 6.032e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 2944,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 32521,
+        "portable_parent_walks": 247
+      }
+    },
+    {
+      "case": "deep-tiny",
+      "mode": "extract",
+      "variant": "auto-portable",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 10747926,
+      "wall_seconds": [
+        0.2483086110005388,
+        0.2455141909995291,
+        0.24973235200013733
+      ],
+      "median_seconds": 0.2483086110005388,
+      "min_seconds": 0.2455141909995291,
+      "max_seconds": 0.24973235200013733,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        28936,
+        28732,
+        28680
+      ],
+      "user_seconds": [
+        0.36,
+        0.4,
+        0.37
+      ],
+      "system_seconds": [
+        2.81,
+        2.76,
+        2.82
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0414688,
+        "metadata_threads": 4,
+        "read_seconds": 0.0339604,
+        "write_seconds": 3.11291,
+        "decode_seconds": 0.00646943,
+        "crc_seconds": 0.000917188,
+        "allocation_seconds": 5.246e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 2944,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 32768
+      }
+    },
+    {
+      "case": "deep-tiny",
+      "mode": "extract",
+      "variant": "libdeflate1",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 10747926,
+      "wall_seconds": [
+        1.02943502800008,
+        1.0251669989993388,
+        1.0120301639999525
+      ],
+      "median_seconds": 1.0251669989993388,
+      "min_seconds": 1.0120301639999525,
+      "max_seconds": 1.02943502800008,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        29692,
+        29400,
+        29640
+      ],
+      "user_seconds": [
+        0.13,
+        0.14,
+        0.15
+      ],
+      "system_seconds": [
+        0.88,
+        0.88,
+        0.85
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0415879,
+        "metadata_threads": 4,
+        "read_seconds": 0.0272317,
+        "write_seconds": 0.938073,
+        "decode_seconds": 0.00585784,
+        "crc_seconds": 0.000837384,
+        "allocation_seconds": 8.52e-07,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 184,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 32704,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "deep-tiny",
+      "mode": "extract",
+      "variant": "libdeflate4",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 10747926,
+      "wall_seconds": [
+        0.3045085409994499,
+        0.30835721400035254,
+        0.30352500600019994
+      ],
+      "median_seconds": 0.3045085409994499,
+      "min_seconds": 0.30352500600019994,
+      "max_seconds": 0.30835721400035254,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        28616,
+        29468,
+        29596
+      ],
+      "user_seconds": [
+        0.14,
+        0.14,
+        0.14
+      ],
+      "system_seconds": [
+        0.92,
+        0.92,
+        0.9
+      ],
+      "median_stats": {
+        "parse_seconds": 0.042755,
+        "metadata_threads": 4,
+        "read_seconds": 0.0289391,
+        "write_seconds": 0.985116,
+        "decode_seconds": 0.00597583,
+        "crc_seconds": 0.000850348,
+        "allocation_seconds": 2.865e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 736,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 32704,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "deep-tiny",
+      "mode": "extract",
+      "variant": "libdeflate8",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 10747926,
+      "wall_seconds": [
+        0.18921202099954826,
+        0.19839589999901364,
+        0.19456249700124317
+      ],
+      "median_seconds": 0.19456249700124317,
+      "min_seconds": 0.18921202099954826,
+      "max_seconds": 0.19839589999901364,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        29552,
+        29464,
+        28796
+      ],
+      "user_seconds": [
+        0.14,
+        0.15,
+        0.15
+      ],
+      "system_seconds": [
+        1.05,
+        1.04,
+        1.05
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0397452,
+        "metadata_threads": 4,
+        "read_seconds": 0.0311576,
+        "write_seconds": 1.12508,
+        "decode_seconds": 0.00634698,
+        "crc_seconds": 0.000901324,
+        "allocation_seconds": 3.687e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 1472,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 32640,
+        "portable_parent_walks": 128
+      }
+    },
+    {
+      "case": "deep-tiny",
+      "mode": "extract",
+      "variant": "libdeflate16",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 10747926,
+      "wall_seconds": [
+        0.1415014769991103,
+        0.14053057699857163,
+        0.14363385800061224
+      ],
+      "median_seconds": 0.1415014769991103,
+      "min_seconds": 0.14053057699857163,
+      "max_seconds": 0.14363385800061224,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        28884,
+        29736,
+        29160
+      ],
+      "user_seconds": [
+        0.17,
+        0.18,
+        0.18
+      ],
+      "system_seconds": [
+        1.2,
+        1.19,
+        1.2
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0414959,
+        "metadata_threads": 4,
+        "read_seconds": 0.033935,
+        "write_seconds": 1.39253,
+        "decode_seconds": 0.00640779,
+        "crc_seconds": 0.000965763,
+        "allocation_seconds": 5.028e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 2944,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 32532,
+        "portable_parent_walks": 236
+      }
+    },
+    {
+      "case": "deep-tiny",
+      "mode": "extract",
+      "variant": "libdeflate32",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 10747926,
+      "wall_seconds": [
+        0.1205534250002529,
+        0.12046357100007299,
+        0.1152815820005344
+      ],
+      "median_seconds": 0.12046357100007299,
+      "min_seconds": 0.1152815820005344,
+      "max_seconds": 0.1205534250002529,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        29260,
+        29308,
+        29088
+      ],
+      "user_seconds": [
+        0.17,
+        0.17,
+        0.19
+      ],
+      "system_seconds": [
+        1.56,
+        1.56,
+        1.57
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0396359,
+        "metadata_threads": 4,
+        "read_seconds": 0.0386994,
+        "write_seconds": 2.17856,
+        "decode_seconds": 0.00786088,
+        "crc_seconds": 0.00104438,
+        "allocation_seconds": 9.541e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 5888,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 32338,
+        "portable_parent_walks": 430
+      }
+    },
+    {
+      "case": "wide-tiny",
+      "mode": "extract",
+      "variant": "auto",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 7012374,
+      "wall_seconds": [
+        0.2054072700011602,
+        0.1845120300004055,
+        0.17583988800106454
+      ],
+      "median_seconds": 0.1845120300004055,
+      "min_seconds": 0.17583988800106454,
+      "max_seconds": 0.2054072700011602,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        21300,
+        21268,
+        20816
+      ],
+      "user_seconds": [
+        0.2,
+        0.22,
+        0.22
+      ],
+      "system_seconds": [
+        2.21,
+        2.09,
+        2.05
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0246251,
+        "metadata_threads": 4,
+        "read_seconds": 0.0360306,
+        "write_seconds": 2.37493,
+        "decode_seconds": 0.00836234,
+        "crc_seconds": 0.0010186,
+        "allocation_seconds": 5.022e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 2944,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 32768
+      }
+    },
+    {
+      "case": "wide-tiny",
+      "mode": "extract",
+      "variant": "auto-portable",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 7012374,
+      "wall_seconds": [
+        0.17149578999851656,
+        0.16828810599872668,
+        0.17202543100029288
+      ],
+      "median_seconds": 0.17149578999851656,
+      "min_seconds": 0.16828810599872668,
+      "max_seconds": 0.17202543100029288,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        21208,
+        20832,
+        21040
+      ],
+      "user_seconds": [
+        0.19,
+        0.17,
+        0.21
+      ],
+      "system_seconds": [
+        2.04,
+        2.01,
+        2.01
+      ],
+      "median_stats": {
+        "parse_seconds": 0.024253,
+        "metadata_threads": 4,
+        "read_seconds": 0.0349498,
+        "write_seconds": 2.16498,
+        "decode_seconds": 0.00682465,
+        "crc_seconds": 0.000957332,
+        "allocation_seconds": 6.471e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 2944,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 32768
+      }
+    },
+    {
+      "case": "wide-tiny",
+      "mode": "extract",
+      "variant": "libdeflate1",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 7012374,
+      "wall_seconds": [
+        1.6280618930013588,
+        1.743854229000135,
+        1.6552183010007866
+      ],
+      "median_seconds": 1.6552183010007866,
+      "min_seconds": 1.6280618930013588,
+      "max_seconds": 1.743854229000135,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        21232,
+        20784,
+        20940
+      ],
+      "user_seconds": [
+        0.19,
+        0.16,
+        0.17
+      ],
+      "system_seconds": [
+        1.42,
+        1.47,
+        1.44
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0238288,
+        "metadata_threads": 4,
+        "read_seconds": 0.02727,
+        "write_seconds": 1.59184,
+        "decode_seconds": 0.00625113,
+        "crc_seconds": 0.000849695,
+        "allocation_seconds": 1.172e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 184,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 32768
+      }
+    },
+    {
+      "case": "wide-tiny",
+      "mode": "extract",
+      "variant": "libdeflate4",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 7012374,
+      "wall_seconds": [
+        0.5241227890001028,
+        0.44392216300002474,
+        0.46662947999902826
+      ],
+      "median_seconds": 0.46662947999902826,
+      "min_seconds": 0.44392216300002474,
+      "max_seconds": 0.5241227890001028,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        21340,
+        21184,
+        21368
+      ],
+      "user_seconds": [
+        0.19,
+        0.18,
+        0.19
+      ],
+      "system_seconds": [
+        1.66,
+        1.49,
+        1.55
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0202004,
+        "metadata_threads": 4,
+        "read_seconds": 0.0294036,
+        "write_seconds": 1.68527,
+        "decode_seconds": 0.0064666,
+        "crc_seconds": 0.000997125,
+        "allocation_seconds": 2.335e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 736,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 32768
+      }
+    },
+    {
+      "case": "wide-tiny",
+      "mode": "extract",
+      "variant": "libdeflate8",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 7012374,
+      "wall_seconds": [
+        0.27250260100117885,
+        0.27783904100033396,
+        0.26517475599939644
+      ],
+      "median_seconds": 0.27250260100117885,
+      "min_seconds": 0.26517475599939644,
+      "max_seconds": 0.27783904100033396,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        20712,
+        21060,
+        21260
+      ],
+      "user_seconds": [
+        0.2,
+        0.18,
+        0.21
+      ],
+      "system_seconds": [
+        1.7,
+        1.79,
+        1.7
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0255235,
+        "metadata_threads": 4,
+        "read_seconds": 0.0318355,
+        "write_seconds": 1.87057,
+        "decode_seconds": 0.00678304,
+        "crc_seconds": 0.000921656,
+        "allocation_seconds": 3.336e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 1472,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 32768
+      }
+    },
+    {
+      "case": "wide-tiny",
+      "mode": "extract",
+      "variant": "libdeflate16",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 7012374,
+      "wall_seconds": [
+        0.1858114700007718,
+        0.18102794699916558,
+        0.1751894610006275
+      ],
+      "median_seconds": 0.18102794699916558,
+      "min_seconds": 0.1751894610006275,
+      "max_seconds": 0.1858114700007718,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        20924,
+        20852,
+        21460
+      ],
+      "user_seconds": [
+        0.22,
+        0.2,
+        0.2
+      ],
+      "system_seconds": [
+        2.09,
+        2.08,
+        2.12
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0266787,
+        "metadata_threads": 4,
+        "read_seconds": 0.0349338,
+        "write_seconds": 2.31356,
+        "decode_seconds": 0.00700332,
+        "crc_seconds": 0.00100943,
+        "allocation_seconds": 4.648e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 2944,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 32768
+      }
+    },
+    {
+      "case": "wide-tiny",
+      "mode": "extract",
+      "variant": "libdeflate32",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 4194304,
+      "archive_bytes": 7012374,
+      "wall_seconds": [
+        0.14582401199913875,
+        0.16277572399849305,
+        0.13459328800126968
+      ],
+      "median_seconds": 0.14582401199913875,
+      "min_seconds": 0.13459328800126968,
+      "max_seconds": 0.16277572399849305,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        21208,
+        21244,
+        21448
+      ],
+      "user_seconds": [
+        0.25,
+        0.23,
+        0.21
+      ],
+      "system_seconds": [
+        2.66,
+        2.75,
+        2.76
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0199163,
+        "metadata_threads": 4,
+        "read_seconds": 0.0410382,
+        "write_seconds": 3.44525,
+        "decode_seconds": 0.00912287,
+        "crc_seconds": 0.0011995,
+        "allocation_seconds": 7.805e-06,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "cpu_buffered_files": 32768,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 5888,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 32768
+      }
+    }
+  ]
+}

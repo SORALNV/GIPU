@@ -11,6 +11,7 @@ void add_stats(Stats& total, const Stats& other, bool concurrent) {
   total.gpu_stream_workers += other.gpu_stream_workers;
   total.gpu_crc_chunks += other.gpu_crc_chunks;
   total.gpu_size_reorders += other.gpu_size_reorders;
+  total.gpu_streamed_output_bytes += other.gpu_streamed_output_bytes;
   total.cpu_buffered_files += other.cpu_buffered_files; total.cpu_stream_files += other.cpu_stream_files;
   total.cpu_parallel_files += other.cpu_parallel_files; total.isal_files += other.isal_files;
   total.workspace = std::max(total.workspace, other.workspace);

@@ -82,6 +82,8 @@ def main():
             # 2回目以降は順序を交互にし、一方向の温度・キャッシュ影響を減らす。
             order = args.cases if repeat % 2 == 0 else list(reversed(args.cases))
             for case in order:
+                if args.extract_root and shutil.disk_usage(args.extract_root).free < raw_bytes + 20_000_000_000:
+                    raise RuntimeError("次の反復を安全に展開する空き容量が不足しています")
                 with tempfile.TemporaryDirectory(prefix="gipu-benchmark-", dir=args.extract_root) as temporary:
                     if args.cache == "drop-advised":
                         with archive.open("rb") as input_file:

@@ -44,7 +44,7 @@ def main():
             record["median_stats"] = {}
             for field in ("parse_seconds", "metadata_threads", "read_seconds", "write_seconds", "decode_seconds", "crc_seconds",
                           "allocation_seconds", "transfer_seconds", "crc_combine_seconds", "gpu_crc_chunks", "gpu_size_reorders", "gpu_batches", "gpu_streams",
-                          "lookahead_batches", "pipeline_overlap_waits", "gpu_stream_workers", "cpu_buffered_files", "cpu_stream_files", "cpu_parallel_files",
+                          "lookahead_batches", "pipeline_overlap_waits", "gpu_stream_workers", "gpu_streamed_output_bytes", "cpu_buffered_files", "cpu_stream_files", "cpu_parallel_files",
                           "isal_files", "host_buffer_bytes", "cpu_crc_bytes", "gpu_crc_bytes",
                           "anonymous_output_files", "named_output_files", "fast_parent_opens", "portable_parent_walks"):
                 values = [r["stats"][field] for r in okay if field in r["stats"]]

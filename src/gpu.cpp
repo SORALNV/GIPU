@@ -155,6 +155,7 @@ struct Batch {
   size_t input = 0, output = 0, max_output = 0, total_output = 0, scratch = 0, memory = 0;
   size_t crc_chunk = 0, crc_count = 0;
   bool gzip = false;
+  bool stream_output = false;
 };
 struct Codec {
   bool gzip;
@@ -223,15 +224,25 @@ struct BatchBuffers {
 };
 // GPU CRC入力、Streaming入力、比較用spool読み戻しの固定バッファ分。
 constexpr uint64_t host_fixed_buffers = 12ULL << 20;
+constexpr size_t output_window = 1ULL << 20;
+bool streaming_output(const Batch& b, const Options& opts, bool extracting) {
+  return extracting && !opts.pipeline && b.stream_output;
+}
+uint64_t output_reservation(const Batch& b, const Options& opts, bool extracting) {
+  return streaming_output(b, opts, extracting) ? std::min(opts.write_threads, b.entries.size()) * output_window : 0;
+}
 bool fits_batch(const Batch& b, const Options& opts, bool extracting) {
-  if (opts.vram_limit < StreamingCrc::memory || opts.host_limit < host_fixed_buffers) return false;
-  auto host_budget = (opts.host_limit - host_fixed_buffers) / (opts.pipeline ? 2 : 1);
-  auto output = extracting ? b.output : 0;
+  auto fixed = host_fixed_buffers + output_reservation(b, opts, extracting);
+  if (opts.vram_limit < StreamingCrc::memory || opts.host_limit < fixed) return false;
+  auto host_budget = (opts.host_limit - fixed) / (opts.pipeline ? 2 : 1);
+  auto output = extracting && !streaming_output(b, opts, extracting) ? b.output : 0;
   return b.memory <= opts.vram_limit - StreamingCrc::memory && b.input <= host_budget && output <= host_budget - b.input;
 }
 void prepare_host(const Batch& b, BatchHost& host, const Options& opts, bool extracting) {
-  auto required = b.input + (extracting ? b.output : 0);
-  if (required > opts.host_limit - host_fixed_buffers) throw std::runtime_error("固定化バッファの予算が不足しています");
+  auto fixed = host_fixed_buffers + output_reservation(b, opts, extracting);
+  auto required = b.input + (extracting && !streaming_output(b, opts, extracting) ? b.output : 0);
+  if (opts.host_limit < fixed || required > opts.host_limit - fixed) throw std::runtime_error("固定化バッファの予算が不足しています");
+  if (host.storage.capacity() > opts.host_limit - fixed) host.storage.release();
   host.storage.reserve(required);
 }
 double read_batch(const Archive& archive, const Batch& b, BatchHost& host) {
@@ -290,6 +301,54 @@ double write_batch(const Batch& b, const BatchHost& host, OutputRoot* root, cons
   }
   return std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
 }
+void write_device_batch(const Batch& b, const void* device_output, OutputRoot& root, const Options& opts, Stats& stats) {
+  auto started = std::chrono::steady_clock::now();
+  struct Slot { PinnedBuffer buffer{output_window}; Stream stream; Events events; double copies = 0; };
+  const size_t count = std::min(opts.write_threads, b.entries.size());
+  std::vector<std::unique_ptr<Slot>> slots;
+  for (size_t i = 0; i < count; ++i) slots.push_back(std::make_unique<Slot>());
+  stats.allocation_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+  std::atomic<size_t> next{0};
+  std::atomic<bool> stop{false};
+  std::mutex lock;
+  std::exception_ptr error;
+  std::vector<std::jthread> workers;
+  for (size_t worker = 0; worker < count; ++worker) workers.emplace_back([&, worker] {
+    try {
+      cuda_check(cudaSetDevice(opts.gpu));
+      auto& slot = *slots[worker];
+      while (!stop.load(std::memory_order_relaxed)) {
+        auto i = next.fetch_add(1, std::memory_order_relaxed);
+        if (i >= b.entries.size()) break;
+        check_cancelled();
+        const auto& e = *b.entries[i];
+        OutputFile file(root, e, opts.durable);
+        for (uint64_t at = 0; at < e.uncompressed;) {
+          check_cancelled();
+          auto bytes = static_cast<size_t>(std::min<uint64_t>(output_window, e.uncompressed - at));
+          slot.events.mark(0, slot.stream);
+          download(slot.buffer.data(), static_cast<const char*>(device_output) + b.output_offsets[i] + at, bytes, slot.stream);
+          slot.events.mark(1, slot.stream);
+          cuda_check(cudaStreamSynchronize(slot.stream));
+          slot.copies += slot.events.elapsed(0, 1);
+          file.write(std::span<const char>(slot.buffer.data(), bytes));
+          at += bytes;
+        }
+        file.commit();
+      }
+    } catch (...) {
+      stop.store(true, std::memory_order_relaxed);
+      std::lock_guard guard(lock);
+      if (!error) error = std::current_exception();
+      request_cancel();
+    }
+  });
+  workers.clear(); // 全D2H・出力が終わるまで元のGPU arenaを再利用しない。
+  if (error) std::rethrow_exception(error);
+  for (const auto& slot : slots) stats.transfer_seconds += slot->copies;
+  stats.write_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+  stats.gpu_streamed_output_bytes += b.total_output;
+}
 void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, const Options& opts, cudaStream_t stream,
                   const Codec& codec, BatchBuffers& buffers, BatchHost& host, Stats& stats,
                   bool preloaded = false, bool defer_write = false) {
@@ -297,8 +356,9 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
   auto allocate_start = std::chrono::steady_clock::now();
   buffers.arena.reserve(b.memory);
   if (!preloaded) prepare_host(b, host, opts, root != nullptr);
+  const bool stream_output = streaming_output(b, opts, root != nullptr);
   stats.host_buffer_bytes = std::max<uint64_t>(stats.host_buffer_bytes,
-      host.storage.capacity() + host_fixed_buffers);
+      host.storage.capacity() + host_fixed_buffers + output_reservation(b, opts, root != nullptr));
   stats.allocation_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - allocate_start).count();
   if (!preloaded) stats.read_seconds += read_batch(archive, b, host);
   size_t offset = 0;
@@ -360,7 +420,7 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
   download(crc.data(), checksums, b.crc_count * sizeof(uint32_t), stream);
   download(crc_status.data(), crc_statuses, b.crc_count * sizeof(nvcompStatus_t), stream);
   // testでは検証結果だけ戻す。展開データ全量のD2H転送は不要。
-  if (root) download(host.output(b), output, b.output, stream);
+  if (root && !stream_output) download(host.output(b), output, b.output, stream);
   events.mark(4, stream);
   cuda_check(cudaStreamSynchronize(stream));
   stats.transfer_seconds += events.elapsed(0, 1) + events.elapsed(3, 4);
@@ -383,7 +443,10 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
   }
   stats.crc_combine_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - combine_start).count();
   stats.gpu_crc_chunks += b.crc_count;
-  if (!defer_write) stats.write_seconds += write_batch(b, host, root, opts);
+  if (!defer_write) {
+    if (stream_output) write_device_batch(b, output, *root, opts, stats);
+    else stats.write_seconds += write_batch(b, host, root, opts);
+  }
   for (size_t i = 0; i < n; ++i) {
     check_cancelled();
     const auto& e = *b.entries[i];
@@ -408,6 +471,11 @@ Batch choose_batch(EntrySelection entries, size_t i, const Options& opts,
   }
   if (pending.empty()) return {};
   auto chosen = plan(pending, codec, opts.gpu_crc_chunk);
+  // 二分探索の途中で出力方式を変えると、host予算に収まる条件が非単調になる。
+  // 候補全体で一度決め、縮小したprefixにも同じ方式を適用する。
+  const bool stream_output = !opts.pipeline && opts.gpu_output != "buffered" &&
+      (opts.gpu_output == "stream" || (chosen.max_output >= (64ULL << 20) && chosen.output >= (128ULL << 20)));
+  chosen.stream_output = stream_output;
   if (fits_batch(chosen, opts, extracting)) return chosen;
   size_t lo = 0, hi = pending.size();
   chosen = Batch{};
@@ -415,6 +483,7 @@ Batch choose_batch(EntrySelection entries, size_t i, const Options& opts,
     auto mid = lo + (hi - lo) / 2;
     std::vector<const Entry*> prefix(pending.begin(), pending.begin() + static_cast<ptrdiff_t>(mid));
     auto attempt = plan(prefix, codec, opts.gpu_crc_chunk);
+    attempt.stream_output = stream_output;
     if (fits_batch(attempt, opts, extracting)) { lo = mid; chosen = std::move(attempt); }
     else hi = mid;
   }

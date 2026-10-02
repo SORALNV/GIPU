@@ -1,0 +1,1436 @@
+{
+  "source_log": "corpus-window-output-20261002.jsonl",
+  "source_sha256": "18b4b0a9bbb439a551163551b030430c9f8b9d45fc6ec2e197528a2d8fb18162",
+  "metadata": [
+    {
+      "kind": "metadata",
+      "time_utc": "2026-10-02T12:43:10Z",
+      "binary_sha256": "42c163bff8c667ce0c8c4bd5c0fbb890f60b54df02dc8d488be34c7646183f7b",
+      "cache": "warm",
+      "durable": false,
+      "note": "warmはOSキャッシュを排除しない。drop-advisedもcoldを保証しない。異常終了は行に記録する。"
+    }
+  ],
+  "groups": [
+    {
+      "case": "medium",
+      "mode": "extract",
+      "variant": "auto",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 1073741824,
+      "archive_bytes": 538603356,
+      "wall_seconds": [
+        0.07946091499979957,
+        0.07784255499973369,
+        0.08069378600157506
+      ],
+      "median_seconds": 0.07946091499979957,
+      "min_seconds": 0.07784255499973369,
+      "max_seconds": 0.08069378600157506,
+      "files": 4096,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        13040,
+        13712,
+        13152
+      ],
+      "user_seconds": [
+        0.38,
+        0.36,
+        0.4
+      ],
+      "system_seconds": [
+        0.72,
+        0.73,
+        0.75
+      ],
+      "median_stats": {
+        "parse_seconds": 0.00342419,
+        "metadata_threads": 8,
+        "read_seconds": 0.128717,
+        "write_seconds": 0.615802,
+        "decode_seconds": 0.349136,
+        "crc_seconds": 0.0171753,
+        "allocation_seconds": 0.00179875,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 4096,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 6296461,
+        "cpu_crc_bytes": 1073741824,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 4096,
+        "named_output_files": 0,
+        "fast_parent_opens": 4032,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "medium",
+      "mode": "extract",
+      "variant": "gpu",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 1073741824,
+      "archive_bytes": 538603356,
+      "wall_seconds": [
+        1.1959165560001566,
+        1.2207309259993053,
+        1.203958573001728
+      ],
+      "median_seconds": 1.203958573001728,
+      "min_seconds": 1.1959165560001566,
+      "max_seconds": 1.2207309259993053,
+      "files": 4096,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        1688632,
+        1688888,
+        1688808
+      ],
+      "user_seconds": [
+        0.11,
+        0.12,
+        0.1
+      ],
+      "system_seconds": [
+        1.63,
+        1.65,
+        1.65
+      ],
+      "median_stats": {
+        "parse_seconds": 0.00339114,
+        "metadata_threads": 8,
+        "read_seconds": 0.061422,
+        "write_seconds": 0.0793102,
+        "decode_seconds": 0.0132639,
+        "crc_seconds": 0.00205312,
+        "allocation_seconds": 0.586104,
+        "transfer_seconds": 0.0641734,
+        "crc_combine_seconds": 3.7844e-05,
+        "gpu_crc_chunks": 4096,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 1,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 1624352648,
+        "cpu_crc_bytes": 0,
+        "gpu_crc_bytes": 1073741824,
+        "anonymous_output_files": 4096,
+        "named_output_files": 0,
+        "fast_parent_opens": 4032,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "medium",
+      "mode": "extract",
+      "variant": "gpu-buffered-output",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 1073741824,
+      "archive_bytes": 538603356,
+      "wall_seconds": [
+        1.2002747709993855,
+        1.1961197020009422,
+        1.1790539680005168
+      ],
+      "median_seconds": 1.1961197020009422,
+      "min_seconds": 1.1790539680005168,
+      "max_seconds": 1.2002747709993855,
+      "files": 4096,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        1689040,
+        1688740,
+        1688336
+      ],
+      "user_seconds": [
+        0.12,
+        0.11,
+        0.1
+      ],
+      "system_seconds": [
+        1.63,
+        1.63,
+        1.63
+      ],
+      "median_stats": {
+        "parse_seconds": 0.00333244,
+        "metadata_threads": 8,
+        "read_seconds": 0.0604071,
+        "write_seconds": 0.078928,
+        "decode_seconds": 0.0115128,
+        "crc_seconds": 0.0020511,
+        "allocation_seconds": 0.583968,
+        "transfer_seconds": 0.0642492,
+        "crc_combine_seconds": 3.619e-05,
+        "gpu_crc_chunks": 4096,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 1,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 1624352648,
+        "cpu_crc_bytes": 0,
+        "gpu_crc_bytes": 1073741824,
+        "anonymous_output_files": 4096,
+        "named_output_files": 0,
+        "fast_parent_opens": 4032,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "medium",
+      "mode": "extract",
+      "variant": "gpu-stream-output",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 1073741824,
+      "archive_bytes": 538603356,
+      "wall_seconds": [
+        0.6495040239988157,
+        0.6704638680002972,
+        0.6548034399984317
+      ],
+      "median_seconds": 0.6548034399984317,
+      "min_seconds": 0.6495040239988157,
+      "max_seconds": 0.6704638680002972,
+      "files": 4096,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        648260,
+        648324,
+        648084
+      ],
+      "user_seconds": [
+        0.2,
+        0.24,
+        0.25
+      ],
+      "system_seconds": [
+        1.1,
+        1.1,
+        1.07
+      ],
+      "median_stats": {
+        "parse_seconds": 0.00370098,
+        "metadata_threads": 8,
+        "read_seconds": 0.0617365,
+        "write_seconds": 0.0995946,
+        "decode_seconds": 0.0128502,
+        "crc_seconds": 0.00220467,
+        "allocation_seconds": 0.206258,
+        "transfer_seconds": 0.0874445,
+        "crc_combine_seconds": 3.0991e-05,
+        "gpu_crc_chunks": 4096,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 1,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 1073741824,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 558999432,
+        "cpu_crc_bytes": 0,
+        "gpu_crc_bytes": 1073741824,
+        "anonymous_output_files": 4096,
+        "named_output_files": 0,
+        "fast_parent_opens": 4032,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "single-medium",
+      "mode": "extract",
+      "variant": "auto",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 536870912,
+      "archive_bytes": 269276671,
+      "wall_seconds": [
+        0.19954301300094812,
+        0.19930423799996788,
+        0.1984827590003988
+      ],
+      "median_seconds": 0.19930423799996788,
+      "min_seconds": 0.1984827590003988,
+      "max_seconds": 0.19954301300094812,
+      "files": 1,
+      "sha256_samples": [
+        1,
+        1,
+        1
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        8144,
+        8900,
+        8724
+      ],
+      "user_seconds": [
+        0.08,
+        0.08,
+        0.07
+      ],
+      "system_seconds": [
+        0.11,
+        0.11,
+        0.11
+      ],
+      "median_stats": {
+        "parse_seconds": 0.000161774,
+        "metadata_threads": 1,
+        "read_seconds": 0.0177508,
+        "write_seconds": 0.0914391,
+        "decode_seconds": 0.0772609,
+        "crc_seconds": 0.00708625,
+        "allocation_seconds": 0,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 1,
+        "cpu_parallel_files": 0,
+        "isal_files": 1,
+        "host_buffer_bytes": 2097152,
+        "cpu_crc_bytes": 536870912,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 1,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 1
+      }
+    },
+    {
+      "case": "single-medium",
+      "mode": "extract",
+      "variant": "gpu",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 536870912,
+      "archive_bytes": 269276671,
+      "wall_seconds": [
+        2.1068447030011157,
+        2.10290858100052,
+        2.103930442001001
+      ],
+      "median_seconds": 2.103930442001001,
+      "min_seconds": 2.10290858100052,
+      "max_seconds": 2.1068447030011157,
+      "files": 1,
+      "sha256_samples": [
+        1,
+        1,
+        1
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        377956,
+        378532,
+        378640
+      ],
+      "user_seconds": [
+        1.7,
+        1.69,
+        1.69
+      ],
+      "system_seconds": [
+        0.41,
+        0.4,
+        0.41
+      ],
+      "median_stats": {
+        "parse_seconds": 0.000171554,
+        "metadata_threads": 1,
+        "read_seconds": 0.0289473,
+        "write_seconds": 0.124467,
+        "decode_seconds": 1.64631,
+        "crc_seconds": 0.0013353,
+        "allocation_seconds": 0.101046,
+        "transfer_seconds": 0.0323619,
+        "crc_combine_seconds": 3.0239e-05,
+        "gpu_crc_chunks": 512,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 1,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 536870912,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 282908000,
+        "cpu_crc_bytes": 0,
+        "gpu_crc_bytes": 536870912,
+        "anonymous_output_files": 1,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 1
+      }
+    },
+    {
+      "case": "single-medium",
+      "mode": "extract",
+      "variant": "gpu-buffered-output",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 536870912,
+      "archive_bytes": 269276671,
+      "wall_seconds": [
+        2.354063562999727,
+        2.3280787849998887,
+        2.3444235250008205
+      ],
+      "median_seconds": 2.3444235250008205,
+      "min_seconds": 2.3280787849998887,
+      "max_seconds": 2.354063562999727,
+      "files": 1,
+      "sha256_samples": [
+        1,
+        1,
+        1
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        900924,
+        899148,
+        900720
+      ],
+      "user_seconds": [
+        1.67,
+        1.67,
+        1.67
+      ],
+      "system_seconds": [
+        0.68,
+        0.65,
+        0.67
+      ],
+      "median_stats": {
+        "parse_seconds": 0.000176092,
+        "metadata_threads": 1,
+        "read_seconds": 0.0286849,
+        "write_seconds": 0.0950989,
+        "decode_seconds": 1.62923,
+        "crc_seconds": 0.00133837,
+        "allocation_seconds": 0.294042,
+        "transfer_seconds": 0.0307501,
+        "crc_combine_seconds": 3.0209e-05,
+        "gpu_crc_chunks": 512,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 1,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 818730336,
+        "cpu_crc_bytes": 0,
+        "gpu_crc_bytes": 536870912,
+        "anonymous_output_files": 1,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 1
+      }
+    },
+    {
+      "case": "single-medium",
+      "mode": "extract",
+      "variant": "gpu-stream-output",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 536870912,
+      "archive_bytes": 269276671,
+      "wall_seconds": [
+        2.1003653989992017,
+        2.1006433499987907,
+        2.10287697899912
+      ],
+      "median_seconds": 2.1006433499987907,
+      "min_seconds": 2.1003653989992017,
+      "max_seconds": 2.10287697899912,
+      "files": 1,
+      "sha256_samples": [
+        1,
+        1,
+        1
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        378952,
+        378072,
+        379072
+      ],
+      "user_seconds": [
+        1.67,
+        1.69,
+        1.68
+      ],
+      "system_seconds": [
+        0.42,
+        0.4,
+        0.42
+      ],
+      "median_stats": {
+        "parse_seconds": 0.000182024,
+        "metadata_threads": 1,
+        "read_seconds": 0.0289268,
+        "write_seconds": 0.121709,
+        "decode_seconds": 1.63784,
+        "crc_seconds": 0.00134317,
+        "allocation_seconds": 0.107914,
+        "transfer_seconds": 0.0322256,
+        "crc_combine_seconds": 3.0389e-05,
+        "gpu_crc_chunks": 512,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 1,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 536870912,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 282908000,
+        "cpu_crc_bytes": 0,
+        "gpu_crc_bytes": 536870912,
+        "anonymous_output_files": 1,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 1
+      }
+    },
+    {
+      "case": "few-large",
+      "mode": "extract",
+      "variant": "auto",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 2147483648,
+      "archive_bytes": 1077108945,
+      "wall_seconds": [
+        0.1478926190011407,
+        0.1503420469998673,
+        0.14451697700133082
+      ],
+      "median_seconds": 0.1478926190011407,
+      "min_seconds": 0.14451697700133082,
+      "max_seconds": 0.1503420469998673,
+      "files": 32,
+      "sha256_samples": [
+        32,
+        32,
+        32
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        40752,
+        40748,
+        40660
+      ],
+      "user_seconds": [
+        0.51,
+        0.53,
+        0.5
+      ],
+      "system_seconds": [
+        1.58,
+        1.58,
+        1.6
+      ],
+      "median_stats": {
+        "parse_seconds": 0.000233054,
+        "metadata_threads": 1,
+        "read_seconds": 0.369322,
+        "write_seconds": 1.18254,
+        "decode_seconds": 0.450243,
+        "crc_seconds": 0.0471163,
+        "allocation_seconds": 0,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 32,
+        "cpu_parallel_files": 0,
+        "isal_files": 32,
+        "host_buffer_bytes": 33554432,
+        "cpu_crc_bytes": 2147483648,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 32
+      }
+    },
+    {
+      "case": "few-large",
+      "mode": "extract",
+      "variant": "gpu",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 2147483648,
+      "archive_bytes": 1077108945,
+      "wall_seconds": [
+        1.2985788010009855,
+        1.2923766269996122,
+        1.3183516150002106
+      ],
+      "median_seconds": 1.2985788010009855,
+      "min_seconds": 1.2923766269996122,
+      "max_seconds": 1.3183516150002106,
+      "files": 32,
+      "sha256_samples": [
+        32,
+        32,
+        32
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        1172712,
+        1173212,
+        1173076
+      ],
+      "user_seconds": [
+        0.46,
+        0.47,
+        0.46
+      ],
+      "system_seconds": [
+        2.02,
+        2.01,
+        2.03
+      ],
+      "median_stats": {
+        "parse_seconds": 0.000235609,
+        "metadata_threads": 1,
+        "read_seconds": 0.100186,
+        "write_seconds": 0.183261,
+        "decode_seconds": 0.212322,
+        "crc_seconds": 0.00457011,
+        "allocation_seconds": 0.401948,
+        "transfer_seconds": 0.149204,
+        "crc_combine_seconds": 9.7069e-05,
+        "gpu_crc_chunks": 2048,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 1,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 2147483648,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 1098075936,
+        "cpu_crc_bytes": 0,
+        "gpu_crc_bytes": 2147483648,
+        "anonymous_output_files": 32,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 32
+      }
+    },
+    {
+      "case": "few-large",
+      "mode": "extract",
+      "variant": "gpu-buffered-output",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 2147483648,
+      "archive_bytes": 1077108945,
+      "wall_seconds": [
+        2.424118285000077,
+        2.4275469410004007,
+        2.427911260001565
+      ],
+      "median_seconds": 2.4275469410004007,
+      "min_seconds": 2.424118285000077,
+      "max_seconds": 2.427911260001565,
+      "files": 32,
+      "sha256_samples": [
+        32,
+        32,
+        32
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        3261828,
+        3262168,
+        3261888
+      ],
+      "user_seconds": [
+        0.35,
+        0.35,
+        0.34
+      ],
+      "system_seconds": [
+        3.08,
+        3.11,
+        3.12
+      ],
+      "median_stats": {
+        "parse_seconds": 0.000235748,
+        "metadata_threads": 1,
+        "read_seconds": 0.101222,
+        "write_seconds": 0.156286,
+        "decode_seconds": 0.209886,
+        "crc_seconds": 0.00523168,
+        "allocation_seconds": 1.18975,
+        "transfer_seconds": 0.122845,
+        "crc_combine_seconds": 9.8161e-05,
+        "gpu_crc_chunks": 2048,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 1,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 3237170976,
+        "cpu_crc_bytes": 0,
+        "gpu_crc_bytes": 2147483648,
+        "anonymous_output_files": 32,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 32
+      }
+    },
+    {
+      "case": "few-large",
+      "mode": "extract",
+      "variant": "gpu-stream-output",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 2147483648,
+      "archive_bytes": 1077108945,
+      "wall_seconds": [
+        1.2886267560006672,
+        1.312027002000832,
+        1.2828555300002336
+      ],
+      "median_seconds": 1.2886267560006672,
+      "min_seconds": 1.2828555300002336,
+      "max_seconds": 1.312027002000832,
+      "files": 32,
+      "sha256_samples": [
+        32,
+        32,
+        32
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        1173780,
+        1172448,
+        1173128
+      ],
+      "user_seconds": [
+        0.45,
+        0.43,
+        0.46
+      ],
+      "system_seconds": [
+        2.02,
+        2.05,
+        2.03
+      ],
+      "median_stats": {
+        "parse_seconds": 0.000235638,
+        "metadata_threads": 1,
+        "read_seconds": 0.100154,
+        "write_seconds": 0.185638,
+        "decode_seconds": 0.210076,
+        "crc_seconds": 0.00511795,
+        "allocation_seconds": 0.399823,
+        "transfer_seconds": 0.149551,
+        "crc_combine_seconds": 9.739e-05,
+        "gpu_crc_chunks": 2048,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 1,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 2147483648,
+        "cpu_buffered_files": 0,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 1098075936,
+        "cpu_crc_bytes": 0,
+        "gpu_crc_bytes": 2147483648,
+        "anonymous_output_files": 32,
+        "named_output_files": 0,
+        "fast_parent_opens": 0,
+        "portable_parent_walks": 32
+      }
+    },
+    {
+      "case": "mixed",
+      "mode": "extract",
+      "variant": "auto",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 297795584,
+      "archive_bytes": 152795395,
+      "wall_seconds": [
+        0.04641767700013588,
+        0.04599146700093115,
+        0.046212527000534465
+      ],
+      "median_seconds": 0.046212527000534465,
+      "min_seconds": 0.04599146700093115,
+      "max_seconds": 0.04641767700013588,
+      "files": 8192,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        33100,
+        33536,
+        33448
+      ],
+      "user_seconds": [
+        0.13,
+        0.13,
+        0.12
+      ],
+      "system_seconds": [
+        0.4,
+        0.41,
+        0.41
+      ],
+      "median_stats": {
+        "parse_seconds": 0.00528476,
+        "metadata_threads": 8,
+        "read_seconds": 0.0372732,
+        "write_seconds": 0.394187,
+        "decode_seconds": 0.0952697,
+        "crc_seconds": 0.00526367,
+        "allocation_seconds": 0.00270448,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 8192,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 25180928,
+        "cpu_crc_bytes": 297795584,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 8192,
+        "named_output_files": 0,
+        "fast_parent_opens": 8128,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "mixed",
+      "mode": "extract",
+      "variant": "gpu",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 297795584,
+      "archive_bytes": 152795395,
+      "wall_seconds": [
+        0.46020367999881273,
+        0.4479054780003935,
+        0.4481221400001232
+      ],
+      "median_seconds": 0.4481221400001232,
+      "min_seconds": 0.4479054780003935,
+      "max_seconds": 0.46020367999881273,
+      "files": 8192,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        392112,
+        391248,
+        392068
+      ],
+      "user_seconds": [
+        0.08,
+        0.07,
+        0.07
+      ],
+      "system_seconds": [
+        0.62,
+        0.61,
+        0.61
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0051574,
+        "metadata_threads": 8,
+        "read_seconds": 0.0209639,
+        "write_seconds": 0.0781063,
+        "decode_seconds": 0.00970755,
+        "crc_seconds": 0.00413721,
+        "allocation_seconds": 0.112292,
+        "transfer_seconds": 0.0173463,
+        "crc_combine_seconds": 6.2392e-05,
+        "gpu_crc_chunks": 6400,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 2,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 1792,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 295097296,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 293601280,
+        "anonymous_output_files": 8192,
+        "named_output_files": 0,
+        "fast_parent_opens": 8128,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "mixed",
+      "mode": "extract",
+      "variant": "gpu-buffered-output",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 297795584,
+      "archive_bytes": 152795395,
+      "wall_seconds": [
+        0.4525614020003559,
+        0.4410765739994531,
+        0.4423454640000273
+      ],
+      "median_seconds": 0.4423454640000273,
+      "min_seconds": 0.4410765739994531,
+      "max_seconds": 0.4525614020003559,
+      "files": 8192,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        390716,
+        392208,
+        391216
+      ],
+      "user_seconds": [
+        0.08,
+        0.07,
+        0.07
+      ],
+      "system_seconds": [
+        0.61,
+        0.6,
+        0.61
+      ],
+      "median_stats": {
+        "parse_seconds": 0.00513355,
+        "metadata_threads": 8,
+        "read_seconds": 0.020919,
+        "write_seconds": 0.0766955,
+        "decode_seconds": 0.00963621,
+        "crc_seconds": 0.00452022,
+        "allocation_seconds": 0.10748,
+        "transfer_seconds": 0.0174338,
+        "crc_combine_seconds": 4.6511e-05,
+        "gpu_crc_chunks": 6400,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 2,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 1792,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 295097296,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 293601280,
+        "anonymous_output_files": 8192,
+        "named_output_files": 0,
+        "fast_parent_opens": 8128,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "mixed",
+      "mode": "extract",
+      "variant": "gpu-stream-output",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 297795584,
+      "archive_bytes": 152795395,
+      "wall_seconds": [
+        0.36102989800019714,
+        0.35967886700018425,
+        0.3668382349987951
+      ],
+      "median_seconds": 0.36102989800019714,
+      "min_seconds": 0.35967886700018425,
+      "max_seconds": 0.3668382349987951,
+      "files": 8192,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        216540,
+        216436,
+        216500
+      ],
+      "user_seconds": [
+        0.21,
+        0.2,
+        0.19
+      ],
+      "system_seconds": [
+        0.52,
+        0.52,
+        0.54
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0051743,
+        "metadata_threads": 8,
+        "read_seconds": 0.0206341,
+        "write_seconds": 0.103389,
+        "decode_seconds": 0.00940438,
+        "crc_seconds": 0.00413947,
+        "allocation_seconds": 0.0449441,
+        "transfer_seconds": 0.054703,
+        "crc_combine_seconds": 2.6482e-05,
+        "gpu_crc_chunks": 6400,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 2,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 293601280,
+        "cpu_buffered_files": 1792,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 115413968,
+        "cpu_crc_bytes": 4194304,
+        "gpu_crc_bytes": 293601280,
+        "anonymous_output_files": 8192,
+        "named_output_files": 0,
+        "fast_parent_opens": 8128,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "mixed-large",
+      "mode": "extract",
+      "variant": "auto",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 2264924160,
+      "archive_bytes": 1150479639,
+      "wall_seconds": [
+        0.31253052899955946,
+        0.31812197399995057,
+        0.3129853739992541
+      ],
+      "median_seconds": 0.3129853739992541,
+      "min_seconds": 0.31253052899955946,
+      "max_seconds": 0.31812197399995057,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "libdeflate"
+      ],
+      "peak_rss_kib": [
+        29156,
+        29164,
+        29028
+      ],
+      "user_seconds": [
+        0.69,
+        0.68,
+        0.73
+      ],
+      "system_seconds": [
+        1.68,
+        1.72,
+        1.67
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0190649,
+        "metadata_threads": 8,
+        "read_seconds": 0.126297,
+        "write_seconds": 1.66716,
+        "decode_seconds": 0.520798,
+        "crc_seconds": 0.0318995,
+        "allocation_seconds": 5.6917e-05,
+        "transfer_seconds": 0,
+        "crc_combine_seconds": 0,
+        "gpu_crc_chunks": 0,
+        "gpu_size_reorders": 0,
+        "gpu_batches": 0,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 32764,
+        "cpu_stream_files": 4,
+        "cpu_parallel_files": 0,
+        "isal_files": 4,
+        "host_buffer_bytes": 8463170,
+        "cpu_crc_bytes": 2264924160,
+        "gpu_crc_bytes": 0,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 32704,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "mixed-large",
+      "mode": "extract",
+      "variant": "gpu",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 2264924160,
+      "archive_bytes": 1150479639,
+      "wall_seconds": [
+        3.125552797999262,
+        3.1441784479993657,
+        3.1432774950008024
+      ],
+      "median_seconds": 3.1432774950008024,
+      "min_seconds": 3.125552797999262,
+      "max_seconds": 3.1441784479993657,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        1195336,
+        1195924,
+        1195416
+      ],
+      "user_seconds": [
+        2.16,
+        2.13,
+        2.13
+      ],
+      "system_seconds": [
+        2.45,
+        2.48,
+        2.55
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0193101,
+        "metadata_threads": 8,
+        "read_seconds": 0.133011,
+        "write_seconds": 0.504693,
+        "decode_seconds": 1.65404,
+        "crc_seconds": 0.0052983,
+        "allocation_seconds": 0.398355,
+        "transfer_seconds": 0.175911,
+        "crc_combine_seconds": 0.000326484,
+        "gpu_crc_chunks": 26624,
+        "gpu_size_reorders": 1,
+        "gpu_batches": 7,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 2164244480,
+        "cpu_buffered_files": 8188,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 1106724208,
+        "cpu_crc_bytes": 16777216,
+        "gpu_crc_bytes": 2248146944,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 32704,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "mixed-large",
+      "mode": "extract",
+      "variant": "gpu-buffered-output",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 2264924160,
+      "archive_bytes": 1150479639,
+      "wall_seconds": [
+        4.248283254999478,
+        4.2283668520012725,
+        4.3120115419988
+      ],
+      "median_seconds": 4.248283254999478,
+      "min_seconds": 4.2283668520012725,
+      "max_seconds": 4.3120115419988,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        3300328,
+        3300640,
+        3300640
+      ],
+      "user_seconds": [
+        1.96,
+        1.97,
+        1.96
+      ],
+      "system_seconds": [
+        3.61,
+        3.55,
+        3.67
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0197594,
+        "metadata_threads": 8,
+        "read_seconds": 0.133775,
+        "write_seconds": 0.469992,
+        "decode_seconds": 1.66363,
+        "crc_seconds": 0.00531033,
+        "allocation_seconds": 1.17792,
+        "transfer_seconds": 0.135048,
+        "crc_combine_seconds": 0.000293481,
+        "gpu_crc_chunks": 26624,
+        "gpu_size_reorders": 1,
+        "gpu_batches": 7,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 0,
+        "cpu_buffered_files": 8188,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 3262580080,
+        "cpu_crc_bytes": 16777216,
+        "gpu_crc_bytes": 2248146944,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 32704,
+        "portable_parent_walks": 64
+      }
+    },
+    {
+      "case": "mixed-large",
+      "mode": "extract",
+      "variant": "gpu-stream-output",
+      "runs": 3,
+      "failures": 0,
+      "raw_bytes": 2264924160,
+      "archive_bytes": 1150479639,
+      "wall_seconds": [
+        3.1890777090011397,
+        3.1722997659999237,
+        3.2292788440008735
+      ],
+      "median_seconds": 3.1890777090011397,
+      "min_seconds": 3.1722997659999237,
+      "max_seconds": 3.2292788440008735,
+      "files": 32768,
+      "sha256_samples": [
+        128,
+        128,
+        128
+      ],
+      "selected_backends": [
+        "gpu"
+      ],
+      "peak_rss_kib": [
+        1195944,
+        1195416,
+        1195344
+      ],
+      "user_seconds": [
+        2.42,
+        2.42,
+        2.45
+      ],
+      "system_seconds": [
+        2.5,
+        2.48,
+        2.56
+      ],
+      "median_stats": {
+        "parse_seconds": 0.0227173,
+        "metadata_threads": 8,
+        "read_seconds": 0.132001,
+        "write_seconds": 0.563059,
+        "decode_seconds": 1.65623,
+        "crc_seconds": 0.0053163,
+        "allocation_seconds": 0.428109,
+        "transfer_seconds": 0.277017,
+        "crc_combine_seconds": 0.000286748,
+        "gpu_crc_chunks": 26624,
+        "gpu_size_reorders": 1,
+        "gpu_batches": 7,
+        "gpu_streams": 0,
+        "lookahead_batches": 0,
+        "pipeline_overlap_waits": 0,
+        "gpu_stream_workers": 0,
+        "gpu_streamed_output_bytes": 2248146944,
+        "cpu_buffered_files": 8188,
+        "cpu_stream_files": 0,
+        "cpu_parallel_files": 0,
+        "isal_files": 0,
+        "host_buffer_bytes": 1106724208,
+        "cpu_crc_bytes": 16777216,
+        "gpu_crc_bytes": 2248146944,
+        "anonymous_output_files": 32768,
+        "named_output_files": 0,
+        "fast_parent_opens": 32704,
+        "portable_parent_walks": 64
+      }
+    }
+  ]
+}

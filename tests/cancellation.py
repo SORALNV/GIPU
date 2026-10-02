@@ -57,9 +57,13 @@ def main():
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--timeout", type=float, default=15)
     parser.add_argument("--worker-faults", action="store_true")
+    parser.add_argument("--gpu-mode", choices=("auto", "stream", "batch"), default="stream")
+    parser.add_argument("--gpu-output", choices=("auto", "buffered", "stream"), default="auto")
     args = parser.parse_args()
     if args.timeout <= 0 or args.report.exists():
         parser.error("正のtimeoutと未使用reportが必要です")
+    if args.worker_faults and args.gpu_mode == "batch":
+        parser.error("worker-faultsはGPU Streaming用です")
     with zipfile.ZipFile(args.archive) as archive:
         files = [i for i in archive.infolist() if not i.is_dir()]
         if len(files) != 1 or files[0].file_size < (256 << 20):
@@ -74,7 +78,8 @@ def main():
                 with tempfile.TemporaryDirectory(prefix="gipu-cancel-", dir=args.output_root) as temp:
                     destination = Path(temp) / "out"
                     command = [str(args.binary.resolve()), "extract", str(args.archive.resolve()),
-                               "--backend", args.backend, "--threads", "4", "--gpu-mode", "stream",
+                               "--backend", args.backend, "--threads", "4", "--gpu-mode", args.gpu_mode,
+                               "--gpu-output", args.gpu_output,
                                "--temp-mode", mode, "--output", str(destination), "--json"]
                     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                     try:

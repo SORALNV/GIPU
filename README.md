@@ -121,6 +121,10 @@ Rapidgzip内部の修正版ISA-Lを使う追加実験は、`bash scripts/bootstr
 
 GPUバッチ出力は`--write-threads`（既定8、最大32）で並列化します。pipelineは最大2バッチの出力を重ねるため、既定では最大16個の出力workerに加えて先読み／GPU制御用CPUを使います。GPU処理だけでなくCPUによるファイル操作も性能に寄与します。メモリ容量は全バッチの計画から最大値を先に確保し、処理中に`cudaMallocHost`を呼び直すことによる同期を減らします。`allocation_seconds`に事前確保時間を記録します。
 
+通常バッチの`--gpu-output auto`は、最大ファイル64MiB以上・バッチ出力128MiB以上なら、workerごとの1MiB固定化バッファでGPUから少しずつ転送・出力します。出力全量の固定化RAMを確保しません。全バッチのサイズ・CRCを確認してから転送し、全workerが完了するまでGPU arenaを再利用しません。小窓分も`--host-limit`に含めます。`buffered`で従来の全量転送、`stream`で小さいバッチも小窓転送にでき、後者の明示指定はpipeline／hybrid／auto-gpuとは併用しません。pipelineは入力・GPU処理・出力の重畳を優先し、全量転送を維持します。この転送方式はnvCOMPのStreaming解凍とは別です。
+
+`gpu_streamed_output_bytes`が小窓転送で出力したバイト数です。この方式の`write_seconds`は小窓確保・D2H待ち・ファイル出力の経過時間を含み、`transfer_seconds`にもCUDA eventで測った各workerのD2H時間を加算します。工程時間は重複を含むため単純に加算できません。
+
 `--vram-limit`は、GIPUが明示的に確保する入力・出力・nvCOMP作業領域・メタデータ・CRC領域の合計を制限します。CUDAコンテキストやライブラリ内部の割り当て、他プロセスの使用量は含まれません。総VRAMの厳密な上限を保証するオプションではありません。ホストRAMにはバッチ入出力と同程度の固定化メモリが必要です。Streaming経路はアーカイブ／展開量の全体バッファを確保しません。
 
 公開Streaming APIの出力はホスト上です。解凍カーネルが稼働中にGPU CRCカーネルを同期実行すると、大量出力で処理が進まなくなることを3090で確認しました。現在の既定`--stream-crc cpu`は出力callbackでCPU CRCを増分計算し、二度読み・CRC用のGPU再転送を省きます。libdeflateがあればその高速CRC、なければzlib CRCを使用します。バッチ経路は展開済みVRAM上でCRCを計算します。`cpu_crc_bytes`と`gpu_crc_bytes`で分担を記録します。従来の二度読み方式は`--stream-crc gpu`で選べます。どちらもRAM／VRAMを展開量に比例して確保しません。
@@ -146,6 +150,8 @@ CPU比較対象にはzlibとlibdeflateを使います。`test`はデコード＋
 `scripts/make_real_single.py`は既存バイナリの先頭N GiBを読み取り、単一エントリの比較用ZIP64を作ります。入力と既存出力を上書きしません。`scripts/fuzz_zip.py`はCPU経路に限り、固定seedでヘッダ・圧縮本体・切り詰め等の変異入力を試し、成功例をPython zipfileと照合します。GPUへの不正Deflate投入は行いません。
 
 進行中の多形状比較と制約は[適応型解凍の実測](docs/measurements-adaptive-2026-10-02.md)を参照してください。`tests/cancellation.py`は単一大ファイルの処理中にSIGINT／SIGTERM／SIGKILLを送り、未確定出力とworker残留を検査します。`--worker-faults`では所有するGPU子プロセスの停止／異常終了も試します。`/usr/bin/time`のピークRSSは、GPU Streamingの親子合計ピークではない点に注意してください。
+
+`scripts/benchmark_7zip.py`は公式7-Zipの外部比較用です。CLIバージョン・バイナリSHA256・外部時間・CPU時間・RSSを記録します。`-mmt=16`は要求値で、Deflate解凍が16並列になる保証ではありません。実展開は各回新規の一時ディレクトリに限定し、全件サイズと指定元データ128件のSHA256を検査します。既知の正しい比較用ZIPにだけ使ってください。
 
 ### Kaggle実データの大容量測定
 
