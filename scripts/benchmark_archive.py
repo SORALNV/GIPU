@@ -30,11 +30,14 @@ def main():
     if args.repeats < 1 or (args.source and not args.extract_root):
         p.error("繰り返し回数またはsource指定が不正です")
     cases = {
+        "auto": ["--backend", "auto"],
+        "auto-experimental": ["--backend", "auto", "--auto-gpu", "--auto-parallel"],
         "cpu": ["--backend", "cpu"],
         "libdeflate1": ["--backend", "libdeflate", "--threads", "1"],
         "libdeflate8": ["--backend", "libdeflate", "--threads", "8"],
         "libdeflate16": ["--backend", "libdeflate", "--threads", "16"],
         "libdeflate16-anonymous": ["--backend", "libdeflate", "--threads", "16", "--temp-mode", "auto"],
+        "libdeflate16-named": ["--backend", "libdeflate", "--threads", "16", "--temp-mode", "named"],
         "libdeflate32": ["--backend", "libdeflate", "--threads", "32"],
         "hybrid": ["--backend", "hybrid"],
         "hybrid25": ["--backend", "hybrid", "--cpu-percent", "25"],

@@ -138,7 +138,10 @@ Sink::int_type Sink::overflow(int_type c) {
   char byte = traits_type::to_char_type(c); xsputn(&byte, 1); return c;
 }
 void Sink::finish() const { if (written_ != expected_) throw std::runtime_error("展開サイズが一致しません"); }
-VirtualGzip::VirtualGzip(const Archive& archive, const Entry& entry) : archive_(archive), entry_(entry), buffer_(1 << 20) {
+VirtualGzip::VirtualGzip(const Archive& archive, const Entry& entry)
+    : VirtualGzip(entry, [&archive](uint64_t offset, std::span<char> bytes) { archive.read(offset, bytes); }) {}
+VirtualGzip::VirtualGzip(const Entry& entry, std::function<void(uint64_t, std::span<char>)> read)
+    : entry_(entry), read_(std::move(read)), buffer_(1 << 20) {
   wrapper_[0] = '\x1f'; wrapper_[1] = '\x8b'; wrapper_[2] = 8; wrapper_[9] = static_cast<char>(255);
   for (unsigned i = 0; i < 4; ++i) {
     wrapper_[10 + i] = static_cast<char>((entry.crc >> (8 * i)) & 255);
@@ -155,7 +158,7 @@ VirtualGzip::int_type VirtualGzip::underflow() {
   } else if (position_ - 10 < entry_.compressed) {
     const auto consumed = position_ - 10;
     bytes = static_cast<size_t>(std::min<uint64_t>(buffer_.size(), entry_.compressed - consumed));
-    archive_.read(entry_.data_offset + consumed, std::span<char>(buffer_).first(bytes));
+    read_(entry_.data_offset + consumed, std::span<char>(buffer_).first(bytes));
   } else {
     const auto consumed = position_ - 10 - entry_.compressed;
     if (consumed >= 8) return traits_type::eof();

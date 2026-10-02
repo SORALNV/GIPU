@@ -2,6 +2,8 @@
 import io
 import json
 import os
+import resource
+import signal
 from pathlib import Path
 import struct
 import subprocess
@@ -290,7 +292,7 @@ class Integration(unittest.TestCase):
         self.assertFalse((self.out / "bad.bin").exists())
         self.assertEqual(list(self.out.glob("*.part")), [])
 
-    @unittest.skipUnless(BACKEND not in ("gpu", "hybrid", "auto"), "不正DeflateはCPU経路でのみ検証する")
+    @unittest.skipUnless(BACKEND not in ("gpu", "hybrid"), "不正DeflateはCPU経路でのみ検証する")
     def test_corrupt_deflate_body(self):
         original = zip_bytes([("bad.bin", b"a" * (4 << 20))])
         cd = original.index(b"PK\x01\x02")
@@ -380,6 +382,67 @@ class Integration(unittest.TestCase):
         self.assertFalse((self.out / "0").exists())
         self.assertEqual(list(self.out.rglob("*.part")), [])
 
+    @unittest.skipUnless(BACKEND == "auto", "自動選択の既定は安全なCPU経路")
+    def test_auto_small_does_not_require_gpu(self):
+        result = self.process(zip_bytes([("small", b"hello" * 1000)]),
+                              extra=("--gpu", "9999", "--auto-gpu", "--auto-parallel", "--json"))
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["gpu_batches"], 0)
+        self.assertEqual(stats["gpu_streams"], 0)
+        self.assertIn(stats["selected_backend"], ("cpu", "isal", "libdeflate"))
+        self.assertTrue(stats["selection_reason"].startswith("auto_"))
+        self.assertEqual((self.out / "small").read_bytes(), b"hello" * 1000)
+
+    @unittest.skipUnless(BACKEND == "auto", "既定のCPU選択")
+    def test_default_backend(self):
+        self.archive.write_bytes(zip_bytes([("x", b"default-auto")]))
+        stats = json.loads(self.run_cli("test", self.archive, "--json").stdout)
+        self.assertEqual(stats["backend"], "auto")
+        self.assertEqual(stats["selection_reason"], "auto_cpu_test")
+
+    def test_output_file_limit_cleanup(self):
+        self.archive.write_bytes(zip_bytes([("limited", b"limits" * 32768)]))
+        def limits():
+            resource.setrlimit(resource.RLIMIT_FSIZE, (1024, 1024))
+            signal.signal(signal.SIGXFSZ, signal.SIG_IGN)
+        for mode in ("named", "auto"):
+            with self.subTest(mode=mode):
+                destination = self.root / mode
+                result = subprocess.run([BINARY, "extract", str(self.archive), "--backend", BACKEND,
+                                         "--gpu-mode", MODE, "--gpu-algorithm", ALGORITHM,
+                                         "--output", str(destination), "--temp-mode", mode],
+                                        preexec_fn=limits, capture_output=True, text=True, timeout=120)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse((destination / "limited").exists())
+                self.assertEqual(list(destination.rglob("*.part")), [])
+
+    def test_output_fd_limit_cleanup(self):
+        self.archive.write_bytes(zip_bytes([("folder/limited", b"limits" * 1000)]))
+        def limits():
+            resource.setrlimit(resource.RLIMIT_NOFILE, (6, 6))
+        result = subprocess.run([BINARY, "extract", str(self.archive), "--backend", BACKEND,
+                                 "--output", str(self.out), "--temp-mode", "named"],
+                                preexec_fn=limits, capture_output=True, text=True, timeout=120)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.out / "folder/limited").exists())
+        self.assertEqual(list(self.out.rglob("*.part")), [])
+
+    @unittest.skipUnless(BACKEND not in ("gpu", "hybrid"), "CPUのDeflateブロック構成")
+    def test_deflate_strategies_and_flush_boundaries(self):
+        payload = bytes(range(256)) * 130 + b"same" * 20000
+        original = zip_bytes([("x", payload)])
+        for strategy in (zlib.Z_DEFAULT_STRATEGY, zlib.Z_FIXED, zlib.Z_HUFFMAN_ONLY, zlib.Z_RLE):
+            for flush in (zlib.Z_SYNC_FLUSH, zlib.Z_FULL_FLUSH):
+                with self.subTest(strategy=strategy, flush=flush):
+                    compressor = zlib.compressobj(6, zlib.DEFLATED, -15, 8, strategy)
+                    compressed = bytearray()
+                    for offset in range(0, len(payload), 4097):
+                        compressed += compressor.compress(payload[offset:offset + 4097])
+                        compressed += compressor.flush(flush)
+                    compressed += compressor.flush(zlib.Z_FINISH)
+                    result = self.process(replace_deflate(original, compressed), extract=False, extra=("--json",))
+                    self.assertEqual(json.loads(result.stdout)["bytes"], len(payload))
+
     @unittest.skipUnless(BACKEND == "libdeflate", "CPUの共有メモリ予算")
     def test_cpu_memory_budget_and_streaming(self):
         small = os.urandom(1 << 20)
@@ -414,13 +477,15 @@ class Integration(unittest.TestCase):
         self.assertEqual(json.loads(result.stdout)["gpu_streams"], 1)
 
     @unittest.skipUnless(BACKEND == "gpu" and MODE == "auto", "pipelineの入力／出力最大値の予算")
-    def test_pipeline_host_budget_replanning(self):
-        entries = [(f"random-{i}", os.urandom(1 << 20)) for i in range(4)]
-        entries += [(f"zeros-{i}", b"\0" * (2 << 20)) for i in range(4)]
+    def test_pipeline_packed_host_budget(self):
+        entries = [(f"zeros-first-{i}", b"\0" * (2 << 20)) for i in range(4)]
+        entries += [(f"random-{i}", os.urandom(1 << 20)) for i in range(8)]
+        entries += [(f"zeros-last-{i}", b"\0" * (2 << 20)) for i in range(4)]
         result = self.process(zip_bytes(entries), extra=("--pipeline", "--host-limit", "30M", "--json"))
         stats = json.loads(result.stdout)
         self.assertLessEqual(stats["host_buffer_bytes"], 30 << 20)
         self.assertGreater(stats["gpu_batches"], 2)
+        self.assertGreater(stats["pipeline_overlap_waits"], 0)
         for name, payload in entries:
             self.assertEqual((self.out / name).read_bytes(), payload)
 
@@ -459,6 +524,16 @@ class Integration(unittest.TestCase):
         self.process(data, ok=False, extra=("--stream-crc", "cpu"))
         self.assertFalse((self.out / "bad.bin").exists())
         self.assertEqual(list(self.out.glob("*.part")), [])
+
+    @unittest.skipUnless(BACKEND == "gpu" and MODE == "stream", "隔離workerの再利用")
+    def test_stream_worker_reuse(self):
+        entries = [(f"{i}", b"worker" * (1 << 20)) for i in range(3)]
+        result = self.process(zip_bytes(entries), extra=("--json",))
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["gpu_streams"], 3)
+        self.assertEqual(stats["gpu_stream_workers"], 1)
+        for name, payload in entries:
+            self.assertEqual((self.out / name).read_bytes(), payload)
 
 
 if __name__ == "__main__":

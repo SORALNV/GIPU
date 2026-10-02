@@ -26,15 +26,19 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
   // workerごとに予算を分割。巨大エントリだけは定量メモリのStreamingへ回す。
   if (opts.host_limit < (2ULL << 20)) throw std::runtime_error("CPU経路には--host-limit 2M以上が必要です");
   size_t files = 0;
+  uint64_t largest = 0;
   for (const auto* entry : entries) {
     const auto& e = *entry;
     if (e.directory && root) root->directory(e.name);
-    if (!e.directory) ++files;
+    if (!e.directory) { ++files; largest = std::max(largest, e.uncompressed); }
   }
   if (!files) return {};
   auto count = std::min({opts.threads, files, static_cast<size_t>(opts.host_limit / (2ULL << 20))});
   const uint64_t worker_budget = opts.host_limit / count;
   const uint64_t buffer_budget = std::min(worker_budget, opts.cpu_buffer_limit);
+  // 大きさが揃った小ファイルだけ仕事の取得をまとめ、共有atomicの競合を抑える。
+  // 大きい外れ値を含む場合は1件ずつ分配し、特定workerへの偏りを避ける。
+  const size_t grain = largest <= (64ULL << 10) && files >= count * 64 ? 16 : 1;
   std::atomic<size_t> next{0};
   std::atomic<bool> stop{false};
   std::mutex lock;
@@ -49,10 +53,14 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
       if (!decoder) throw std::runtime_error("libdeflateを初期化できません");
       std::unique_ptr<char[]> buffer;
       size_t capacity = 0;
+      size_t index = 0, task_end = 0;
       while (!stop.load()) {
-        auto index = next.fetch_add(1);
-        if (index >= entries.size()) break;
-        const auto& e = *entries[index];
+        if (index == task_end) {
+          index = next.fetch_add(grain, std::memory_order_relaxed);
+          if (index >= entries.size()) break;
+          task_end = std::min(entries.size(), index + grain);
+        }
+        const auto& e = *entries[index++];
         if (e.directory) continue;
         check_cancelled();
         uint64_t output_bytes = e.method == 8 ? std::max<uint64_t>(e.uncompressed, 1) : 0;
@@ -104,8 +112,12 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
       }
     } catch (...) {
       stop.store(true);
-      std::lock_guard guard(lock);
-      if (!error) error = std::current_exception();
+      {
+        std::lock_guard guard(lock);
+        if (!error) error = std::current_exception();
+      }
+      // 別workerが大きなStreaming処理中でも次のI/O境界で止める。
+      request_cancel();
     }
     std::lock_guard guard(lock);
     // 複数workerの時間は加算値であり、実経過時間ではない。

@@ -18,6 +18,10 @@ CASES = {
     "single-random": (1, 512 * MIB, "random"),
     "single-large": (1, 8 << 30, "text"),
     "mixed": (8192, 4096, "mixed"),
+    "many-tiny": (262144, 128, "text"),
+    "many-small": (131072, 8192, "half"),
+    "few-large": (32, 64 * MIB, "half"),
+    "mixed-large": (32768, 4096, "mixed-large"),
 }
 
 
@@ -39,6 +43,10 @@ def create(root, name, level):
     if any(p.exists() for p in (archive_path, partial, manifest_path)):
         raise FileExistsError(f"既存コーパスを保護します: {name}")
     raw_size = count * size
+    if pattern == "mixed":
+        raw_size += ((count + 31) // 32) * MIB
+    elif pattern == "mixed-large":
+        raw_size += ((count + 8191) // 8192) * (512 * MIB)
     if shutil.disk_usage(root).free < raw_size + (2 << 30):
         raise RuntimeError("コーパスの作成に必要な空き容量がありません")
     started = time.perf_counter()
@@ -52,6 +60,14 @@ def create(root, name, level):
                 entry_pattern = "half"
                 if i % 32 == 0:
                     entry_size = MIB
+                elif i % 8 == 0:
+                    entry_size = 0
+                elif i % 4 == 0:
+                    method = zipfile.ZIP_STORED
+            elif pattern == "mixed-large":
+                entry_pattern = "half"
+                if i % 8192 == 0:
+                    entry_size = 512 * MIB
                 elif i % 8 == 0:
                     entry_size = 0
                 elif i % 4 == 0:

@@ -10,6 +10,13 @@
 #endif
 
 namespace gipu {
+bool rapidgzip_available() {
+#ifdef GIPU_HAVE_RAPIDGZIP
+  return true;
+#else
+  return false;
+#endif
+}
 #ifdef GIPU_HAVE_RAPIDGZIP
 namespace {
 // 標準ZIPのraw Deflateを、seek可能な仮想Gzipとして提供する。

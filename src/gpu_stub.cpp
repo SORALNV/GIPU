@@ -6,4 +6,5 @@ Stats run_gpu(const Archive&, OutputRoot*, const Options&, EntrySelection) {
 }
 std::string gpu_info(int) { return "GPUバックエンド: 未ビルド"; }
 uint64_t gpu_free_memory(int) { return 0; }
+int gpu_stream_worker_main(int, char**) { throw std::runtime_error("GPU workerはGPUビルドでのみ使用できます"); }
 }

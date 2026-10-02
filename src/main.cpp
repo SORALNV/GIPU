@@ -1,4 +1,5 @@
 #include "gipu/backend.hpp"
+#include "gipu/stream_worker.hpp"
 #include <algorithm>
 #include <chrono>
 #include <iostream>
@@ -28,9 +29,11 @@ void help() {
                "  gipu extract ARCHIVE.zip --output DIR [オプション]\n"
                "  gipu test ARCHIVE.zip [オプション]\n"
                "オプション:\n"
-               "  --backend gpu|cpu|libdeflate|isal|rapidgzip|hybrid  既定gpu\n"
+               "  --backend auto|gpu|cpu|libdeflate|isal|rapidgzip|hybrid  既定auto\n"
+               "  --auto-gpu               autoで既知の正しい大規模入力にGPUを許可\n"
+               "  --auto-parallel          autoで実験用の単一ファイル並列CPUを許可\n"
                "  --cpu-percent N          hybridのCPU担当バイト割合目安（0〜100、既定50）\n"
-               "  --threads N              CPU worker数（既定1、hybridは最大8、上限32）\n"
+               "  --threads N              CPU worker数（auto最大16、hybrid最大8、他1、上限32）\n"
                "  --write-threads N        GPUの1バッチ出力worker数（既定8、最大32）\n"
                "  --batch-entries N        GPUバッチの最大エントリ数（既定4096）\n"
                "  --pipeline               GPUバッチ専用、読み込み・GPU・書き込みを重畳\n"
@@ -38,18 +41,20 @@ void help() {
                "  --gpu-mode auto|stream|batch  GPU経路（既定auto）\n"
                "  --gpu-algorithm deflate|lookahead  バッチ方式（既定deflate）\n"
                "  --stream-crc cpu|gpu     StreamingのCRC（既定cpu、再読み込み不要）\n"
+               "  --stream-timeout N       GPU Streamingの無進捗timeout秒（既定120）\n"
                "  --vram-limit 4G          GIPUが確保するGPU作業領域の上限\n"
                "  --host-limit 8G          CPU/GPUのホストデータバッファ合計予算\n"
                "  --cpu-buffer-limit 64M   CPU全量バッファの1worker上限（超過はStreaming）\n"
                "  --max-output 1T          合計展開サイズの上限\n"
                "  --metadata-limit 256M    中央ディレクトリのサイズ上限\n"
                "  --sync                   出力ファイルと親ディレクトリをfsync\n"
-               "  --temp-mode named|auto   一時出力方式（既定named、autoはO_TMPFILEを試す）\n"
+               "  --temp-mode auto|named   一時出力方式（既定auto、O_TMPFILEを試す）\n"
                "  --json                   結果をJSONで出力\n";
 }
 }
 int main(int argc, char** argv) {
   try {
+    if (argc >= 2 && std::string(argv[1]) == "__gpu-stream-worker") return gipu::gpu_stream_worker_main(argc, argv);
     gipu::install_signal_handlers();
     if (argc < 2 || std::string(argv[1]) == "--help" || std::string(argv[1]) == "-h") { help(); return 0; }
     if (std::string(argv[1]) == "--version") { std::cout << "GIPU 0.1.0\n"; return 0; }
@@ -73,6 +78,13 @@ int main(int argc, char** argv) {
         opts.cpu_percent = static_cast<unsigned>(percent);
       }
       else if (arg == "--stream-crc") opts.stream_crc = value();
+      else if (arg == "--stream-timeout") {
+        auto text = value(); size_t used = 0;
+        auto seconds = std::stoul(text, &used);
+        if (used != text.size() || text.empty() || text.front() < '0' || text.front() > '9' || seconds == 0 || seconds > 86400)
+          throw std::runtime_error("stream-timeoutは1〜86400秒です");
+        opts.stream_timeout = static_cast<unsigned>(seconds);
+      }
       else if (arg == "--temp-mode") opts.temp_mode = value();
       else if (arg == "--threads" || arg == "--write-threads" || arg == "--batch-entries") {
         auto text = value(); size_t used = 0;
@@ -93,13 +105,18 @@ int main(int argc, char** argv) {
       else if (arg == "--metadata-limit") opts.metadata_limit = size_value(value());
       else if (arg == "--sync") opts.durable = true;
       else if (arg == "--pipeline") opts.pipeline = true;
+      else if (arg == "--auto-gpu") opts.auto_gpu = true;
+      else if (arg == "--auto-parallel") opts.auto_parallel = true;
       else if (arg == "--json") json = true;
       else if (!arg.empty() && arg.front() == '-') throw std::runtime_error("不明なオプションです: " + arg);
       else if (archive_path.empty()) archive_path = arg;
       else throw std::runtime_error("位置引数が多すぎます");
     }
-    if (opts.backend != "gpu" && opts.backend != "cpu" && opts.backend != "libdeflate" && opts.backend != "isal" && opts.backend != "rapidgzip" && opts.backend != "hybrid") throw std::runtime_error("backendはgpu/cpu/libdeflate/isal/rapidgzip/hybridです");
-    if (opts.backend == "hybrid" && !threads_set) opts.threads = std::min(8U, std::max(1U, std::thread::hardware_concurrency()));
+    if (opts.backend != "auto" && opts.backend != "gpu" && opts.backend != "cpu" && opts.backend != "libdeflate" && opts.backend != "isal" && opts.backend != "rapidgzip" && opts.backend != "hybrid") throw std::runtime_error("backendはauto/gpu/cpu/libdeflate/isal/rapidgzip/hybridです");
+    // 従来の「--pipelineだけ」の呼び出しはGPUの明示指定として互換性を保つ。
+    if (opts.pipeline && opts.backend == "auto") opts.backend = "gpu";
+    if (!threads_set && (opts.backend == "auto" || opts.backend == "hybrid"))
+      opts.threads = std::min<size_t>(opts.backend == "auto" ? 16 : 8, gipu::available_cpu_threads());
     if (opts.gpu_mode != "auto" && opts.gpu_mode != "stream" && opts.gpu_mode != "batch") throw std::runtime_error("gpu-modeはauto/stream/batchです");
     if (opts.gpu_algorithm != "deflate" && opts.gpu_algorithm != "lookahead") throw std::runtime_error("gpu-algorithmはdeflate/lookaheadです");
     if (opts.stream_crc != "cpu" && opts.stream_crc != "gpu") throw std::runtime_error("stream-crcはcpu/gpuです");
@@ -120,7 +137,8 @@ int main(int argc, char** argv) {
     if (command == "test" && !output_path.empty()) throw std::runtime_error("testには--outputを指定できません");
     std::unique_ptr<gipu::OutputRoot> root;
     if (command == "extract") root = std::make_unique<gipu::OutputRoot>(output_path, opts.temp_mode == "auto");
-    auto stats = (opts.backend == "cpu" || opts.backend == "isal") ? gipu::run_cpu(archive, root.get(), opts) :
+    auto stats = opts.backend == "auto" ? gipu::run_auto(archive, root.get(), opts) :
+        (opts.backend == "cpu" || opts.backend == "isal") ? gipu::run_cpu(archive, root.get(), opts) :
         opts.backend == "hybrid" ? gipu::run_hybrid(archive, root.get(), opts) :
         opts.backend == "rapidgzip" ? gipu::run_rapidgzip(archive, root.get(), opts) :
         opts.backend == "libdeflate" ? gipu::run_libdeflate(archive, root.get(), opts) : gipu::run_gpu(archive, root.get(), opts);
@@ -135,6 +153,8 @@ int main(int argc, char** argv) {
                         << ",\"transfer_seconds\":" << stats.transfer_seconds
                         << ",\"cpu_crc_bytes\":" << stats.cpu_crc_bytes << ",\"gpu_crc_bytes\":" << stats.gpu_crc_bytes
                         << ",\"lookahead_batches\":" << stats.lookahead_batches
+                        << ",\"pipeline_overlap_waits\":" << stats.pipeline_overlap_waits
+                        << ",\"gpu_stream_workers\":" << stats.gpu_stream_workers
                         << ",\"host_buffer_bytes\":" << stats.host_buffer_bytes
                         << ",\"cpu_buffered_files\":" << stats.cpu_buffered_files << ",\"cpu_stream_files\":" << stats.cpu_stream_files
                         << ",\"cpu_parallel_files\":" << stats.cpu_parallel_files
@@ -145,7 +165,8 @@ int main(int argc, char** argv) {
                         << ",\"named_output_files\":" << (root ? root->named_files() : 0)
                         << ",\"allocation_seconds\":" << stats.allocation_seconds << "}\n";
     else std::cout << "完了: " << stats.files << "ファイル / " << stats.bytes << " bytes / " << seconds << "秒 / " << throughput
-                   << " GiB/s（" << opts.backend << ", batch=" << stats.batches << ", stream=" << stats.streams << "）\n";
+                   << " GiB/s（" << (stats.selected_backend.empty() ? opts.backend : stats.selected_backend)
+                   << ", batch=" << stats.batches << ", stream=" << stats.streams << "）\n";
     return 0;
   } catch (const std::exception& error) { std::cerr << "gipu: " << error.what() << '\n'; return 1; }
 }

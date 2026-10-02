@@ -61,11 +61,12 @@ class Sink : public std::streambuf {
 class VirtualGzip : public std::streambuf {
  public:
   VirtualGzip(const Archive& archive, const Entry& entry);
+  VirtualGzip(const Entry& entry, std::function<void(uint64_t, std::span<char>)> read);
  protected:
   int_type underflow() override;
  private:
-  const Archive& archive_;
   const Entry& entry_;
+  std::function<void(uint64_t, std::span<char>)> read_;
   std::vector<char> buffer_;
   std::array<char, 18> wrapper_{};
   uint64_t position_ = 0;

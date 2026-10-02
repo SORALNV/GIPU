@@ -12,9 +12,12 @@
 | `src/rapidgzip.cpp` | seek可能な仮想Gzip、任意のRapidgzip依存による単一ストリームCPU並列実験 |
 | `src/checksum.cpp` | libdeflate／zlibのCPU増分CRC共通処理 |
 | `src/hybrid.cpp` | エントリ特性とバイト割合によるCPU/GPUの分担、並行実行、GPU不在時のCPU切替 |
+| `src/adaptive.cpp` | CPU affinity、既定CPU選択、明示許可したGPU／単一ファイル並列の選択 |
+| `src/stream_worker.cpp` | GPU Streaming子プロセスの起動・再利用・pipe出力監視・停止・回収 |
 | `src/backend.cpp` | 並行／順次処理の共通統計集計 |
 | `src/main.cpp` | CLI、合計出力上限、JSON統計 |
-| `tests/integration.py` | 標準zipfileで作ったZIPとの互換性、不正メタデータ、出力保護、予算による経路選択 |
+| `tests/integration.py` | 標準zipfileで作ったZIPとの互換性、不正メタデータ、出力保護、FD／ファイルサイズ不足、予算による経路選択 |
+| `tests/cancellation.py` | 自分が起動した解凍プロセスのSIGINT／SIGTERM／SIGKILLと未確定出力の保護 |
 
 ## バッチ経路
 
@@ -36,9 +39,9 @@ GPU領域は256byte境界の単一arenaとし、必要容量が増えた場合�
 
 `--pipeline`では全ファイルがバッチ経路に収まることを事前に確認します。GPU arenaは一つだけ、ホスト入力・出力は2組です。別workerで次の圧縮入力を先読みし、GPUによる解凍・CRC・結果転送の間に、検証済みの前バッチを出力workerが書き出します。次の入力を準備するworkerと出力workerが同じホストスロットを使う場合も、入力領域と出力領域は別です。出力領域を再利用する前に、そのスロットの出力完了を待ちます。
 
-全バッチ計画の最大input／output／arena容量を処理前に確保します。先読みworkerが処理中に固定化メモリを再確保することによるCUDA同期を減らすためです。入出力の最大値が別バッチに現れる場合もあるため、RAM消費は一つのバッチ実容量の厳密な2倍とは限りません。
+全バッチ計画の最大(input＋output)／arena容量を処理前に確保します。各slotは単一の固定化領域とし、入力は先頭、出力は末尾へ置きます。先読みworkerが処理中に固定化メモリを再確保することによるCUDA同期を減らし、異なるバッチの入力最大と出力最大を別々に予約する無駄を省きます。次入力が前出力へ重なる場合だけwriterをjoinし、`pipeline_overlap_waits`に記録します。
 
-`--host-limit`から固定分12MiBを引いた予算を固定化input/outputへ割り当てます。pipelineの2組は事前に最大容量を確認します。hybridはCPU・GPUへホスト予算を分配し、異なるバッチのinput/output最大値でも予算を超えない保守的なVRAM上限を使います。ホスト予算にCUDA/nvCOMP内部、ZIPエントリ一覧、OSページキャッシュは含みません。
+`--host-limit`から固定分12MiBを引いた予算を固定化input/outputへ割り当てます。pipelineの2組は事前に最大容量を確認します。hybridはCPU・GPUへホスト予算を分配し、GPU側の計画でホスト／VRAM双方の上限を守ります。ホスト予算にCUDA/nvCOMP内部、ZIPエントリ一覧、OSページキャッシュは含みません。
 
 1バッチのファイル操作は既定8 workerで行います（`--write-threads`）。pipelineでは最大2バッチを出力中に保持するため、最大16個の出力workerになります。エントリ番号をatomicで割り当て、最初の例外を共有して新規処理を止め、workerをjoinしてから再送出します。ファイル単位の検証・上書き拒否・原子的な確定は共通OutputFileを使います。
 
@@ -50,7 +53,9 @@ CUDA eventでH2D／D2H、decode、CRCを分離し、CPU側でread／write／ZIP�
 
 仮想Gzipは10バイトのヘッダ、ZIP内の指定範囲のRaw Deflate、8バイトのCRC／サイズトレーラを生成します。再圧縮や中間Gzipファイルは作りません。入力側は1MiBのバッファを再利用します。
 
-Streaming APIの出力を、宣言サイズを超えないsinkへ送ります。既定はCPU CRCをcallbackで増分計算し、`extract`だけ一時ファイルへ書きます。CRCとサイズが一致した出力だけを確定します。`test`は展開データを保存しません。libdeflate未導入でもzlib CRCを使用できます。
+Streaming APIは専用子プロセス内で動かします。既に検証した圧縮範囲・展開サイズ・CRCを小さな要求レコードで渡し、元ZIPのread-only FDを共有します。再解析は不要です。子の出力はpipe経由で親のサイズ制限sinkへ送り、親でCPU CRCを増分計算し、`extract`だけ一時ファイルへ書きます。CRC・サイズ・workerの完了レコードが一致した出力だけを確定します。`test`は展開データを保存しません。
+
+callbackの例外後にnvCOMP内部の`std::thread::join`が終了しないことをGDBで確認しました。子は出力パスを一切持たず、親が100ms間隔で停止要求と無進捗timeoutを監視します。異常時は自分の子だけをSIGKILL／waitpidで回収してから、親が未確定出力を片付けます。親のSIGKILLにはPR_SET_PDEATHSIGで対応します。正常な連続Streamingは同じ子を再利用し、バッチへ戻る前に破棄します。プロセス分離は破損Deflateの安全性を保証するものではありません。
 
 従来の二段階方式も`--stream-crc gpu`で比較できます。API完了後に出力を4MiBずつ読み直しGPU CRCを増分計算するため、`test`でも名前なし一時ファイルが必要です。nvCOMPのpersistent解凍カーネル実行中に、出力callbackから別CUDAストリームのCRCカーネルへ同期すると、32MiBの高圧縮率エントリで進行が止まりました。CRCを軽いwarpカーネルへ変えても解消しなかったため、GPU CRCを選ぶ場合は解凍とCRCを時間的に分離します。カーネル資源の競合が原因である可能性はありますが、ライブラリ内部の根本原因までは特定していません。
 

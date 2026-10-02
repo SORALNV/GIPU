@@ -116,6 +116,7 @@ void zip64_extra(std::span<const char> extra, uint64_t& size, uint64_t& compress
 }
 void install_signal_handlers() {
   std::signal(SIGINT, on_signal); std::signal(SIGTERM, on_signal);
+  std::signal(SIGPIPE, SIG_IGN);
 }
 void request_cancel() { stop_requested.store(true, std::memory_order_relaxed); }
 void check_cancelled() { if (cancelled || stop_requested.load(std::memory_order_relaxed)) throw std::runtime_error("処理をキャンセルしました"); }

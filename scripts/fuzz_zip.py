@@ -62,7 +62,7 @@ def reference(data):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=Path("build/gipu"))
-    parser.add_argument("--backend", choices=("cpu", "libdeflate", "isal", "rapidgzip"), required=True)
+    parser.add_argument("--backend", choices=("auto", "cpu", "libdeflate", "isal", "rapidgzip"), required=True)
     parser.add_argument("--iterations", type=int, default=2000)
     parser.add_argument("--seed", type=int, default=3090)
     parser.add_argument("--timeout", type=float, default=5)

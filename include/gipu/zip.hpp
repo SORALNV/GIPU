@@ -28,6 +28,7 @@ class Archive {
   const std::vector<Entry>& entries() const { return entries_; }
   uint64_t total_size() const;
   uint64_t file_size() const { return size_; }
+  int native_handle() const { return fd_; } // read-only、所有権はArchiveに残る。
  private:
   int fd_ = -1;
   uint64_t size_ = 0;

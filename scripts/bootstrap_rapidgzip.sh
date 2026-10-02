@@ -13,5 +13,13 @@ elif [[ "$(git -C "$gipu_rapid_source" rev-parse HEAD)" != "$gipu_rapid_revision
   exit 1
 fi
 git -C "$gipu_rapid_source" submodule update --init librapidarchive
+gipu_isal_option=""
+if [[ "${1:-}" == "--with-isal" ]]; then
+  git -C "$gipu_rapid_source/librapidarchive" submodule update --init src/external/isa-l
+  gipu_isal_option=" -DGIPU_RAPIDGZIP_ISAL=ON"
+elif [[ "$#" != 0 ]]; then
+  printf '%s\n' '使い方: bash scripts/bootstrap_rapidgzip.sh [--with-isal]' >&2
+  exit 1
+fi
 printf '%s\n' 'Rapidgzip 0.16.0のヘッダを準備しました。再現ビルド:'
-printf '%s\n' "bash scripts/build.sh -DGIPU_ENABLE_RAPIDGZIP=ON -DRAPIDGZIP_ROOT=$gipu_root/$gipu_rapid_source/librapidarchive"
+printf '%s\n' "bash scripts/build.sh -DGIPU_ENABLE_RAPIDGZIP=ON -DRAPIDGZIP_ROOT=$gipu_root/$gipu_rapid_source/librapidarchive$gipu_isal_option"

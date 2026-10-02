@@ -24,14 +24,27 @@ jobs:
         run: GIPU_TEST_BACKEND=libdeflate GIPU_TEST_THREADS=4 python3 tests/integration.py build/gipu
   rapidgzip:
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        fork_isal: ["OFF", "ON"]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: ビルド依存と固定版Rapidgzipを準備
         run: |
-          sudo apt-get update && sudo apt-get install -y g++ cmake ninja-build zlib1g-dev libdeflate-dev libisal-dev
-          bash scripts/bootstrap_rapidgzip.sh
+          sudo apt-get update && sudo apt-get install -y g++ cmake ninja-build nasm zlib1g-dev libdeflate-dev libisal-dev
+          bash scripts/bootstrap_rapidgzip.sh --with-isal
       - name: 実験用の単一ストリーム並列経路を検証
         run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DGIPU_ENABLE_GPU=OFF -DGIPU_ENABLE_RAPIDGZIP=ON -DRAPIDGZIP_ROOT="$PWD/.deps/rapidgzip/librapidarchive"
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DGIPU_ENABLE_GPU=OFF -DGIPU_ENABLE_RAPIDGZIP=ON -DGIPU_RAPIDGZIP_ISAL=${{ matrix.fork_isal }} -DRAPIDGZIP_ROOT="$PWD/.deps/rapidgzip/librapidarchive"
+          cmake --build build -j 2
+          ctest --test-dir build --output-on-failure
+  minimal:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: zlibだけの最小構成と自動選択のfallbackを検証
+        run: |
+          sudo apt-get update && sudo apt-get install -y g++ cmake ninja-build zlib1g-dev
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DGIPU_ENABLE_GPU=OFF -DGIPU_ENABLE_LIBDEFLATE=OFF -DGIPU_ENABLE_ISAL=OFF
           cmake --build build -j 2
           ctest --test-dir build --output-on-failure

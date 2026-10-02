@@ -42,8 +42,7 @@ Stats run_hybrid(const Archive& archive, OutputRoot* root, const Options& opts) 
   gpu_opts.host_limit = opts.host_limit - cpu_opts.host_limit;
   gpu_opts.vram_limit = std::min(opts.vram_limit, free - free / 4);
   gpu_opts.pipeline = opts.gpu_mode != "stream";
-  // 最大input/outputが別バッチになる最悪ケースでも、二組のホストバッファを予算化。
-  if (gpu_opts.pipeline) gpu_opts.vram_limit = std::min<uint64_t>(gpu_opts.vram_limit, (gpu_opts.host_limit - (12ULL << 20)) / 4);
+  // GPU側のpacked二重バッファ計画がホスト予算も判定する。
   if (gpu_opts.vram_limit < (16ULL << 20)) return only_cpu("small_memory_budget");
   std::mutex lock;
   std::exception_ptr first_error;

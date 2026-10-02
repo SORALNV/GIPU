@@ -11,6 +11,8 @@ import tempfile
 import time
 
 VARIANTS = {
+    "auto": ["--backend", "auto"],
+    "auto-experimental": ["--backend", "auto", "--auto-gpu", "--auto-parallel"],
     "cpu": ["--backend", "cpu"],
     "isal": ["--backend", "isal"],
     "hybrid": ["--backend", "hybrid"],
@@ -21,6 +23,7 @@ VARIANTS = {
     "libdeflate16": ["--backend", "libdeflate", "--threads", "16"],
     "libdeflate-full": ["--backend", "libdeflate", "--threads", "16", "--cpu-buffer-limit", "8G"],
     "libdeflate16-anonymous": ["--backend", "libdeflate", "--threads", "16", "--temp-mode", "auto"],
+    "libdeflate16-named": ["--backend", "libdeflate", "--threads", "16", "--temp-mode", "named"],
     "libdeflate32": ["--backend", "libdeflate", "--threads", "32"],
     "libdeflate-stream": ["--backend", "libdeflate", "--threads", "16", "--host-limit", "32M"],
     "rapidgzip1": ["--backend", "rapidgzip", "--threads", "1"],
@@ -35,6 +38,8 @@ VARIANTS = {
     "baseline-gpu": ["--backend", "gpu"],
     "baseline-cpu": ["--backend", "cpu"],
     "baseline-libdeflate16": ["--backend", "libdeflate", "--threads", "16"],
+    "baseline-rapidgzip16": ["--backend", "rapidgzip", "--threads", "16"],
+    "baseline-isal": ["--backend", "isal"],
 }
 
 
