@@ -6,9 +6,18 @@ import os
 from pathlib import Path
 import random
 import subprocess
+import struct
 import tempfile
 import time
 import zipfile
+
+
+class Unseekable(io.BytesIO):
+    def seekable(self):
+        return False
+
+    def seek(self, *args):
+        raise io.UnsupportedOperation("seek")
 
 
 def fixtures(many_files=False):
@@ -26,6 +35,26 @@ def fixtures(many_files=False):
                 for index in range(1024):
                     archive.writestr(f"many/{index:04d}", bytes([index % 256]) * 64)
             result.append(out.getvalue())
+    # CRCがdescriptor署名と同じになる有効な4byte。ZIP32/64・署名有無を変異seedに含める。
+    for wide in (False, True):
+        out = Unseekable()
+        with zipfile.ZipFile(out, "w") as archive:
+            info = zipfile.ZipInfo("descriptor.bin")
+            info.compress_type = zipfile.ZIP_DEFLATED
+            with archive.open(info, "w", force_zip64=wide) as member:
+                member.write(bytes.fromhex("ac0a7ad5"))
+        original = out.getvalue()
+        cd = original.index(b"PK\x01\x02")
+        descriptor = cd - (24 if wide else 16)
+        result.append(original)
+        unsigned = bytearray(original[:descriptor] + original[descriptor + 4:])
+        struct.pack_into("<I", unsigned, unsigned.rfind(b"PK\x05\x06") + 16, cd - 4)
+        result.append(bytes(unsigned))
+        if wide:
+            for source in (original, unsigned):
+                local_zero = bytearray(source)
+                struct.pack_into("<II", local_zero, 18, 0, 0)
+                result.append(bytes(local_zero))
     return result
 
 

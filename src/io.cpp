@@ -16,17 +16,40 @@
 namespace gipu {
 namespace {
 void fail(const std::string& message) { throw std::runtime_error(message + ": " + std::strerror(errno)); }
-int descend(int fd, const std::string& component) {
+int descend(int fd, const std::string& component, bool durable) {
   if (::mkdirat(fd, component.c_str(), 0755) != 0 && errno != EEXIST) fail("ディレクトリを作成できません");
   int next = ::openat(fd, component.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
   if (next < 0) fail("安全に出力ディレクトリを開けません");
+  if (durable && (::fsync(next) != 0 || ::fsync(fd) != 0)) {
+    const int saved = errno; ::close(next); errno = saved;
+    fail("出力ディレクトリの階層を同期できません");
+  }
   return next;
 }
 }
-OutputRoot::OutputRoot(const std::filesystem::path& path, bool anonymous, bool fast_paths) : fast_paths_(fast_paths) {
+OutputRoot::OutputRoot(const std::filesystem::path& path, mode_t file_mode, bool anonymous,
+                       bool fast_paths, bool durable)
+    : file_mode_(file_mode), durable_(durable), fast_paths_(fast_paths) {
   std::filesystem::create_directories(path);
   fd_ = ::open(path.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
   if (fd_ < 0) fail("出力先を開けません");
+  try {
+    if (durable_) {
+      if (::fsync(fd_) != 0) fail("出力先を同期できません");
+      // create_directoriesで新設した出力先自体の名前も、上位まで同期する。
+      // 通常モードでは走らず、--sync時の初期化に一度だけ実施する。
+      auto ancestor = std::filesystem::absolute(path).parent_path();
+      for (;;) {
+        int parent = ::open(ancestor.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+        if (parent < 0) fail("出力先の上位ディレクトリを開けません");
+        const int synced = ::fsync(parent), saved = errno;
+        ::close(parent); errno = saved;
+        if (synced != 0) fail("出力先の上位ディレクトリを同期できません");
+        if (ancestor == ancestor.root_path()) break;
+        ancestor = ancestor.parent_path();
+      }
+    }
+  } catch (...) { ::close(fd_); fd_ = -1; throw; }
   // /procがない環境では従来の名前付き一時ファイルへ戻る。
   if (anonymous) proc_fds_ = ::open("/proc/self/fd", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 }
@@ -55,7 +78,7 @@ int OutputRoot::parent(const std::string& name) const {
   try {
     size_t start = 0;
     for (size_t end = name.find('/'); end != std::string::npos; end = name.find('/', start)) {
-      int next = descend(current, name.substr(start, end - start));
+      int next = descend(current, name.substr(start, end - start), durable_);
       ::close(current); current = next; start = end + 1;
     }
     return current;
@@ -74,7 +97,8 @@ OutputFile::OutputFile() {
   }
   ::fcntl(fd_, F_SETFD, FD_CLOEXEC);
 }
-OutputFile::OutputFile(const OutputRoot& root, const Entry& entry, bool durable) : durable_(durable) {
+OutputFile::OutputFile(const OutputRoot& root, const Entry& entry, bool durable)
+    : durable_(durable), file_mode_(root.file_mode()) {
   parent_ = root.parent(entry.name);
   try {
     target_ = entry.name.substr(entry.name.find_last_of('/') + 1);
@@ -130,7 +154,7 @@ void OutputFile::read_all(const std::function<void(std::span<const char>)>& cons
   }
 }
 void OutputFile::commit() {
-  if (::fchmod(fd_, 0644) != 0) fail("ファイル権限を設定できません");
+  if (::fchmod(fd_, file_mode_) != 0) fail("ファイル権限を設定できません");
   if (durable_ && ::fsync(fd_) != 0) fail("ファイルを同期できません");
   // linkatは既存名を置き換えない。検査から確定までの競合も防ぐ。
   if (anonymous_) {

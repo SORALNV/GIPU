@@ -32,6 +32,10 @@ void require(bool condition, std::string_view message) {
 void range(uint64_t start, uint64_t bytes, uint64_t end) {
   require(start <= end && bytes <= end - start, "ZIPのデータ範囲が不正です");
 }
+void supported_version(uint16_t version) {
+  // 低位byteが必要なZIP仕様版。方式・フラグの対応可否は別途厳密に確認する。
+  require((version & 255) <= 63, "未対応のZIP必要バージョンです");
+}
 std::string filename(const std::string& raw, bool utf8) {
   require(!raw.empty() && raw.find('\0') == std::string::npos, "空またはNULを含むファイル名です");
   std::string out;
@@ -85,7 +89,7 @@ class MetadataReader {
   uint64_t start_ = 0;
   size_t valid_ = 0;
 };
-void zip64_extra(std::span<const char> extra, uint64_t& size, uint64_t& compressed,
+bool zip64_extra(std::span<const char> extra, uint64_t& size, uint64_t& compressed,
                  uint64_t& offset, uint32_t& disk) {
   bool found = false;
   size_t pos = 0;
@@ -114,35 +118,45 @@ void zip64_extra(std::span<const char> extra, uint64_t& size, uint64_t& compress
   }
   require((size != 0xffffffffULL && compressed != 0xffffffffULL && offset != 0xffffffffULL && disk != 0xffff) || found,
           "ZIP64追加フィールドがありません");
+  return found;
 }
 uint64_t validate_local(Entry& e, uint64_t cd_offset,
                         MetadataReader& locals, std::vector<char>& local_variable) {
   range(e.local_offset, 30, cd_offset);
   std::array<char, 30> local{}; locals.read(e.local_offset, local); auto l = local.data();
   require(u32(l) == 0x04034b50 && u16(l + 6) == e.flags && u16(l + 8) == e.method, "ローカルヘッダが中央ディレクトリと一致しません");
+  supported_version(u16(l + 4));
   uint64_t local_len = uint64_t(u16(l + 26)) + u16(l + 28);
   range(e.local_offset + 30, local_len, cd_offset);
   local_variable.resize(static_cast<size_t>(local_len)); locals.read(e.local_offset + 30, local_variable);
   require(std::string(local_variable.data(), u16(l + 26)) == e.raw_name, "ローカルファイル名が一致しません");
   uint64_t local_size = u32(l + 22), local_compressed = u32(l + 18), ignored_offset = 0;
   uint32_t ignored_disk = 0;
-  zip64_extra(std::span<const char>(local_variable).subspan(u16(l + 26)), local_size, local_compressed, ignored_offset, ignored_disk);
+  const bool local_zip64 = zip64_extra(std::span<const char>(local_variable).subspan(u16(l + 26)), local_size, local_compressed, ignored_offset, ignored_disk);
   if (!(e.flags & 8)) require(u32(l + 14) == e.crc && local_size == e.uncompressed && local_compressed == e.compressed, "ローカルサイズまたはCRCが一致しません");
   e.data_offset = e.local_offset + 30 + local_len;
   range(e.data_offset, e.compressed, cd_offset);
   auto data_end = e.data_offset + e.compressed;
   if (e.flags & 8) {
     // Descriptorの64bitサイズはローカルZIP64フィールドの存在で決まる。
-    bool wide = u32(l + 18) == 0xffffffffU || u32(l + 22) == 0xffffffffU || e.compressed > 0xffffffffULL || e.uncompressed > 0xffffffffULL;
+    bool wide = local_zip64 || e.compressed > 0xffffffffULL || e.uncompressed > 0xffffffffULL;
     std::array<char, 4> signature{}; range(data_end, 4, cd_offset); locals.read(data_end, signature);
-    const bool signed_descriptor = u32(signature.data()) == 0x08074b50;
-    const size_t length = (wide ? 20 : 12) + (signed_descriptor ? 4 : 0);
-    range(data_end, length, cd_offset);
-    std::vector<char> descriptor(length); locals.read(data_end, descriptor);
-    const auto d = descriptor.data() + (signed_descriptor ? 4 : 0);
-    require(u32(d) == e.crc && (wide ? u64(d + 4) : u32(d + 4)) == e.compressed &&
-            (wide ? u64(d + 12) : u32(d + 8)) == e.uncompressed, "Data Descriptorが一致しません");
-    data_end += length;
+    const size_t fields = wide ? 20 : 12;
+    auto matches = [&](size_t skip) {
+      if (fields + skip > cd_offset - data_end) return false;
+      std::array<char, 24> descriptor{};
+      locals.read(data_end, std::span<char>(descriptor).first(fields + skip));
+      const auto d = descriptor.data() + skip;
+      return u32(d) == e.crc && (wide ? u64(d + 4) : u32(d + 4)) == e.compressed &&
+             (wide ? u64(d + 12) : u32(d + 8)) == e.uncompressed;
+    };
+    // CRC自体が署名値と同じ場合もある。先頭4byteだけで形式を決めず、
+    // 中央ディレクトリのCRC・両サイズに一致する署名付き／無しを選ぶ。
+    if (u32(signature.data()) == 0x08074b50 && matches(4)) data_end += fields + 4;
+    else {
+      require(matches(0), "Data Descriptorが一致しません");
+      data_end += fields;
+    }
   }
   return data_end;
 }
@@ -156,7 +170,9 @@ void check_cancelled() { if (stop_requested.load(std::memory_order_relaxed)) thr
 Archive::Archive(const std::filesystem::path& path, uint64_t metadata_limit, size_t metadata_threads)
     : metadata_limit_(metadata_limit), metadata_threads_(metadata_threads) {
   require(metadata_threads <= 32, "metadata worker数が上限を超えています");
-  fd_ = ::open(path.c_str(), O_RDONLY | O_CLOEXEC);
+  // FIFOを指定された場合もopenで待たず、直後のfstatで通常ファイル以外を拒否する。
+  // O_NONBLOCKは通常ファイルのpread動作を変更しない。
+  fd_ = ::open(path.c_str(), O_RDONLY | O_CLOEXEC | O_NONBLOCK);
   if (fd_ < 0) throw std::runtime_error("ZIPを開けません: " + std::string(std::strerror(errno)));
   try {
     struct stat st{};
@@ -210,6 +226,7 @@ void Archive::parse() {
     range(zip64_offset, 56, metadata_start - 20);
     std::array<char, 56> record{}; read(zip64_offset, record); p = record.data();
     require(u32(p) == 0x06064b50 && u64(p + 4) >= 44, "ZIP64終端レコードが不正です");
+    supported_version(u16(p + 14));
     range(zip64_offset + 12, u64(p + 4), metadata_start - 20);
     require(zip64_offset + 12 + u64(p + 4) == metadata_start - 20, "ZIP64終端の位置が不正です");
     require(u32(p + 16) == 0 && u32(p + 20) == 0 && u64(p + 24) == u64(p + 32), "分割ZIPには対応していません");
@@ -232,6 +249,7 @@ void Archive::parse() {
     range(pos, 46, cd_offset + cd_size);
     std::array<char, 46> h{}; central.read(pos, h); p = h.data();
     require(u32(p) == 0x02014b50, "中央ディレクトリの署名が不正です");
+    supported_version(u16(p + 6));
     const auto name_len = u16(p + 28), extra_len = u16(p + 30), comment_len = u16(p + 32);
     require(name_len > 0, "空のファイル名です");
     const auto variable_size = uint64_t(name_len) + extra_len + comment_len;

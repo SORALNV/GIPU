@@ -4,6 +4,8 @@ import json
 import os
 import resource
 import signal
+import shutil
+import re
 from pathlib import Path
 import struct
 import subprocess
@@ -65,6 +67,29 @@ def replace_deflate(data, compressed):
     return result
 
 
+def crc32_payload(target):
+    """32bit線形写像を解き、指定CRCを持つ4byteを構成する。"""
+    base = zlib.crc32(bytes(4))
+    basis = {}
+    for bit in range(32):
+        vector = zlib.crc32((1 << bit).to_bytes(4, "little")) ^ base
+        source = 1 << bit
+        while vector:
+            pivot = vector.bit_length() - 1
+            if pivot not in basis:
+                basis[pivot] = (vector, source)
+                break
+            other, bits = basis[pivot]
+            vector ^= other
+            source ^= bits
+    vector, result = target ^ base, 0
+    while vector:
+        other, bits = basis[vector.bit_length() - 1]
+        vector ^= other
+        result ^= bits
+    return result.to_bytes(4, "little")
+
+
 class Integration(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="gipu-test-")
@@ -110,6 +135,78 @@ class Integration(unittest.TestCase):
 
     def test_empty_archive(self):
         self.process(zip_bytes([]))
+
+    def test_input_fifo_rejected_without_waiting(self):
+        fifo = self.root / "not-a-regular-file"
+        os.mkfifo(fifo)
+        result = subprocess.run([BINARY, "test", str(fifo), "--backend", BACKEND],
+                                capture_output=True, text=True, timeout=3)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("通常のZIPファイル", result.stderr)
+
+    def test_descriptor_crc_equals_signature(self):
+        payload = crc32_payload(0x08074b50)
+        self.assertEqual(zlib.crc32(payload), 0x08074b50)
+        for wide in (False, True):
+            original = zip_bytes([("collision", payload)], descriptor=True, force_zip64=wide)
+            cd = original.index(b"PK\x01\x02")
+            descriptor = cd - (24 if wide else 16)
+            self.assertEqual(original[descriptor:descriptor + 4], b"PK\x07\x08")
+            unsigned = bytearray(original[:descriptor] + original[descriptor + 4:])
+            end = unsigned.rfind(b"PK\x05\x06")
+            struct.pack_into("<I", unsigned, end + 16, cd - 4)
+            with zipfile.ZipFile(io.BytesIO(unsigned)) as reference:
+                self.assertEqual(reference.read("collision"), payload)
+            for signed, data in ((True, original), (False, unsigned)):
+                self.out = self.root / f"descriptor-{wide}-{signed}"
+                self.process(data)
+                self.assertEqual((self.out / "collision").read_bytes(), payload)
+
+    def test_descriptor_zip64_without_size_sentinels(self):
+        data = bytearray(zip_bytes([("wide", b"payload")], descriptor=True, force_zip64=True))
+        # Descriptor使用時はローカルのサイズを0にできる。64bit幅は追加フィールドで決まる。
+        struct.pack_into("<II", data, 18, 0, 0)
+        self.process(data)
+        self.assertEqual((self.out / "wide").read_bytes(), b"payload")
+
+    def test_unsupported_required_version(self):
+        original = full_zip64(zip_bytes([("version", b"payload")]))
+        cd = original.index(b"PK\x01\x02")
+        end64 = original.index(b"PK\x06\x06")
+        for offset in (4, cd + 6, end64 + 14):
+            data = bytearray(original)
+            data[offset] = 173
+            self.process(data, ok=False)
+            self.assertFalse(self.out.exists())
+
+    def test_output_respects_umask(self):
+        self.archive.write_bytes(zip_bytes([("nested/value.txt", b"private value")]))
+        for mode in ("named", "auto"):
+            for mask in (0o022, 0o027, 0o077):
+                destination = self.root / f"permissions-{mode}-{mask}"
+                result = subprocess.run([BINARY, "extract", str(self.archive), "--backend", BACKEND,
+                                         "--gpu-mode", MODE, "--gpu-algorithm", ALGORITHM,
+                                         "--temp-mode", mode, "--output", str(destination)],
+                                        umask=mask, capture_output=True, text=True, timeout=120)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual((destination / "nested/value.txt").stat().st_mode & 0o777, 0o644 & ~mask)
+                self.assertEqual((destination / "nested").stat().st_mode & 0o777, 0o755 & ~mask)
+
+    @unittest.skipUnless(BACKEND == "cpu" and shutil.which("strace"), "共有出力層のfsync対象を診断")
+    def test_sync_includes_created_ancestors(self):
+        destination = self.root / "new" / "output"
+        self.archive.write_bytes(zip_bytes([("a/b/value", b"durable"), ("empty/deep/", b"")]))
+        trace = self.root / "sync.trace"
+        result = subprocess.run(["strace", "-f", "-yy", "-e", "trace=fsync", "-o", str(trace),
+                                 BINARY, "extract", str(self.archive), "--backend", "cpu",
+                                 "--output", str(destination), "--sync"], capture_output=True, text=True, timeout=120,
+                                # LSanはptraceと併用できない。この診断だけ無効、通常スイートでは有効。
+                                env={**os.environ, "ASAN_OPTIONS": os.environ.get("ASAN_OPTIONS", "") + ":detect_leaks=0"})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        synced = set(re.findall(r"fsync\(\d+<([^>]+)>\)\s+= 0", trace.read_text()))
+        for path in (self.root, self.root / "new", destination, destination / "a", destination / "a/b",
+                     destination / "empty", destination / "empty/deep"):
+            self.assertIn(str(path), synced)
 
     def test_parallel_metadata_validation(self):
         original = zip_bytes([(f"meta/{i:04d}", b"x" * 64) for i in range(1024)], descriptor=True, force_zip64=True)
@@ -302,6 +399,19 @@ class Integration(unittest.TestCase):
                                 preexec_fn=limits, capture_output=True, text=True, timeout=120)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual([p for p in self.out.rglob("*") if p.is_file()], [])
+
+    @unittest.skipUnless(BACKEND == "gpu" and MODE != "stream", "中規模GPU出力の適応と予算")
+    def test_gpu_windowed_output_auto_medium(self):
+        payload = bytes(range(256)) * 1024
+        entries = [(f"medium/{i}", payload) for i in range(512)]
+        result = self.process(zip_bytes(entries), extra=("--host-limit", "32M", "--write-threads", "2",
+                              "--gpu-mode", "batch", "--gpu-output", "auto", "--json"))
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["gpu_streamed_output_bytes"], 128 << 20)
+        self.assertLessEqual(stats["host_buffer_bytes"], 32 << 20)
+        self.assertEqual(stats["files"], 512)
+        for i in (0, 255, 511):
+            self.assertEqual((self.out / f"medium/{i}").read_bytes(), payload)
 
     def test_cp437(self):
         data = zip_bytes([("x.txt", b"cp437")]).replace(b"x.txt", b"\x82.txt")

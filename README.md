@@ -4,6 +4,8 @@ Ubuntu＋NVIDIA GPUで、通常のZIPを展開するCLIを開発しています�
 
 目標は、GPUとCPUを使い分け、大小・多数のファイルを含む標準ZIPを高速に展開することです。VRAMより大きいアーカイブや単一ファイルもストリーミング展開します。性能は解凍・CRCだけでなく、ファイル操作とI/Oを含めて実測で判断します。
 
+最新の50GB ZIP・SSD実展開3回中央値はCPU auto **50.56秒**、GPU pipeline **66.04秒**、hybrid **61.62秒**です。入力とストレージ状態で優劣が変わるため、通常はCPUを選ぶ`auto`を既定にしています。全条件で最速CPU比5倍を達成したものではありません。大小・多数・単一ファイルを含む[最新の測定と制約](docs/measurements-adaptive-2026-10-02.md)を参照してください。
+
 ## 実装状況
 
 - ZIP32／ZIP64、Stored／Deflate、Data Descriptor、UTF-8／CP437ファイル名の解析。
@@ -121,7 +123,7 @@ Rapidgzip内部の修正版ISA-Lを使う追加実験は、`bash scripts/bootstr
 
 GPUバッチ出力は`--write-threads`（既定8、最大32）で並列化します。pipelineは最大2バッチの出力を重ねるため、既定では最大16個の出力workerに加えて先読み／GPU制御用CPUを使います。GPU処理だけでなくCPUによるファイル操作も性能に寄与します。メモリ容量は全バッチの計画から最大値を先に確保し、処理中に`cudaMallocHost`を呼び直すことによる同期を減らします。`allocation_seconds`に事前確保時間を記録します。
 
-通常バッチの`--gpu-output auto`は、最大ファイル64MiB以上・バッチ出力128MiB以上なら、workerごとの1MiB固定化バッファでGPUから少しずつ転送・出力します。出力全量の固定化RAMを確保しません。全バッチのサイズ・CRCを確認してから転送し、全workerが完了するまでGPU arenaを再利用しません。小窓分も`--host-limit`に含めます。`buffered`で従来の全量転送、`stream`で小さいバッチも小窓転送にでき、後者の明示指定はpipeline／hybrid／auto-gpuとは併用しません。pipelineは入力・GPU処理・出力の重畳を優先し、全量転送を維持します。この転送方式はnvCOMPのStreaming解凍とは別です。
+通常バッチの`--gpu-output auto`は、最大ファイル256KiB以上・バッチ出力128MiB以上・平均32KiB以上なら、workerごとの1MiB固定化バッファでGPUから少しずつ転送・出力します。出力全量の固定化RAMを確保しません。全バッチのサイズ・CRCを確認してから転送し、全workerが完了するまでGPU arenaを再利用しません。小窓分も`--host-limit`に含めます。`buffered`で従来の全量転送、`stream`で小さいバッチも小窓転送にでき、後者の明示指定はpipeline／hybrid／auto-gpuとは併用しません。pipelineは入力・GPU処理・出力の重畳を優先し、全量転送を維持します。この転送方式はnvCOMPのStreaming解凍とは別です。
 
 `gpu_streamed_output_bytes`が小窓転送で出力したバイト数です。この方式の`write_seconds`は小窓確保・D2H待ち・ファイル出力の経過時間を含み、`transfer_seconds`にもCUDA eventで測った各workerのD2H時間を加算します。工程時間は重複を含むため単純に加算できません。
 
@@ -183,7 +185,9 @@ python3 scripts/benchmark_archive.py --archive /optane/workspace/kaggle-50GB.zip
 
 暗号化ZIP、Deflate64、BZip2、LZMA、分割ZIP、特殊ファイル、Windowsは初期版の対象外です。
 
-現時点では元ZIPのタイムスタンプ・実行権限などの属性は復元せず、通常ファイルとして出力します。対応していない方式を黙って読み飛ばすことはありません。
+現時点では元ZIPのタイムスタンプ・実行権限などの属性は復元せず、通常ファイルとして出力します。確定時の権限は`0644 & ~umask`とし、利用者の制限を緩めません。新規ディレクトリは`0755`にumask／filesystem側のACLが適用されます。ZIP由来のACLは復元しません。対応していない方式を黙って読み飛ばすことはありません。
+
+`--sync`では出力ファイル・直接の親だけでなく、内部で新設する階層と、出力先自体の上位ディレクトリも同期します。後者は起動時に一度だけ行います。上位ディレクトリを開けない、またはfilesystemがディレクトリのfsyncを扱えない場合は、同期成功とせずエラーにします。通常の非同期モードの処理量は増やしません。電源断の実機試験をしたという意味ではありません。
 
 設計の依存API: [nvCOMP Native API](https://docs.nvidia.com/cuda/nvcomp/native_api.html)、[C API](https://docs.nvidia.com/cuda/nvcomp/c_api.html)、[CRC32](https://docs.nvidia.com/cuda/nvcomp/crc32.html)。Native APIは実験的なため、SDKのバージョンを固定します。
 
@@ -198,21 +202,23 @@ Ubuntu 26.04.1、RTX 3090（24GiB）、CUDAランタイム13.0、nvCOMP 5.3.0で
 
 測定条件・解釈と次の改善対象は[実測記録](docs/measurements-2026-10-01.md)、実装の分担と制約は[構成](docs/architecture.md)を参照してください。
 
-## 2026年10月2日：Kaggle実データ50GBの比較
+## 2026年10月2日：Kaggle実データ50GBの初期比較
+
+以下は5時間の追加改善を始める前の測定です。最新値と自動選択は冒頭と[適応型解凍の実測](docs/measurements-adaptive-2026-10-02.md)を参照してください。
 
 Optaneのworkspaceに**50.001GBの標準ZIP64**を作成しました。元データは2TB SSD側のKaggle RSNA DICOM、155,925ファイル・展開後109.557GBです。元データは変更していません。
 
 | 経路 | 解凍＋CRC（書き込みなし） | SSDへの実展開 |
 |---|---:|---:|
 | zlib単一CPU、初回1回の基準値 | 277.07秒 | 311.93秒 |
-| libdeflate 16スレッド、最終3回中央値 | 13.90秒 | 60.18秒 |
-| GPU pipeline、4GiB、最終3回中央値 | 19.01秒 | **54.85秒** |
+| libdeflate 16スレッド、当時の3回中央値 | 13.90秒 | 60.18秒 |
+| GPU pipeline、4GiB、当時の3回中央値 | 19.01秒 | **54.85秒** |
 
 単一CPU zlib基準比は、書き込みなしで約14.58倍、実展開で**約5.69倍**でした。選んだデータの中央値では5倍目標を超えています。ただし最速CPU比5倍ではありません。実展開の16スレッドCPU比は中央値で約1.10倍、時間の範囲も重なり、安定した優位性までは示せていません。書き込みなしでは並列CPUの方が速い結果です。
 
 GPUの実展開3回は47.02／67.42／54.85秒でした。**fsyncによる全件永続化は含まない**通常write完了までの比較で、全件CRC・出力サイズと元データ128件のSHA256を確認しています。試験用の展開物だけ削除し、50GB ZIPと元データは残しました。GPU解凍区間は約11.5〜11.7秒と安定し、残る主要な変動は書き込み側です。CUDAバッファ、固定化メモリ、GPU CRC、I/O重畳、並列ファイル出力を最適化し、カーネルやドライバ自体は変更していません。
 
-このZIPで使う推奨経路:
+このZIPでGPUを明示比較するコマンド（最新の既定autoはCPU）:
 
 ```bash
 build/gipu extract /srv/workspace/sora/gipu-bench/kaggle-50GB.zip \

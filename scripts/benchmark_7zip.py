@@ -93,6 +93,7 @@ def main():
                     raise RuntimeError("7-Zipが正常終了しませんでした")
                 rss, user, system = usage.read_text().splitlines()[-1].split()
                 row.update(peak_rss_kib=int(rss), user_seconds=float(user), system_seconds=float(system))
+                row["crc_verified_files"] = len(entries)
                 row["sha256_samples"] = 0
                 if args.output_root:
                     for entry in entries:

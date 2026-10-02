@@ -36,6 +36,8 @@ class Stream {
  public:
   Stream() { cuda_check(cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking)); }
   ~Stream() { cudaStreamDestroy(stream_); }
+  Stream(const Stream&) = delete;
+  Stream& operator=(const Stream&) = delete;
   operator cudaStream_t() const { return stream_; }
  private:
   cudaStream_t stream_{};
@@ -63,6 +65,8 @@ class PinnedBuffer {
  public:
   explicit PinnedBuffer(size_t size = 0) { if (size) reserve(size); }
   ~PinnedBuffer() { cudaFreeHost(ptr_); }
+  PinnedBuffer(const PinnedBuffer&) = delete;
+  PinnedBuffer& operator=(const PinnedBuffer&) = delete;
   char* data() const { return static_cast<char*>(ptr_); }
   size_t capacity() const { return capacity_; }
   void release() { cuda_check(cudaFreeHost(ptr_)); ptr_ = nullptr; capacity_ = 0; }
@@ -77,8 +81,13 @@ class PinnedBuffer {
 };
 class Events {
  public:
-  Events() { for (auto& e : events_) cuda_check(cudaEventCreate(&e)); }
+  Events() {
+    try { for (auto& e : events_) cuda_check(cudaEventCreate(&e)); }
+    catch (...) { for (auto e : events_) if (e) cudaEventDestroy(e); throw; }
+  }
   ~Events() { for (auto e : events_) cudaEventDestroy(e); }
+  Events(const Events&) = delete;
+  Events& operator=(const Events&) = delete;
   void mark(size_t index, cudaStream_t stream) { cuda_check(cudaEventRecord(events_[index], stream)); }
   double elapsed(size_t first, size_t last) const {
     float ms = 0; cuda_check(cudaEventElapsedTime(&ms, events_[first], events_[last])); return ms / 1000.0;
@@ -474,7 +483,8 @@ Batch choose_batch(EntrySelection entries, size_t i, const Options& opts,
   // 二分探索の途中で出力方式を変えると、host予算に収まる条件が非単調になる。
   // 候補全体で一度決め、縮小したprefixにも同じ方式を適用する。
   const bool stream_output = !opts.pipeline && opts.gpu_output != "buffered" &&
-      (opts.gpu_output == "stream" || (chosen.max_output >= (64ULL << 20) && chosen.output >= (128ULL << 20)));
+      (opts.gpu_output == "stream" || (chosen.max_output >= (256ULL << 10) && chosen.output >= (128ULL << 20) &&
+                                     chosen.total_output / pending.size() >= (32ULL << 10)));
   chosen.stream_output = stream_output;
   if (fits_batch(chosen, opts, extracting)) return chosen;
   size_t lo = 0, hi = pending.size();

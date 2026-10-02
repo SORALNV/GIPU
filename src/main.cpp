@@ -6,6 +6,7 @@
 #include <limits>
 #include <stdexcept>
 #include <thread>
+#include <sys/stat.h>
 
 namespace {
 uint64_t size_value(const std::string& text) {
@@ -60,6 +61,10 @@ void help() {
 int main(int argc, char** argv) {
   try {
     if (argc >= 2 && std::string(argv[1]) == "__gpu-stream-worker") return gipu::gpu_stream_worker_main(argc, argv);
+    // ヘッダ検証・CPU/GPU workerの起動前にだけ取得する。途中で権限を緩めない。
+    const mode_t process_mask = ::umask(0777);
+    ::umask(process_mask);
+    const mode_t file_mode = 0644 & ~process_mask;
     gipu::install_signal_handlers();
     if (argc < 2 || std::string(argv[1]) == "--help" || std::string(argv[1]) == "-h") { help(); return 0; }
     if (std::string(argv[1]) == "--version") { std::cout << "GIPU 0.1.0\n"; return 0; }
@@ -167,7 +172,8 @@ int main(int argc, char** argv) {
     if (command == "extract" && output_path.empty()) throw std::runtime_error("--outputで展開先を指定してください");
     if (command == "test" && !output_path.empty()) throw std::runtime_error("testには--outputを指定できません");
     std::unique_ptr<gipu::OutputRoot> root;
-    if (command == "extract") root = std::make_unique<gipu::OutputRoot>(output_path, opts.temp_mode == "auto", opts.path_mode == "auto");
+    if (command == "extract") root = std::make_unique<gipu::OutputRoot>(output_path, file_mode,
+        opts.temp_mode == "auto", opts.path_mode == "auto", opts.durable);
     auto stats = opts.backend == "auto" ? gipu::run_auto(archive, root.get(), opts) :
         (opts.backend == "cpu" || opts.backend == "isal") ? gipu::run_cpu(archive, root.get(), opts) :
         opts.backend == "hybrid" ? gipu::run_hybrid(archive, root.get(), opts) :

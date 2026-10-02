@@ -1,0 +1,240 @@
+{
+  "binary_sha256": "337efd61a461fe6d88784408d2a976df1295907103998699e1e81e6e4aa1b708",
+  "integration_profiles": [
+    {
+      "profile": "build-unified",
+      "log_sha256": "3653ffbc3188242faa7f05934a53b4d6bdaebf182b0b36a4f139a0330209a409",
+      "passed_suites": 10,
+      "attempted_test_slots": 580,
+      "skipped": 197,
+      "executed": 383
+    },
+    {
+      "profile": "build-sanitize",
+      "log_sha256": "75ebd4bc2bd78c36986bd491b62a3dab1064840b9b9e75e2e85a7f109caecfe6",
+      "passed_suites": 5,
+      "attempted_test_slots": 290,
+      "skipped": 108,
+      "executed": 182
+    },
+    {
+      "profile": "build-minimal",
+      "log_sha256": "43b6c8967098ada20db922a554b05b4c7e6760cff4488bccff9bf763e80afbda",
+      "passed_suites": 3,
+      "attempted_test_slots": 174,
+      "skipped": 65,
+      "executed": 109
+    }
+  ],
+  "fuzz": [
+    {
+      "source_log": "fuzz-final-checked-auto-20261002.json",
+      "source_sha256": "f1d2c1f88eb7a9ee0670689fe9e15a4085915a71e9272531c8ab8ce2f047dc40",
+      "result": {
+        "backend": "auto",
+        "seed": 20261002,
+        "iterations": 3000,
+        "metadata_threads": 4,
+        "many_files": true,
+        "valid_fixtures": 18,
+        "seconds": 28.22525951300122,
+        "accepted": 96,
+        "rejected": 2922,
+        "failure": null
+      }
+    },
+    {
+      "source_log": "fuzz-final-checked-rapid-20261002.json",
+      "source_sha256": "302e90b528c23d1dba67cc5b2820433d69467e27c30c7a733c0a202a678a120c",
+      "result": {
+        "backend": "rapidgzip",
+        "seed": 20261002,
+        "iterations": 3000,
+        "metadata_threads": 4,
+        "many_files": true,
+        "valid_fixtures": 18,
+        "seconds": 15.268098784999893,
+        "accepted": 96,
+        "rejected": 2922,
+        "failure": null
+      }
+    }
+  ],
+  "resolved_fuzz_difference": {
+    "seed": 20261002,
+    "iteration": 1978,
+    "cause": "未対応のZIP必要バージョン17.3を受け入れていた",
+    "fix": "中央・ローカル・ZIP64終端で6.3を超える必要バージョンを拒否",
+    "note": "展開内容の不一致・クラッシュではない。回帰テストと同じseedの全再試験を追加。"
+  },
+  "cancellation": [
+    {
+      "source_log": "cancel-final-window-20261002.jsonl",
+      "source_sha256": "a71143991ff2b8fc1b1e8b207d36cffb3b289066827c298d5a976d8938a8c88a",
+      "passed": 6,
+      "records": [
+        {
+          "backend": "gpu",
+          "mode": "named",
+          "signal": "SIGINT",
+          "returncode": 1,
+          "seconds_after_signal": 0.10082128399881185,
+          "timeout": false,
+          "committed": false,
+          "remaining_parts": 0,
+          "remaining_workers": 0,
+          "passed": true
+        },
+        {
+          "backend": "gpu",
+          "mode": "named",
+          "signal": "SIGTERM",
+          "returncode": 1,
+          "seconds_after_signal": 0.10159145200123021,
+          "timeout": false,
+          "committed": false,
+          "remaining_parts": 0,
+          "remaining_workers": 0,
+          "passed": true
+        },
+        {
+          "backend": "gpu",
+          "mode": "named",
+          "signal": "SIGKILL",
+          "returncode": -9,
+          "seconds_after_signal": 0.14330037900072057,
+          "timeout": false,
+          "committed": false,
+          "remaining_parts": 1,
+          "remaining_workers": 0,
+          "passed": true
+        },
+        {
+          "backend": "gpu",
+          "mode": "auto",
+          "signal": "SIGINT",
+          "returncode": 1,
+          "seconds_after_signal": 0.10202999600005569,
+          "timeout": false,
+          "committed": false,
+          "remaining_parts": 0,
+          "remaining_workers": 0,
+          "passed": true
+        },
+        {
+          "backend": "gpu",
+          "mode": "auto",
+          "signal": "SIGTERM",
+          "returncode": 1,
+          "seconds_after_signal": 0.1011608039989369,
+          "timeout": false,
+          "committed": false,
+          "remaining_parts": 0,
+          "remaining_workers": 0,
+          "passed": true
+        },
+        {
+          "backend": "gpu",
+          "mode": "auto",
+          "signal": "SIGKILL",
+          "returncode": -9,
+          "seconds_after_signal": 0.144835676999719,
+          "timeout": false,
+          "committed": false,
+          "remaining_parts": 0,
+          "remaining_workers": 0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "source_log": "cancel-final-stream-20261002.jsonl",
+      "source_sha256": "0a9c0da850a37e91c1585f116f5e000b4c629ad4267b2246e89dfda60adc7e6f",
+      "passed": 8,
+      "records": [
+        {
+          "backend": "gpu",
+          "mode": "named",
+          "signal": "SIGINT",
+          "returncode": 1,
+          "seconds_after_signal": 0.054730129000745364,
+          "timeout": false,
+          "committed": false,
+          "remaining_parts": 0,
+          "remaining_workers": 0,
+          "passed": true
+        },
+        {
+          "backend": "gpu",
+          "mode": "named",
+          "signal": "SIGTERM",
+          "returncode": 1,
+          "seconds_after_signal": 0.055033669001204544,
+          "timeout": false,
+          "committed": false,
+          "remaining_parts": 0,
+          "remaining_workers": 0,
+          "passed": true
+        },
+        {
+          "backend": "gpu",
+          "mode": "named",
+          "signal": "SIGKILL",
+          "returncode": -9,
+          "seconds_after_signal": 0.027453701999547775,
+          "timeout": false,
+          "committed": false,
+          "remaining_parts": 1,
+          "remaining_workers": 0,
+          "passed": true
+        },
+        {
+          "backend": "gpu",
+          "mode": "auto",
+          "signal": "SIGINT",
+          "returncode": 1,
+          "seconds_after_signal": 0.057685140000103274,
+          "timeout": false,
+          "committed": false,
+          "remaining_parts": 0,
+          "remaining_workers": 0,
+          "passed": true
+        },
+        {
+          "backend": "gpu",
+          "mode": "auto",
+          "signal": "SIGTERM",
+          "returncode": 1,
+          "seconds_after_signal": 0.05911472200023127,
+          "timeout": false,
+          "committed": false,
+          "remaining_parts": 0,
+          "remaining_workers": 0,
+          "passed": true
+        },
+        {
+          "backend": "gpu",
+          "mode": "auto",
+          "signal": "SIGKILL",
+          "returncode": -9,
+          "seconds_after_signal": 0.029493821999494685,
+          "timeout": false,
+          "committed": false,
+          "remaining_parts": 0,
+          "remaining_workers": 0,
+          "passed": true
+        },
+        {
+          "backend": "gpu",
+          "worker_fault": "SIGSTOP",
+          "passed": true
+        },
+        {
+          "backend": "gpu",
+          "worker_fault": "SIGKILL",
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

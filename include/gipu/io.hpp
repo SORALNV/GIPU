@@ -6,17 +6,20 @@
 #include <memory>
 #include <ostream>
 #include <streambuf>
+#include <sys/types.h>
 
 namespace gipu {
 class OutputRoot {
  public:
-  explicit OutputRoot(const std::filesystem::path& path, bool anonymous = false, bool fast_paths = true);
+  explicit OutputRoot(const std::filesystem::path& path, mode_t file_mode, bool anonymous = false,
+                      bool fast_paths = true, bool durable = false);
   ~OutputRoot();
   OutputRoot(const OutputRoot&) = delete;
   OutputRoot& operator=(const OutputRoot&) = delete;
   int parent(const std::string& name) const;
   void directory(const std::string& name) const;
   int proc_fds() const { return proc_fds_; }
+  mode_t file_mode() const { return file_mode_; }
   void record_temporary(bool anonymous) const {
     (anonymous ? anonymous_files_ : named_files_).fetch_add(1, std::memory_order_relaxed);
   }
@@ -27,6 +30,8 @@ class OutputRoot {
  private:
   int fd_ = -1;
   int proc_fds_ = -1;
+  mode_t file_mode_;
+  bool durable_;
   mutable std::atomic<uint64_t> anonymous_files_{0}, named_files_{0};
   mutable std::atomic<bool> fast_paths_{true};
   mutable std::atomic<uint64_t> fast_parent_opens_{0}, portable_parent_walks_{0};
@@ -48,6 +53,7 @@ class OutputFile {
   bool durable_ = false;
   int proc_fds_ = -1;
   bool anonymous_ = false;
+  mode_t file_mode_ = 0600;
 };
 class Sink : public std::streambuf {
  public:
