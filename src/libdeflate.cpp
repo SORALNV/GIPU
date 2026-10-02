@@ -69,7 +69,7 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
         local.decode_seconds += std::chrono::duration<double>(decoded - read).count();
         local.crc_seconds += std::chrono::duration<double>(verified - decoded).count();
         local.write_seconds += std::chrono::duration<double>(end - verified).count();
-        ++local.files; local.bytes += e.uncompressed;
+        ++local.files; local.bytes += e.uncompressed; local.cpu_crc_bytes += e.uncompressed;
       }
     } catch (...) {
       stop.store(true);
@@ -78,6 +78,7 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
     }
     std::lock_guard guard(lock);
     result.files += local.files; result.bytes += local.bytes;
+    result.cpu_crc_bytes += local.cpu_crc_bytes;
     // 複数workerの時間は加算値であり、実経過時間ではない。
     result.read_seconds += local.read_seconds; result.write_seconds += local.write_seconds;
     result.decode_seconds += local.decode_seconds; result.crc_seconds += local.crc_seconds;

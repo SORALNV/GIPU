@@ -1,4 +1,5 @@
 #include "gipu/backend.hpp"
+#include "gipu/checksum.hpp"
 #include <cuda_runtime_api.h>
 #include <nvcomp/crc32.h>
 #include <nvcomp/deflate.h>
@@ -282,7 +283,7 @@ void batch_decode(const Archive& archive, const Batch& b, OutputRoot* root, cons
   for (size_t i = 0; i < n; ++i) {
     check_cancelled();
     const auto& e = *b.entries[i];
-    ++stats.files; stats.bytes += e.uncompressed;
+    ++stats.files; stats.bytes += e.uncompressed; stats.gpu_crc_bytes += e.uncompressed;
   }
   stats.workspace = std::max<uint64_t>(stats.workspace, buffers.arena.capacity() + StreamingCrc::memory);
   ++stats.batches;
@@ -364,10 +365,19 @@ Stats pipeline_decode(const Archive& archive, OutputRoot* root, const Options& o
 void stream_decode(const Archive& archive, const Entry& e, OutputRoot* root, const Options& opts, StreamingCrc& crc,
                    cudaStream_t stream, Stats& stats) {
   crc.reset();
+  const bool cpu_checksum = opts.stream_crc == "cpu";
+  uint32_t checksum = 0;
   std::unique_ptr<OutputFile> file;
   if (root) file = std::make_unique<OutputFile>(*root, e, opts.durable);
-  else if (e.method == 8) file = std::make_unique<OutputFile>();
-  Sink sink(e.uncompressed, file.get(), [&](auto bytes) { if (e.method == 0) crc.update(bytes); });
+  else if (e.method == 8 && !cpu_checksum) file = std::make_unique<OutputFile>();
+  // persistent GPUカーネルの出力コールバックでは別のCUDA処理を同期しない。
+  // CPU CRCなら定量メモリのまま計算でき、検証専用時の全量spoolも不要。
+  Sink sink(e.uncompressed, file.get(), [&](auto bytes) {
+    auto start = std::chrono::steady_clock::now();
+    if (cpu_checksum) checksum = cpu_crc32(checksum, bytes.data(), bytes.size());
+    else if (e.method == 0) crc.update(bytes);
+    stats.crc_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+  });
   std::ostream output(&sink); output.exceptions(std::ios::badbit | std::ios::failbit);
   if (e.method == 0) {
     std::vector<char> buffer(StreamingCrc::capacity);
@@ -377,6 +387,7 @@ void stream_decode(const Archive& archive, const Entry& e, OutputRoot* root, con
       output.write(buffer.data(), static_cast<std::streamsize>(n)); offset += n;
     }
   } else {
+    auto decode_start = std::chrono::steady_clock::now();
     int concurrent = 0;
     cuda_check(cudaDeviceGetAttribute(&concurrent, cudaDevAttrConcurrentManagedAccess, opts.gpu));
     if (!concurrent) throw std::runtime_error("GPUストリーミングにはconcurrentManagedAccessが必要です");
@@ -389,12 +400,21 @@ void stream_decode(const Archive& archive, const Entry& e, OutputRoot* root, con
     nv_check(nvcompGzipStreamingDecompress(input, output, bytes, scratch.data(), stream));
     cuda_check(cudaStreamSynchronize(stream));
     if (input.bad() || output.bad()) throw std::runtime_error("GPUストリームの入出力に失敗しました");
+    // Streaming API内の読み出し・CRCコールバック・出力を含む時間。
+    stats.decode_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - decode_start).count();
     stats.workspace = std::max<uint64_t>(stats.workspace, bytes + StreamingCrc::memory);
     ++stats.streams;
   }
   sink.finish();
-  if (e.method == 8) file->read_all([&](auto bytes) { crc.update(bytes); });
-  if (crc.finish() != e.crc) throw std::runtime_error("GPU CRC32が一致しません: " + e.name);
+  if (!cpu_checksum) {
+    auto start = std::chrono::steady_clock::now();
+    if (e.method == 8) file->read_all([&](auto bytes) { crc.update(bytes); });
+    checksum = crc.finish();
+    stats.crc_seconds += std::chrono::duration<double>(std::chrono::steady_clock::now() - start).count();
+  }
+  if (checksum != e.crc) throw std::runtime_error("CRC32が一致しません: " + e.name);
+  if (cpu_checksum) stats.cpu_crc_bytes += e.uncompressed;
+  else stats.gpu_crc_bytes += e.uncompressed;
   if (root) file->commit();
   ++stats.files; stats.bytes += e.uncompressed;
 }

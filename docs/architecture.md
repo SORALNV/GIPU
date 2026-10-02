@@ -40,17 +40,17 @@ CUDA eventでH2D／D2H、decode、CRCを分離し、CPU側でread／write／ZIP�
 
 仮想Gzipは10バイトのヘッダ、ZIP内の指定範囲のRaw Deflate、8バイトのCRC／サイズトレーラを生成します。再圧縮や中間Gzipファイルは作りません。入力側は1MiBのバッファを再利用します。
 
-Streaming APIの出力を、宣言サイズを超えないsinkから一時ファイルへ書きます。APIが完了してから、そのファイルを4MiBずつ再読み込みし、GPUでCRCを増分計算します。CRCとサイズが一致した出力だけを確定します。`test`では名前なしの一時ファイルを使います。
+Streaming APIの出力を、宣言サイズを超えないsinkへ送ります。既定はCPU CRCをcallbackで増分計算し、`extract`だけ一時ファイルへ書きます。CRCとサイズが一致した出力だけを確定します。`test`は展開データを保存しません。libdeflate未導入でもzlib CRCを使用できます。
 
-この二段階処理は実機で確認した停止問題への対処です。nvCOMPのpersistent解凍カーネル実行中に、出力callbackから別CUDAストリームのCRCカーネルへ同期すると、32MiBの高圧縮率エントリで進行が止まりました。CRCを軽いwarpカーネルへ変えても解消しなかったため、初期版では解凍とCRCを時間的に分離します。カーネル資源の競合が原因である可能性はありますが、ライブラリ内部の根本原因までは特定していません。
+従来の二段階方式も`--stream-crc gpu`で比較できます。API完了後に出力を4MiBずつ読み直しGPU CRCを増分計算するため、`test`でも名前なし一時ファイルが必要です。nvCOMPのpersistent解凍カーネル実行中に、出力callbackから別CUDAストリームのCRCカーネルへ同期すると、32MiBの高圧縮率エントリで進行が止まりました。CRCを軽いwarpカーネルへ変えても解消しなかったため、GPU CRCを選ぶ場合は解凍とCRCを時間的に分離します。カーネル資源の競合が原因である可能性はありますが、ライブラリ内部の根本原因までは特定していません。
 
-Storedはデコードがないため、コピーしながらGPUでCRCを計算できます。
+Storedはデコードがないため、コピーしながら指定したCPU／GPU CRCを計算できます。Streamingの`decode_seconds`は公開APIの入出力とCPU CRC callbackを含み、バッチのCUDA eventによる純粋なdecode時間とは定義が異なります。
 
 ## 保証範囲
 
 - GPU経路はアーカイブ本体やVRAMを超える単一展開データをRAM／VRAMへ一括で確保しません。中央ディレクトリのエントリ一覧はCPUメモリに保持するため、その部分はエントリ数に比例します（上限100万）。比較用libdeflateだけはworkerごとにエントリ全体をCPU RAMへ置き、圧縮／展開サイズ各256MiBまでに制限します。
 - `--vram-limit`はアプリの明示的な確保量の上限です。CUDA／nvCOMP内部、他アプリを含む総VRAMの上限ではありません。
-- 解凍とCRC計算はGPUへ送ります。名前処理、ZIPメタデータの検査、I/O、CRC値の最終比較などの制御処理はCPUです。nvCOMP内部の全処理を監査したわけではありません。
+- GPUバッチでは解凍とCRCをGPUへ送り、Streamingでは既定でCPU CRCを併用します。名前処理、ZIPメタデータの検査、I/O、CRC値の最終比較などの制御処理はCPUです。nvCOMP内部の全処理を監査したわけではありません。
 - パス検証と展開後CRCは、破損DeflateをGPUへ渡したときのライブラリの安全性を保証しません。初期版のGPU経路は既知の正しい入力向けです。
 - SIGINT／SIGTERMは読み込み・出力・CRCの境界で検出します。長時間のライブラリ内部処理を即座に中断することは保証しません。
 - パイプラインはCPUの読み込み・GPU処理・CPUの書き込みを重畳します。GPU decodeとGPU CRC自体の並列化や、Streaming callbackとの並行CRCは行いません。

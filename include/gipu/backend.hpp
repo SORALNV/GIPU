@@ -5,6 +5,7 @@ namespace gipu {
 struct Options {
   std::string backend = "gpu";
   std::string gpu_mode = "auto";
+  std::string stream_crc = "cpu";
   int gpu = 0;
   size_t threads = 1;
   size_t write_threads = 8;
@@ -16,6 +17,7 @@ struct Options {
 };
 struct Stats {
   uint64_t files = 0, bytes = 0, batches = 0, streams = 0, workspace = 0;
+  uint64_t cpu_crc_bytes = 0, gpu_crc_bytes = 0;
   double read_seconds = 0, write_seconds = 0, decode_seconds = 0, crc_seconds = 0, transfer_seconds = 0;
   double allocation_seconds = 0;
 };

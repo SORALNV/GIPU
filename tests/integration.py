@@ -274,6 +274,35 @@ class Integration(unittest.TestCase):
         self.process(zip_bytes([("file", b"data")]), extract=False)
         self.assertFalse(self.out.exists())
 
+    @unittest.skipUnless(BACKEND == "gpu" and MODE == "stream", "Streaming CRCの併用検証")
+    def test_stream_cpu_crc_without_spool(self):
+        payload = b"stream-crc" * (4 << 20)
+        self.archive.write_bytes(zip_bytes([("large.bin", payload)]))
+        # 使用できないTMPDIRでもCPU CRCのtestは一時展開を作らない。
+        env = dict(os.environ, TMPDIR=str(self.root / "missing-temp-directory"))
+        result = subprocess.run([BINARY, "test", str(self.archive), "--backend", "gpu",
+                                 "--gpu-mode", "stream", "--stream-crc", "cpu", "--json"],
+                                capture_output=True, text=True, timeout=120, env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["cpu_crc_bytes"], len(payload))
+        self.assertEqual(stats["gpu_crc_bytes"], 0)
+        self.assertEqual(list(self.root.iterdir()), [self.archive])
+        gpu = self.run_cli("test", self.archive, "--backend", "gpu", "--gpu-mode", "stream",
+                           "--stream-crc", "gpu", "--json")
+        self.assertEqual(json.loads(gpu.stdout)["gpu_crc_bytes"], len(payload))
+
+    @unittest.skipUnless(BACKEND == "gpu" and MODE == "stream", "Streaming CRCの破損検出")
+    def test_stream_cpu_crc_mismatch(self):
+        data = bytearray(zip_bytes([("bad.bin", b"crc" * (4 << 20))]))
+        cd = data.index(b"PK\x01\x02")
+        crc = struct.unpack_from("<I", data, cd + 16)[0] ^ 1
+        struct.pack_into("<I", data, 14, crc)
+        struct.pack_into("<I", data, cd + 16, crc)
+        self.process(data, ok=False, extra=("--stream-crc", "cpu"))
+        self.assertFalse((self.out / "bad.bin").exists())
+        self.assertEqual(list(self.out.glob("*.part")), [])
+
 
 if __name__ == "__main__":
     unittest.main()

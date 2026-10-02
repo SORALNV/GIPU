@@ -2,7 +2,7 @@
 
 Ubuntu＋NVIDIA GPUで、通常のZIPを展開するCLIを開発しています。実験用GPUはRTX 3090です。
 
-目標は、Deflate解凍とCRC32計算をGPUで行い、VRAMより大きいアーカイブや単一ファイルをストリーミング展開することです。CPUはZIP構造の解析とファイル操作を担当します。CPUより高速かどうかは実測で判断します。
+目標は、GPUとCPUを使い分け、大小・多数のファイルを含む標準ZIPを高速に展開することです。VRAMより大きいアーカイブや単一ファイルもストリーミング展開します。性能は解凍・CRCだけでなく、ファイル操作とI/Oを含めて実測で判断します。
 
 ## 実装状況
 
@@ -10,7 +10,7 @@ Ubuntu＋NVIDIA GPUで、通常のZIPを展開するCLIを開発しています�
 - 絶対パス、`..`、重複パス、シンボリックリンク、データ範囲の重複を拒否。
 - 展開サイズとCRCを確認してから、同じディレクトリ内の一時ファイルを確定。既存ファイルは上書きしません。
 - nvCOMP 5.3.0によるGPUバッチDeflate／Streaming Gzip。予算に応じて自動選択します。
-- GPU CRC32（バッチ／増分計算）。CPU参照経路（zlib）は明示したときだけ使います。
+- バッチではGPU CRC32、Streamingでは既定で高速CPU CRCを併用。従来の増分GPU CRCも比較用に選択できます。
 - JSONの処理時間・展開量・バッチ数・ストリーム数・作業領域の出力。
 - バッチarena／固定化ホストバッファの再利用、検証時の全展開データD2H転送の省略。
 - libdeflateによる比較用CPU経路（1〜32 worker、任意の依存）。
@@ -54,9 +54,9 @@ build/gipu test archive.zip --backend libdeflate --threads 16 --json
 build/gipu extract archive.zip --output ./out --pipeline --json
 ```
 
-`test`は展開先を作らずに解凍・サイズ・CRCを検証します。GPUストリーミングの`test`だけは、CRC再読み込み用に名前なし一時ファイルを作るため、展開量と同じ一時ディスク容量が必要です（配置先は`TMPDIR`、未指定時は通常`/tmp`）。終了時に削除されます。CPU／GPUバッチの`test`は展開データをディスクへ書きません。`--max-output`の既定値は1TiBです。`--sync`を付けるとファイルと親ディレクトリをfsyncします。失敗時、処理中の一時ファイルは削除されます。既に検証・確定されたファイルは残ります。
+`test`は展開先を作らずに解凍・サイズ・CRCを検証します。既定の各経路は展開データをディスクへ書きません。比較用の`--stream-crc gpu`でGPU Streamingを使う場合だけ、CRC再読み込み用に名前なし一時ファイルを作るため、展開量と同じ一時ディスク容量が必要です（配置先は`TMPDIR`、未指定時は通常`/tmp`）。終了時に削除されます。`--max-output`の既定値は1TiBです。`--sync`を付けるとファイルと親ディレクトリをfsyncします。失敗時、処理中の一時ファイルは削除されます。既に検証・確定されたファイルは残ります。
 
-`--gpu-mode auto`は予算内の最大4096エントリをまとめ、収まらないエントリをストリーミングへ回します。`--batch-entries`で上限を変更できます。`stream`は全DeflateをStreaming Gzipへ、`batch`はサイズ・予算内のDeflateだけをバッチへ送ります。Storedはコピー＋GPU CRCです。空のDeflateエントリはストリーミング経路で処理します。
+`--gpu-mode auto`は予算内の最大4096エントリをまとめ、収まらないエントリをストリーミングへ回します。`--batch-entries`で上限を変更できます。`stream`は全DeflateをStreaming Gzipへ、`batch`はサイズ・予算内のDeflateだけをバッチへ送ります。Storedはコピー＋CRCです。空のDeflateエントリはストリーミング経路で処理します。
 
 比較用の`--backend libdeflate`は任意のlibdeflate依存を見つけたビルドで使用できます。既存環境には`libdeflate`を追加して再ビルドしてください。エントリ全体をCPU RAMに置くため、1エントリの圧縮／展開サイズは各256MiBまでです。`--threads`はこの経路だけに作用します。
 
@@ -66,7 +66,7 @@ GPUバッチ出力は`--write-threads`（既定8、最大32）で並列化しま
 
 `--vram-limit`は、GIPUが明示的に確保する入力・出力・nvCOMP作業領域・メタデータ・CRC領域の合計を制限します。CUDAコンテキストやライブラリ内部の割り当て、他プロセスの使用量は含まれません。総VRAMの厳密な上限を保証するオプションではありません。ホストRAMにはバッチ入出力と同程度の固定化メモリが必要です。Streaming経路はアーカイブ／展開量の全体バッファを確保しません。
 
-公開Streaming APIの出力はホスト上です。解凍カーネルが稼働中にGPU CRCカーネルを同期実行すると、大量出力で処理が進まなくなることを3090で確認しました。初期版は出力を一時ファイルへ流し、解凍完了後に4MiB単位で再読み込み・GPU再転送し、増分CRCを計算します。追加のディスク読み込みとPCIe転送が発生しますが、RAM／VRAMを展開量に比例して確保しません。バッチ経路は展開済みVRAM上でCRCを計算します。いずれもCPU CRCへ暗黙に切り替えません。この二度読みを減らす組み込み方は今後の性能改善項目です。
+公開Streaming APIの出力はホスト上です。解凍カーネルが稼働中にGPU CRCカーネルを同期実行すると、大量出力で処理が進まなくなることを3090で確認しました。現在の既定`--stream-crc cpu`は出力callbackでCPU CRCを増分計算し、二度読み・CRC用のGPU再転送を省きます。libdeflateがあればその高速CRC、なければzlib CRCを使用します。バッチ経路は展開済みVRAM上でCRCを計算します。`cpu_crc_bytes`と`gpu_crc_bytes`で分担を記録します。従来の二度読み方式は`--stream-crc gpu`で選べます。どちらもRAM／VRAMを展開量に比例して確保しません。
 
 ## 検証と測定
 
@@ -78,7 +78,9 @@ python3 scripts/benchmark.py --binary build/gipu --total-mib 256 --entries 16 --
 python3 scripts/verify_large.py --binary build/gipu --gib 26 --vram-limit 64M
 ```
 
-CPU比較対象にはzlibとlibdeflateを使います。`test`はデコード＋CRC（GPUストリーミング時は一時出力のI/Oも含む）の測定で、`benchmark.py --extract`はZIP解析・ファイル生成・書き込みも含む測定です。CUDA初期化を含むCLI全体時間を外部から測り、CLI内部時間も保存します。速度倍率を一般的なZIPや7-Zipへの倍率として解釈しないでください。
+CPU比較対象にはzlibとlibdeflateを使います。`test`はデコード＋CRC（比較用`--stream-crc gpu`のStreaming時は一時出力のI/Oも含む）の測定で、`benchmark.py --extract`はZIP解析・ファイル生成・書き込みも含む測定です。CUDA初期化を含むCLI全体時間を外部から測り、CLI内部時間も保存します。速度倍率を一般的なZIPや7-Zipへの倍率として解釈しないでください。
+
+`scripts/make_corpus.py`と`scripts/benchmark_corpus.py`で、極小・小・中・単一大ファイル、高低圧縮率、Stored／空ファイル混在を再現比較できます。後者はピークRSS・CLI全体時間・内部工程・全出力サイズ・固定seedのSHA256サンプルを記録し、元ZIPを残して自分の一時展開先だけを削除します。5時間の改善作業は[研究・実験ログ](docs/research-2026-10-02.md)に記録します。
 
 ### Kaggle実データの大容量測定
 

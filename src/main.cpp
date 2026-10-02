@@ -33,6 +33,7 @@ void help() {
                "  --pipeline               GPUバッチ専用、読み込み・GPU・書き込みを重畳\n"
                "  --gpu N                  CUDAデバイス番号（既定0）\n"
                "  --gpu-mode auto|stream|batch  GPU経路（既定auto）\n"
+               "  --stream-crc cpu|gpu     StreamingのCRC（既定cpu、再読み込み不要）\n"
                "  --vram-limit 4G          GIPUが確保するGPU作業領域の上限\n"
                "  --max-output 1T          合計展開サイズの上限\n"
                "  --sync                   出力ファイルと親ディレクトリをfsync\n"
@@ -55,6 +56,7 @@ int main(int argc, char** argv) {
       if (arg == "--output" || arg == "-o") output_path = value();
       else if (arg == "--backend") opts.backend = value();
       else if (arg == "--gpu-mode") opts.gpu_mode = value();
+      else if (arg == "--stream-crc") opts.stream_crc = value();
       else if (arg == "--threads" || arg == "--write-threads" || arg == "--batch-entries") {
         auto text = value(); size_t used = 0;
         if (text.empty() || text.front() < '0' || text.front() > '9') throw std::runtime_error("個数が不正です");
@@ -78,6 +80,7 @@ int main(int argc, char** argv) {
     }
     if (opts.backend != "gpu" && opts.backend != "cpu" && opts.backend != "libdeflate") throw std::runtime_error("backendはgpu/cpu/libdeflateです");
     if (opts.gpu_mode != "auto" && opts.gpu_mode != "stream" && opts.gpu_mode != "batch") throw std::runtime_error("gpu-modeはauto/stream/batchです");
+    if (opts.stream_crc != "cpu" && opts.stream_crc != "gpu") throw std::runtime_error("stream-crcはcpu/gpuです");
     if (opts.pipeline && (opts.backend != "gpu" || opts.gpu_mode == "stream")) throw std::runtime_error("pipelineはGPU auto/batch専用です");
     if (command == "doctor") { std::cout << gipu::gpu_info(opts.gpu) << '\n'; return 0; }
     if (archive_path.empty()) throw std::runtime_error("ZIPファイルを指定してください");
@@ -105,6 +108,7 @@ int main(int argc, char** argv) {
                         << ",\"read_seconds\":" << stats.read_seconds << ",\"write_seconds\":" << stats.write_seconds
                         << ",\"decode_seconds\":" << stats.decode_seconds << ",\"crc_seconds\":" << stats.crc_seconds
                         << ",\"transfer_seconds\":" << stats.transfer_seconds
+                        << ",\"cpu_crc_bytes\":" << stats.cpu_crc_bytes << ",\"gpu_crc_bytes\":" << stats.gpu_crc_bytes
                         << ",\"allocation_seconds\":" << stats.allocation_seconds << "}\n";
     else std::cout << "完了: " << stats.files << "ファイル / " << stats.bytes << " bytes / " << seconds << "秒 / " << throughput
                    << " GiB/s（" << opts.backend << ", batch=" << stats.batches << ", stream=" << stats.streams << "）\n";

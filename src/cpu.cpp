@@ -73,7 +73,7 @@ Stats run_cpu(const Archive& archive, OutputRoot* root, const Options& opts) {
     file_start = Clock::now();
     if (file) file->commit();
     stats.write_seconds += elapsed(file_start);
-    ++stats.files; stats.bytes += e.uncompressed;
+    ++stats.files; stats.bytes += e.uncompressed; stats.cpu_crc_bytes += e.uncompressed;
   }
   return stats;
 }
