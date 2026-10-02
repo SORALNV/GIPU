@@ -13,6 +13,7 @@ import time
 VARIANTS = {
     "auto": ["--backend", "auto"],
     "auto-experimental": ["--backend", "auto", "--auto-gpu", "--auto-parallel"],
+    "auto-portable": ["--backend", "auto", "--path-mode", "portable"],
     "cpu": ["--backend", "cpu"],
     "isal": ["--backend", "isal"],
     "hybrid": ["--backend", "hybrid"],
@@ -30,6 +31,7 @@ VARIANTS = {
     "rapidgzip4": ["--backend", "rapidgzip", "--threads", "4"],
     "rapidgzip16": ["--backend", "rapidgzip", "--threads", "16"],
     "gpu": ["--backend", "gpu"],
+    "gpu-wide": ["--backend", "gpu", "--batch-entries", "65536"],
     "gpu-lookahead": ["--backend", "gpu", "--gpu-algorithm", "lookahead"],
     "gpu-lookahead16g": ["--backend", "gpu", "--gpu-algorithm", "lookahead", "--vram-limit", "16G", "--host-limit", "24G"],
     "gpu-pipeline": ["--backend", "gpu", "--pipeline"],

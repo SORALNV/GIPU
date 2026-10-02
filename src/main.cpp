@@ -49,6 +49,7 @@ void help() {
                "  --metadata-limit 256M    中央ディレクトリのサイズ上限\n"
                "  --sync                   出力ファイルと親ディレクトリをfsync\n"
                "  --temp-mode auto|named   一時出力方式（既定auto、O_TMPFILEを試す）\n"
+               "  --path-mode auto|portable 親ディレクトリの安全な探索（既定auto）\n"
                "  --json                   結果をJSONで出力\n";
 }
 }
@@ -86,6 +87,7 @@ int main(int argc, char** argv) {
         opts.stream_timeout = static_cast<unsigned>(seconds);
       }
       else if (arg == "--temp-mode") opts.temp_mode = value();
+      else if (arg == "--path-mode") opts.path_mode = value();
       else if (arg == "--threads" || arg == "--write-threads" || arg == "--batch-entries") {
         auto text = value(); size_t used = 0;
         if (text.empty() || text.front() < '0' || text.front() > '9') throw std::runtime_error("個数が不正です");
@@ -121,6 +123,7 @@ int main(int argc, char** argv) {
     if (opts.gpu_algorithm != "deflate" && opts.gpu_algorithm != "lookahead") throw std::runtime_error("gpu-algorithmはdeflate/lookaheadです");
     if (opts.stream_crc != "cpu" && opts.stream_crc != "gpu") throw std::runtime_error("stream-crcはcpu/gpuです");
     if (opts.temp_mode != "named" && opts.temp_mode != "auto") throw std::runtime_error("temp-modeはnamed/autoです");
+    if (opts.path_mode != "auto" && opts.path_mode != "portable") throw std::runtime_error("path-modeはauto/portableです");
     if (opts.pipeline && ((opts.backend != "gpu" && opts.backend != "hybrid") || opts.gpu_mode == "stream")) throw std::runtime_error("pipelineはGPU/hybrid auto/batch専用です");
     if (command == "doctor") { std::cout << gipu::gpu_info(opts.gpu) << '\n'; return 0; }
     if (archive_path.empty()) throw std::runtime_error("ZIPファイルを指定してください");
@@ -136,7 +139,7 @@ int main(int argc, char** argv) {
     if (command == "extract" && output_path.empty()) throw std::runtime_error("--outputで展開先を指定してください");
     if (command == "test" && !output_path.empty()) throw std::runtime_error("testには--outputを指定できません");
     std::unique_ptr<gipu::OutputRoot> root;
-    if (command == "extract") root = std::make_unique<gipu::OutputRoot>(output_path, opts.temp_mode == "auto");
+    if (command == "extract") root = std::make_unique<gipu::OutputRoot>(output_path, opts.temp_mode == "auto", opts.path_mode == "auto");
     auto stats = opts.backend == "auto" ? gipu::run_auto(archive, root.get(), opts) :
         (opts.backend == "cpu" || opts.backend == "isal") ? gipu::run_cpu(archive, root.get(), opts) :
         opts.backend == "hybrid" ? gipu::run_hybrid(archive, root.get(), opts) :
@@ -163,6 +166,8 @@ int main(int argc, char** argv) {
                         << "\",\"selection_reason\":\"" << stats.selection_reason << "\""
                         << ",\"anonymous_output_files\":" << (root ? root->anonymous_files() : 0)
                         << ",\"named_output_files\":" << (root ? root->named_files() : 0)
+                        << ",\"fast_parent_opens\":" << (root ? root->fast_parent_opens() : 0)
+                        << ",\"portable_parent_walks\":" << (root ? root->portable_parent_walks() : 0)
                         << ",\"allocation_seconds\":" << stats.allocation_seconds << "}\n";
     else std::cout << "完了: " << stats.files << "ファイル / " << stats.bytes << " bytes / " << seconds << "秒 / " << throughput
                    << " GiB/s（" << (stats.selected_backend.empty() ? opts.backend : stats.selected_backend)

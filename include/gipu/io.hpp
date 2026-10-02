@@ -10,7 +10,7 @@
 namespace gipu {
 class OutputRoot {
  public:
-  explicit OutputRoot(const std::filesystem::path& path, bool anonymous = false);
+  explicit OutputRoot(const std::filesystem::path& path, bool anonymous = false, bool fast_paths = true);
   ~OutputRoot();
   OutputRoot(const OutputRoot&) = delete;
   OutputRoot& operator=(const OutputRoot&) = delete;
@@ -22,10 +22,14 @@ class OutputRoot {
   }
   uint64_t anonymous_files() const { return anonymous_files_.load(std::memory_order_relaxed); }
   uint64_t named_files() const { return named_files_.load(std::memory_order_relaxed); }
+  uint64_t fast_parent_opens() const { return fast_parent_opens_.load(std::memory_order_relaxed); }
+  uint64_t portable_parent_walks() const { return portable_parent_walks_.load(std::memory_order_relaxed); }
  private:
   int fd_ = -1;
   int proc_fds_ = -1;
   mutable std::atomic<uint64_t> anonymous_files_{0}, named_files_{0};
+  mutable std::atomic<bool> fast_paths_{true};
+  mutable std::atomic<uint64_t> fast_parent_opens_{0}, portable_parent_walks_{0};
 };
 // 同一ディレクトリ内に一時ファイルを作り、検証後だけ確定する。
 class OutputFile {

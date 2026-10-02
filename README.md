@@ -76,6 +76,8 @@ build/gipu extract known-good.zip --output ./out --auto-gpu --auto-parallel --js
 
 `--gpu-mode auto`は予算内の最大4096エントリをまとめ、収まらないエントリをストリーミングへ回します。`--batch-entries`で上限を変更できます。`stream`は非空DeflateをStreaming Gzipへ、`batch`はサイズ・予算内のDeflateだけをバッチへ送ります。Storedはコピー＋CRCです。空のDeflateエントリはCPUで圧縮本体を検証します。
 
+GPU auto／batchでは、Stored・空ファイル・ディレクトリを先にCPUで処理し、残りのDeflateを連続したバッチへまとめます。ZIP内の並びで数千回の小さなGPU起動が発生するのを防ぎます。ファイルごとの検証・非上書き確定は維持しますが、失敗までに確定するファイルの順序は中央ディレクトリ順とは限りません。
+
 `--backend libdeflate`は任意のlibdeflate依存を見つけたビルドで使用できます。既存環境には`libdeflate`を追加して再ビルドしてください。`--threads`はこの経路のworker数です。`--host-limit`（既定8GiB、最小2MiB）をworker数で分配し、入力＋出力がworker予算に収まる場合だけ全バッファ解凍します。収まらないファイルはISA-Lまたはzlib Streaming＋高速CPU CRCで処理するため、従来の256MiB制限はありません。Storedは余分なコピーを省きます。`host_buffer_bytes`はworkerごとの最大データバッファ量の合計であり、ZIPメタデータ・ライブラリ内部・スレッドスタックを含むRSS全体の上限ではありません。
 
 `--backend hybrid`はStored・空ファイル・32KiB未満・64MiB超・ほぼ非圧縮のファイルをCPUへ送り、残りを`--cpu-percent`（既定50%）の展開バイト割合を目安に分割します。GPUに渡す配列からCPU担当ファイルを除くため、混在データでもGPUバッチが分断されません。CPUは既定最大8 worker、GPUはバッチI/Oパイプラインを使い、同時に処理します。片側が失敗すると他方にも停止を要求し、両方をjoinしてから最初のエラーを返します。CPU向きの入力だけ、予算が小さい、GPUが利用不能な場合はCPUだけで完結します。`selected_backend`と`selection_reason`で実際の選択を確認できます。この分割則は調整中で、最速を保証するものではありません。
@@ -85,6 +87,8 @@ CPUの全量バッファには、worker予算に加えて`--cpu-buffer-limit`（
 既定の`--temp-mode auto`はLinuxの`O_TMPFILE`を試し、検証済みのファイルだけ`linkat`で確定します。未確定ファイルは名前を持たないため、強制終了でも一時名が残りません。対応しないfilesystemや`/proc/self/fd`を開けない環境では、従来の名前付き`.part`へ戻ります。比較には`--temp-mode named`を使えます。どちらも既存出力を上書きせず、容量不足・FD不足を成功扱いしません。JSONの`anonymous_output_files`／`named_output_files`で実際の方式を確認できます。
 
 pipelineは各slotの単一固定化バッファに、入力を先頭、出力を末尾から配置します。最大入力と最大出力が別バッチでも、最大の「入力＋出力」だけを予約すれば足ります。次入力が前出力へ重なる場合だけ前の書き込みを待ち、未完了の出力を上書きしません。`pipeline_overlap_waits`でこの待機回数を記録します。一つのエントリでも予算に収まらない場合は、出力を書き始める前にエラーを返します。
+
+`--path-mode auto`は、作成済みの親ディレクトリをLinux `openat2`のBENEATH／NO_SYMLINKS制約で一度に開きます。途中のsymlinkも禁止し、アプリ側のディレクトリFDキャッシュは持ちません。未作成の階層・PATH_MAXを超える長い相対パス・未対応kernelでは、成分ごとの`mkdirat`／`openat(O_NOFOLLOW)`へ戻ります。`--path-mode portable`で従来経路を選択でき、JSONの`fast_parent_opens`／`portable_parent_walks`で実際の利用を確認できます。権限・symlink・境界違反をfallbackで無視することはありません。
 
 GPU経路にも`--host-limit`を適用します。バッチ入出力の固定化メモリと、固定バッファ分として保守的に予約する12MiBを予算化します。pipelineは2組の固定化バッファを含みます。通常経路は必要なら古い固定化バッファを解放して予算を守ります。固定分を常に予約しているため、Stored／Streamingを挟んでも予算内の固定化バッファは再利用できます。hybridはCPUに1/4、GPUに残りのホスト予算を分け、GPU側でホスト／VRAMの両予算に収まるバッチを計画します。GPUの`host_buffer_bytes`は固定分の予約を含む上限見積もりです。
 

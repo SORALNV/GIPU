@@ -8,6 +8,7 @@ struct Options {
   std::string gpu_algorithm = "deflate";
   std::string stream_crc = "cpu";
   std::string temp_mode = "auto";
+  std::string path_mode = "auto";
   int gpu = 0;
   size_t threads = 1;
   size_t write_threads = 8;

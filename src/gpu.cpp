@@ -601,12 +601,33 @@ Stats run_gpu(const Archive& archive, OutputRoot* root, const Options& opts, Ent
   cuda_check(cudaSetDevice(opts.gpu));
   if (opts.vram_limit < StreamingCrc::memory) throw std::runtime_error("--vram-limitがGPU CRC32の作業領域より小さいです");
   if (opts.host_limit < host_fixed_buffers) throw std::runtime_error("GPU経路には--host-limit 12M以上が必要です");
+  Stats stats;
+  std::vector<const Entry*> gpu_entries, copy_entries;
+  if (!opts.pipeline && opts.gpu_mode != "stream") {
+    // Stored／空エントリでGPUバッチを分断しない。Deflateの本体は引き続きGPUで処理する。
+    for (const auto* e : entries)
+      ((e->directory || e->method == 0 || e->uncompressed == 0) ? copy_entries : gpu_entries).push_back(e);
+    if (!copy_entries.empty()) {
+      if (libdeflate_available()) stats = run_libdeflate(archive, root, opts, copy_entries);
+      else {
+        Options cpu = opts; cpu.backend = isal_available() ? "isal" : "cpu";
+        stats = run_cpu(archive, root, cpu, copy_entries);
+      }
+    }
+    if (gpu_entries.empty()) {
+      stats.selected_backend = libdeflate_available() ? "libdeflate" : isal_available() ? "isal" : "cpu";
+      stats.selection_reason = "no_nonempty_deflate";
+      return stats;
+    }
+    entries = gpu_entries;
+  }
   Stream stream;
   StreamingCrc crc;
   BatchBuffers buffers;
   BatchHost host;
   std::unique_ptr<GpuStreamWorker> worker;
-  Stats stats; stats.workspace = StreamingCrc::memory; stats.host_buffer_bytes = host_fixed_buffers;
+  stats.workspace = StreamingCrc::memory;
+  stats.host_buffer_bytes = std::max<uint64_t>(stats.host_buffer_bytes, host_fixed_buffers);
   Codec codec(opts.gpu_algorithm == "lookahead");
   if (opts.pipeline) return pipeline_decode(archive, root, opts, stream, codec, buffers, entries);
   for (size_t i = 0; i < entries.size();) {

@@ -88,6 +88,7 @@ class Integration(unittest.TestCase):
         args = ["extract" if extract else "test", self.archive, "--backend", BACKEND, "--gpu-mode", MODE,
                 "--gpu-algorithm", ALGORITHM,
                 "--temp-mode", os.environ.get("GIPU_TEST_TEMP_MODE", "named"),
+                "--path-mode", os.environ.get("GIPU_TEST_PATH_MODE", "auto"),
                 "--threads", os.environ.get("GIPU_TEST_THREADS", "1")]
         if extract:
             args += ["--output", self.out]
@@ -203,6 +204,25 @@ class Integration(unittest.TestCase):
         self.assertEqual(stats["gpu_batches"], 1)
         self.assertEqual(stats["gpu_streams"], 1)
         self.assertLessEqual(stats["workspace_bytes"], 32 << 20)
+
+    @unittest.skipUnless(BACKEND == "gpu" and MODE != "stream", "Stored／空でバッチを分断しない")
+    def test_mixed_entries_coalesced(self):
+        out = io.BytesIO()
+        payload = b"coalesce" * 8192
+        with zipfile.ZipFile(out, "w") as archive:
+            for i in range(16):
+                archive.writestr(f"raw-{i}", b"copy", compress_type=zipfile.ZIP_STORED)
+                archive.writestr(f"empty-{i}", b"", compress_type=zipfile.ZIP_DEFLATED)
+                archive.writestr(f"deflate-{i}", payload, compress_type=zipfile.ZIP_DEFLATED)
+        result = self.process(out.getvalue(), extra=("--json",))
+        stats = json.loads(result.stdout)
+        self.assertEqual(stats["gpu_batches"], 1)
+        self.assertEqual(stats["gpu_streams"], 0)
+        self.assertEqual(stats["cpu_crc_bytes"], 16 * 4)
+        for i in range(16):
+            self.assertEqual((self.out / f"deflate-{i}").read_bytes(), payload)
+            self.assertEqual((self.out / f"raw-{i}").read_bytes(), b"copy")
+            self.assertEqual((self.out / f"empty-{i}").read_bytes(), b"")
 
     @unittest.skipUnless(BACKEND == "gpu", "GPU予算のテスト")
     def test_insufficient_gpu_budget(self):
@@ -426,6 +446,45 @@ class Integration(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse((self.out / "folder/limited").exists())
         self.assertEqual(list(self.out.rglob("*.part")), [])
+
+    def test_safe_parent_path_modes(self):
+        payload = b"path-selection"
+        self.archive.write_bytes(zip_bytes([("folder/a", payload), ("folder/b", payload)]))
+        for mode in ("auto", "portable"):
+            with self.subTest(mode=mode):
+                out = self.root / mode
+                stats = json.loads(self.run_cli("extract", self.archive, "--backend", BACKEND,
+                                               "--path-mode", mode, "--output", out, "--json").stdout)
+                self.assertEqual((out / "folder/a").read_bytes(), payload)
+                self.assertEqual((out / "folder/b").read_bytes(), payload)
+                self.assertGreaterEqual(stats["fast_parent_opens"] + stats["portable_parent_walks"], 2)
+                if mode == "portable":
+                    self.assertEqual(stats["fast_parent_opens"], 0)
+                protected = self.root / f"protected-{mode}"
+                protected.mkdir()
+                outside = self.root / f"outside-{mode}"
+                outside.mkdir()
+                (protected / "folder").symlink_to(outside, target_is_directory=True)
+                self.run_cli("extract", self.archive, "--backend", BACKEND, "--path-mode", mode,
+                             "--output", protected, ok=False)
+                self.assertEqual(list(outside.iterdir()), [])
+
+    def test_deep_path_beyond_path_max(self):
+        components = ["p" * 80] * 55
+        self.process(zip_bytes([("/".join(components + ["end"]), b"deep")]))
+        fd = os.open(self.out, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            for component in components:
+                next_fd = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+                os.close(fd)
+                fd = next_fd
+            data = os.open("end", os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
+            try:
+                self.assertEqual(os.read(data, 16), b"deep")
+            finally:
+                os.close(data)
+        finally:
+            os.close(fd)
 
     @unittest.skipUnless(BACKEND not in ("gpu", "hybrid"), "CPUのDeflateブロック構成")
     def test_deflate_strategies_and_flush_boundaries(self):

@@ -8,6 +8,10 @@
 #include <sys/random.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <sys/syscall.h>
+#if __has_include(<linux/openat2.h>)
+#include <linux/openat2.h>
+#endif
 
 namespace gipu {
 namespace {
@@ -19,7 +23,7 @@ int descend(int fd, const std::string& component) {
   return next;
 }
 }
-OutputRoot::OutputRoot(const std::filesystem::path& path, bool anonymous) {
+OutputRoot::OutputRoot(const std::filesystem::path& path, bool anonymous, bool fast_paths) : fast_paths_(fast_paths) {
   std::filesystem::create_directories(path);
   fd_ = ::open(path.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
   if (fd_ < 0) fail("出力先を開けません");
@@ -28,6 +32,24 @@ OutputRoot::OutputRoot(const std::filesystem::path& path, bool anonymous) {
 }
 OutputRoot::~OutputRoot() { if (proc_fds_ >= 0) ::close(proc_fds_); if (fd_ >= 0) ::close(fd_); }
 int OutputRoot::parent(const std::string& name) const {
+#if defined(SYS_openat2) && defined(RESOLVE_BENEATH) && defined(RESOLVE_NO_SYMLINKS)
+  auto separator = name.find_last_of('/');
+  if (separator != std::string::npos && fast_paths_.load(std::memory_order_relaxed)) {
+    auto parent = name.substr(0, separator);
+    open_how how{};
+    how.flags = O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC;
+    how.resolve = RESOLVE_BENEATH | RESOLVE_NO_SYMLINKS;
+    int result = static_cast<int>(::syscall(SYS_openat2, fd_, parent.c_str(), &how, sizeof(how)));
+    if (result >= 0) {
+      fast_parent_opens_.fetch_add(1, std::memory_order_relaxed);
+      return result;
+    }
+    if (errno == ENOSYS || errno == EINVAL) fast_paths_.store(false, std::memory_order_relaxed);
+    else if (errno != ENOENT && errno != ENAMETOOLONG) fail("安全に出力ディレクトリを開けません");
+    // 未作成／PATH_MAX超の階層だけ、成分ごとのmkdirat・O_NOFOLLOWへ戻す。
+  }
+#endif
+  portable_parent_walks_.fetch_add(1, std::memory_order_relaxed);
   int current = ::fcntl(fd_, F_DUPFD_CLOEXEC, 0);
   if (current < 0) fail("出力先を複製できません");
   try {

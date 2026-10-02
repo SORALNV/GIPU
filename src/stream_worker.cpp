@@ -93,6 +93,8 @@ void GpuStreamWorker::decode(const Entry& e, std::ostream& destination) {
   while (left) {
     size_t n = receive(buffer.data(), static_cast<size_t>(std::min<uint64_t>(left, buffer.size())));
     destination.write(buffer.data(), static_cast<std::streamsize>(n));
+    // 親のCRC／filesystem待ちをGPUの無進捗時間へ含めない。
+    deadline = Clock::now() + std::chrono::seconds(timeout_);
     left -= n;
   }
   uint64_t response = 0;
