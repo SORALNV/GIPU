@@ -20,7 +20,7 @@ import zipfile
 from benchmark_space import check_output_space, plan_output_space
 
 
-VARIANTS = ("auto", "auto-experimental", "gpu", "gpu-pipeline", "hybrid", "cpu", "libdeflate1",
+VARIANTS = ("auto", "auto-reference", "auto-experimental", "gpu", "gpu-pipeline", "hybrid", "cpu", "libdeflate1",
             "7zip", "7zip-parallel", "unzip", "python-parallel")
 
 
@@ -111,10 +111,11 @@ def command_for(args, variant, mode, archive, output):
         command = [sys.executable, str(Path(__file__).with_name("reference_zip.py").resolve()),
                    mode, str(archive), "--threads", str(args.threads)]
         return command + (["--output", str(output)] if mode == "extract" else [])
-    backend = {"auto-experimental": "auto", "gpu-pipeline": "gpu"}.get(variant, variant)
+    backend = {"auto-reference": "auto", "auto-experimental": "auto", "gpu-pipeline": "gpu"}.get(variant, variant)
     if variant == "libdeflate1":
         backend = "libdeflate"
-    command = [str(args.binary.resolve()), mode, str(archive), "--backend", backend,
+    binary = args.reference_binary if variant == "auto-reference" else args.binary
+    command = [str(binary.resolve()), mode, str(archive), "--backend", backend,
                "--threads", str(1 if variant == "libdeflate1" else args.threads), "--json"]
     if variant == "auto-experimental":
         command += ["--auto-gpu", "--auto-parallel"]
@@ -138,6 +139,7 @@ def main():
     parser.add_argument("--variants", nargs="+", choices=VARIANTS,
                         default=["auto", "gpu", "7zip", "unzip", "python-parallel"])
     parser.add_argument("--binary", type=Path, default=Path("build/gipu"))
+    parser.add_argument("--reference-binary", type=Path, help="旧版autoを同じ報告・条件で比較する任意のCLI")
     parser.add_argument("--sevenzip", type=Path, default=Path(".deps/7zip-26.03/7zz"))
     parser.add_argument("--unzip", type=Path, default=Path("/usr/bin/unzip"))
     parser.add_argument("--output-root", type=Path, required=True)
@@ -162,6 +164,8 @@ def main():
         parser.error("反復数・期限・worker数が不正です")
     if args.report.exists():
         parser.error("既存の測定結果を上書きしません")
+    if "auto-reference" in args.variants and args.reference_binary is None:
+        parser.error("auto-referenceにはreference-binaryが必要です")
     if args.cpu_count is not None:
         allowed = sorted(os.sched_getaffinity(0))
         if not 1 <= args.cpu_count <= len(allowed):
@@ -170,6 +174,8 @@ def main():
     args.output_root.mkdir(parents=True, exist_ok=True)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     tools = {"gipu": args.binary, "7zip": args.sevenzip, "unzip": args.unzip}
+    if "auto-reference" in args.variants:
+        tools["gipu_reference"] = args.reference_binary
     metadata = {"kind": "metadata", "time_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "platform": platform.platform(), "python": sys.version, "cpu_affinity": sorted(os.sched_getaffinity(0)),
                 "threads_requested": args.threads, "output_root": str(args.output_root.resolve()),

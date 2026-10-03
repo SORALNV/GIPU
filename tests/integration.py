@@ -821,6 +821,50 @@ class Integration(unittest.TestCase):
     def test_cpu_insufficient_memory_budget(self):
         self.process(zip_bytes([("x", b"x")]), extract=False, ok=False, extra=("--host-limit", "1M"))
 
+    @unittest.skipUnless(BACKEND == "libdeflate", "ほぼ非圧縮の大きなCPU入力")
+    def test_cpu_near_stored_streaming(self):
+        small = os.urandom(1 << 20)
+        large = os.urandom(8 << 20)
+        zeros = bytes(8 << 20)
+        data = io.BytesIO()
+        with zipfile.ZipFile(data, "w") as archive:
+            archive.writestr("small", small, compress_type=zipfile.ZIP_DEFLATED)
+            archive.writestr("random", large, compress_type=zipfile.ZIP_DEFLATED)
+            archive.writestr("zeros", zeros, compress_type=zipfile.ZIP_DEFLATED)
+            archive.writestr("stored", large, compress_type=zipfile.ZIP_STORED)
+        self.archive.write_bytes(data.getvalue())
+        probe = subprocess.run([BINARY, "test", str(self.archive), "--backend", "isal", "--json"],
+                               capture_output=True, text=True, timeout=120)
+        has_isal = probe.returncode == 0
+        if not has_isal:
+            self.assertIn("ISA-Lを有効にしたビルドが必要です", probe.stderr)
+        for mode in ("test", "extract"):
+            with self.subTest(mode=mode):
+                result = self.process(data.getvalue(), extract=mode == "extract",
+                                      extra=("--host-limit", "64M", "--threads", "1", "--json"))
+                stats = json.loads(result.stdout)
+                self.assertEqual(stats["cpu_stream_files"], int(has_isal))
+                self.assertEqual(stats["cpu_buffered_files"], 4 - int(has_isal))
+                self.assertEqual(stats["isal_files"], int(has_isal))
+                self.assertLessEqual(stats["host_buffer_bytes"], 64 << 20)
+        for name, expected in (("small", small), ("random", large), ("zeros", zeros), ("stored", large)):
+            self.assertEqual((self.out / name).read_bytes(), expected)
+
+    @unittest.skipUnless(BACKEND == "libdeflate", "CPU Streamingへの自動切替後も検証する")
+    def test_cpu_near_stored_invalid_data(self):
+        payload = bytes(8 << 20)
+        compressor = zlib.compressobj(0, zlib.DEFLATED, -15)
+        compressed = compressor.compress(payload) + compressor.flush()
+        original = replace_deflate(zip_bytes([("random", payload)]), compressed)
+        wrong_crc = bytearray(original)
+        for offset in (14, wrong_crc.index(b"PK\x01\x02") + 16):
+            struct.pack_into("<I", wrong_crc, offset, zlib.crc32(payload) ^ 1)
+        for bad in (wrong_crc, replace_deflate(original, compressed + b"trailing")):
+            with self.subTest(size=len(bad)):
+                self.process(bad, ok=False, extra=("--host-limit", "64M", "--json"))
+                self.assertFalse((self.out / "random").exists())
+                self.assertFalse(list(self.out.rglob("*.part")))
+
     @unittest.skipUnless(BACKEND == "gpu" and MODE == "auto", "固定化ホストバッファの予算")
     def test_gpu_host_memory_budget(self):
         result = self.process(zip_bytes([(f"{i}", b"x" * (1 << 20)) for i in range(12)]),

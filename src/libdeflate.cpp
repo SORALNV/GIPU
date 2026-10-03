@@ -64,7 +64,11 @@ Stats run_libdeflate(const Archive& archive, OutputRoot* root, const Options& op
         if (e.directory) continue;
         check_cancelled();
         uint64_t output_bytes = e.method == 8 ? std::max<uint64_t>(e.uncompressed, 1) : 0;
-        if (e.compressed > buffer_budget || output_bytes > buffer_budget - e.compressed) {
+        // ほぼ非圧縮の大きなDeflateでは全量の確保・コピーが不利だった。
+        // 実測したISA-Lがある場合だけ小窓へ回す。Storedと小入力は従来どおり。
+        const bool near_stored = isal_available() && e.method == 8 && e.uncompressed >= (8ULL << 20) &&
+                                 e.compressed >= e.uncompressed - e.uncompressed / 50;
+        if (near_stored || e.compressed > buffer_budget || output_bytes > buffer_budget - e.compressed) {
           // 残っている全量バッファを解放してからStreaming用2MiBを確保する。
           buffer.reset(); capacity = 0;
           Options streaming = opts; streaming.host_limit = worker_budget;

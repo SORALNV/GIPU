@@ -8,6 +8,7 @@ import sys
 import shutil
 import subprocess
 import tempfile
+from types import SimpleNamespace
 import unittest
 import zipfile
 
@@ -38,6 +39,23 @@ class Matrix(unittest.TestCase):
 
     def test_valid_manifest(self):
         self.assertEqual(len(matrix.validate_archive(self.archive, self.manifest)), 1)
+
+    def test_previous_binary_uses_same_auto_options(self):
+        args = SimpleNamespace(binary=self.root / "current", reference_binary=self.root / "previous",
+                               threads=4, path_mode="portable", host_limit="32M", vram_limit="256M")
+        current = matrix.command_for(args, "auto", "extract", self.archive, self.root / "output")
+        previous = matrix.command_for(args, "auto-reference", "extract", self.archive, self.root / "output")
+        self.assertEqual(previous[0], str(args.reference_binary.resolve()))
+        self.assertEqual(current[1:], previous[1:])
+
+    def test_previous_binary_required_before_start(self):
+        report = self.root / "previous.jsonl"
+        result = subprocess.run([sys.executable, str(SCRIPTS / "benchmark_matrix.py"),
+                                 "--corpus", str(self.root), "--cases", "small", "--variants", "auto-reference",
+                                 "--output-root", str(self.root / "output"), "--report", str(report)],
+                                capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse(report.exists())
 
     def test_manifest_count_rejected(self):
         self.manifest["files"] = 2
