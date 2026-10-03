@@ -144,7 +144,7 @@ Deflate level 0では並列7-ZipがGIPU autoより約1.43倍高速でした。�
 
 中断試験**32ケース**も全て成功しました。CPU auto・Rapidgzip・zlibのみauto・GPU Streaming・GPUバッチ小窓出力を、出力開始後にSIGINT／SIGTERM／SIGKILLで停止させました。GPU StreamingのSIGSTOP／SIGKILL worker異常も、親がエラーを返すことを確認しました。未検証ファイルの確定はなく、親signalの試験ではGPU worker残留もありません。named一時出力のSIGKILLでは残骸1件が残る想定を確認し、試験所有の一時フォルダで回収しました。[検証結果と識別情報](benchmarks/validation-correctness-2026-10-03.json)に全ケースを残しています。
 
-GPUを不可視にした改良版autoは69定義・25skip、44実行で全て成功しました。skipを未実施のGPU検証として数えません。本体LICENSEの選択と、下流依存を含むバイナリ再配布の監査は未完了です。
+GPUを不可視にした改良版autoは69定義・25skip、44実行で全て成功しました。skipを未実施のGPU検証として数えません。本体はその後[MITライセンス](../LICENSE)を採用しました。下流依存を含むバイナリ再配布の監査は未完了です。
 
 ## 中断した試験の扱い
 

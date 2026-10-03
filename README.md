@@ -2,6 +2,8 @@
 
 LinuxでStored／DeflateのZIP32・ZIP64を展開するCLIを開発しています。CPUだけでも動作し、NVIDIA GPUは任意の実験経路です。実験用GPUはRTX 3090です。
 
+GIPU本体は[MITライセンス](LICENSE)です。依存ライブラリ・GPU SDK・実データには、それぞれ別の利用条件が適用されます。
+
 目標は、GPUとCPUを使い分け、大小・多数のファイルを含む標準ZIPを高速に展開することです。VRAMより大きいアーカイブや単一ファイルもストリーミング展開します。性能は解凍・CRCだけでなく、ファイル操作とI/Oを含めて実測で判断します。
 
 測定版6da1908の単一8GiB実データZIPでは、実験用CPU並列が同GIPUのGPU Streamingより**約9.3倍高速**でした。この入力・実機・CLI全体時間に限った比較で、全ZIPでのGPU比ではありません。
@@ -24,6 +26,12 @@ LinuxでStored／DeflateのZIP32・ZIP64を展開するCLIを開発していま�
 - CPUとGPUが異なるエントリ集合を同時処理する`hybrid`経路と、固定化ホストメモリの予算化。
 - Linuxの名前なし一時出力（`--temp-mode auto`）と、CPU全量バッファ／Streamingの切り替え。
 - CPU affinityを尊重する自動選択。実験用GPU／単一ストリーム並列は明示許可時だけ候補にします。
+
+## 対応OSとWindowsについて
+
+現在の対応OSはLinuxです。Windows／macOSネイティブ版は未対応で、CMakeでもビルドを拒否します。安全なファイル出力・CPU affinity・GPU worker制御がLinuxのAPIや`/proc`に依存しているため、単に`.exe`へビルドし直すだけでは動作しません。
+
+Windows上で試す候補は[WSL2](https://learn.microsoft.com/en-us/windows/wsl/about)内のLinux版です。ただしGIPUのWSL2実機検証はまだ行っておらず、CPU／GPUの動作や速度を保証しません。WSL2でCUDAを利用する仕組みはありますが、それだけでGIPUのGPU経路の動作確認とは扱いません。[Microsoftの説明](https://learn.microsoft.com/en-us/windows/wsl/tutorials/gpu-compute)を参照してください。Linux実機の測定倍率もWSL2へ一般化しません。
 
 ## ビルド
 
@@ -183,7 +191,7 @@ python3 scripts/summarize_matrix.py --input bench-results/validation.jsonl \
 
 改善前のバイナリを比較する場合は`--reference-binary /path/to/previous-gipu --variants auto auto-reference`を使えます。旧版と新版を同じ条件で交互に測り、両方のバイナリSHA256を報告へ記録します。過去の別報告から時間を寄せ集めて改善倍率を作りません。
 
-本体ライセンスとGPU SDKの再配布条件は別です。依存と公開物の境界は[THIRD_PARTY.md](THIRD_PARTY.md)を参照してください。ライセンス選択が済むまで、本体の利用・再配布許諾が確定したとは扱いません。
+本体は[MITライセンス](LICENSE)ですが、GPU SDKなど依存の再配布条件とは別です。依存と公開物の境界は[THIRD_PARTY.md](THIRD_PARTY.md)を参照してください。本体のMIT採用によって、SDKを含むバイナリの再配布監査が完了したとは扱いません。
 
 ### Kaggle実データの大容量測定
 
