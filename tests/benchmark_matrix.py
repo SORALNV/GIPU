@@ -209,6 +209,24 @@ class Matrix(unittest.TestCase):
             self.skipTest("7-Zipがないため外部参照の実行は未検証")
         self.check_reference("reference_7zip_parallel.py", ["--sevenzip", sevenzip])
 
+    def release_arguments(self):
+        return [sys.executable, str(SCRIPTS / "run_release_validation.py"),
+                "--corpus", str(self.root), "--archive", str(self.archive), "--source", str(self.root),
+                "--ssd-output", str(self.root / "ssd"), "--optane-output", str(self.root / "optane"),
+                "--tmpfs-output", str(self.root / "tmpfs"), "--report-prefix", str(self.root / "release")]
+
+    def test_release_unknown_phase_rejected_before_start(self):
+        result = subprocess.run([*self.release_arguments(), "--from-phase", "unknown"],
+                                capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse((self.root / "release-status.jsonl").exists())
+
+    def test_release_conflicting_plans_rejected_before_start(self):
+        result = subprocess.run([*self.release_arguments(), "--controlled-final", "--parallel-reference-only"],
+                                capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse((self.root / "release-status.jsonl").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

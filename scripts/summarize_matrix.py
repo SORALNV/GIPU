@@ -1,5 +1,6 @@
 """外部比較JSONLを集計し、失敗を残したまま公開用JSONにまとめる。"""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import statistics
@@ -32,6 +33,13 @@ def summarize(path):
                 "peak_rss_kib": [r.get("peak_rss_kib") for r in matching],
                 "selected_backends": [r.get("stats", {}).get("selected_backend") for r in matching],
                 "selection_reasons": [r.get("stats", {}).get("selection_reason") for r in matching]}
+        for field in ("gpu_batches", "gpu_streams", "gpu_crc_bytes", "cpu_crc_bytes",
+                      "cpu_buffered_files", "cpu_stream_files", "isal_files", "cpu_parallel_files"):
+            item[field] = [r.get("stats", {}).get(field) for r in matching]
+        item["stage_seconds"] = {
+            field: [r.get("stats", {}).get(field) for r in matching]
+            for field in ("parse_seconds", "allocation_seconds", "read_seconds", "write_seconds",
+                          "decode_seconds", "crc_seconds", "transfer_seconds")}
         if "repeats_requested" in metadata:
             item["missing_runs"] = max(0, metadata["repeats_requested"] - len(matching))
             item["repeat_sequence_valid"] = sorted(r.get("repeat") for r in matching) == list(
@@ -56,7 +64,8 @@ def summarize(path):
             value["ratio_to_auto"] = {variant: seconds / base for variant, seconds in value["tools"].items()}
             value["fastest_measured"] = min(value["tools"], key=value["tools"].get)
         comparisons.append(value)
-    return {"metadata": metadata, "runs": len(runs), "failures": sum(not r.get("verified") for r in runs),
+    return {"source_report": path.name, "source_report_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "metadata": metadata, "runs": len(runs), "failures": sum(not r.get("verified") for r in runs),
             "complete": complete,
             "missing_groups": missing_groups, "unexpected_groups": unexpected_groups,
             "groups": groups, "comparisons": comparisons}

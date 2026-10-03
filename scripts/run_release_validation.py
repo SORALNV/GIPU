@@ -21,7 +21,11 @@ def main():
     parser.add_argument("--parallel-reference-only", action="store_true",
                         help="追加の並列7-Zip参照とauto／GPUを同じ条件で比較する")
     parser.add_argument("--from-phase", help="完了済み報告を残し、指定した段階から新しいreport-prefixで再実行する")
+    parser.add_argument("--controlled-final", action="store_true",
+                        help="索引除外済みの出力先で50GB比較と高エントロピーCPU Streamingを再確認する")
     args = parser.parse_args()
+    if args.controlled_final and args.parallel_reference_only:
+        parser.error("試験計画の選択は一つだけ指定してください")
     matrix = str(Path(__file__).with_name("benchmark_matrix.py").resolve())
     phases = []
     common = ["--corpus", str(args.corpus), "--repeats", "3", "--variants", "auto", "gpu", "7zip", "python-parallel"]
@@ -49,6 +53,14 @@ def main():
             ("parallel-reference-kaggle50", ["--archive", str(args.archive), "--source", str(args.source),
                 "--samples", "128", "--variants", "auto", "gpu-pipeline", "7zip-parallel", "--repeats", "3",
                 "--modes", "extract", "--output-root", str(args.ssd_output)])]
+    if args.controlled_final:
+        phases = [
+            ("controlled-kaggle50", ["--archive", str(args.archive), "--source", str(args.source),
+                "--samples", "128", "--variants", "auto", "gpu-pipeline", "7zip", "7zip-parallel",
+                "--repeats", "3", "--modes", "extract", "--output-root", str(args.ssd_output)]),
+            ("cpu-streaming-highentropy", ["--corpus", str(args.corpus), "--cases", "deflate-level0", "incompressible",
+                "--variants", "auto", "7zip-parallel", "python-parallel", "--host-limit", "32M", "--repeats", "3",
+                "--output-root", str(args.ssd_output)])]
     if args.from_phase:
         names = [name for name, _ in phases]
         if args.from_phase not in names:

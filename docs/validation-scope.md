@@ -33,6 +33,8 @@ GIPUは現時点でLinux向けのStored／Deflate ZIP32・ZIP64展開CLIです�
 
 Windows／macOSは現在の実装対象外で、CMakeで明示的に拒否します。`--path-mode portable`はLinux内の安全な成分別パス探索を選ぶ指定であり、Windows／macOS対応を意味しません。付属bootstrapはUbuntu x86_64向けです。ARM64最小構成は通常のLinuxビルド依存で構成します。
 
+SFX／実行ファイルに付加されたZIP、全producer・全文字コードの組み合わせ、NTFS／exFAT／ネットワークfilesystem、電源断・全種類のデバイス故障は今回の検証対象外です。出力の確定はファイルごとです。GPUバッチのCRCをまとめて確認することも、バッチ／アーカイブ全体のrollbackを保証するものではありません。後半のエントリでCRC・I/Oエラーが起きると、前半の検証済み出力が残る場合があります。名前付き一時出力をSIGKILLした場合の`.part`残留も想定します。
+
 ## 速度比較
 
 - 合成入力は固定seedから再生成し、実データZIPは変更しない。
@@ -45,8 +47,12 @@ Windows／macOSは現在の実装対象外で、CMakeで明示的に拒否しま
 - SHA256照合、試験が作成した一時出力の削除は速度計測外。元データ・元ZIPは削除しない。
 - CPUのworker数とGPUの出力worker数は別。GPU比較は既定の出力8 worker、pipelineは最大2バッチを重畳する。
 - GNU timeのRSSは親子プロセス全体の同時ピークを保証しない。
+- `--backend gpu`の指定だけでGPU解凍の実行を数えない。Stored／空ファイルではGPU解凍が不要な場合があり、`gpu_batches`／`gpu_streams`／CRC分担も結果に残す。
+- デスクトップの索引処理も測定へ干渉し得る。50GBの最初の比較で検索インデクサーの高いCPU使用を観測したため、後続の対照試験は同じSSD上の隠し実験フォルダ＋`.trackerignore`で実行する。他のアプリやシステムの索引設定は変更しない。除外方法は[GNOME LocalSearchの説明](https://gnome.pages.gitlab.gnome.org/localsearch/indexed-data.html)と実機の設定を確認した。マーカーは実展開される`out`の外側に置き、ZIPの出力集合は変えない。
 
 外部比較は公式7-Zip 26.03、Info-ZIP unzip 6.00、Python zipfile＋zlibの独立した並列CPU参照です。7-Zipの`-mmt`は要求値で、Deflateの内部16並列を保証しません。Python参照にはGIL・ZipFileのworker別解析などのコストがあり、最速の並列CPU製品を代表する保証はありません。GIPUと外部ツールでは属性復元や一時ファイルの確定方法も異なります。
+
+追加の`reference_7zip_parallel.py`は、最大16個の公式7-Zipプロセスへファイルを分担し、各プロセスは`-mmt=1`で動きます。ZIP本体の解析を各workerが繰り返すコスト、出力の親ディレクトリ・選択リストの作成も測定内です。全workerのCRC検証件数・展開量を確認し、実展開を独立SHA256で照合します。単一Deflate内部の並列化ではありません。旧版p7zipで日本語名を保つためUTF-8ロケールを指定します。
 
 CPU affinityを1／2／4等へ制限した試験は、同一Ryzen上で使えるCPU数を減らした試験です。低価格CPU・別マイクロアーキテクチャ・別RAM容量を検証したとは扱いません。Optane／SSDのext4とtmpfsの結果も、NTFS・exFAT・ネットワークfilesystemの証明ではありません。
 

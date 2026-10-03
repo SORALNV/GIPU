@@ -176,6 +176,9 @@ def main():
                 "repeats_requested": args.repeats, "variants_requested": args.variants, "modes_requested": args.modes,
                 "cases_requested": [args.archive.stem] if args.archive else args.cases,
                 "output_device": args.output_root.stat().st_dev, "cache": args.cache, "durable": False,
+                "output_index_exclusion_marker": any((args.output_root / name).is_file()
+                                                      for name in (".trackerignore", ".nomedia")),
+                "output_root_hidden_component": any(p.startswith(".") for p in args.output_root.resolve().parts),
                 "path_mode": args.path_mode, "host_limit": args.host_limit, "vram_limit": args.vram_limit,
                 "samples": args.samples,
                 "source_sha256_validation": args.source is not None,
