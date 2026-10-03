@@ -2,6 +2,7 @@
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import sys
 import shutil
@@ -202,7 +203,8 @@ class Matrix(unittest.TestCase):
 
     def test_7zip_parallel_reference_end_to_end(self):
         local = SCRIPTS.parent / ".deps/7zip-26.03/7zz"
-        sevenzip = str(local) if local.is_file() else shutil.which("7zz") or shutil.which("7z")
+        sevenzip = os.environ.get("GIPU_TEST_7ZIP") or (
+            str(local) if local.is_file() else shutil.which("7zz") or shutil.which("7z"))
         if not sevenzip:
             self.skipTest("7-Zipがないため外部参照の実行は未検証")
         self.check_reference("reference_7zip_parallel.py", ["--sevenzip", sevenzip])

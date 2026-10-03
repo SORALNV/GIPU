@@ -72,7 +72,7 @@ def main():
                 command += [f"-o{args.output.resolve()}", "-y"]
             # matrixが所有するprocess groupを継承。中断時に子だけ残さない。
             result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                    text=True, env=dict(os.environ, LC_ALL="C"))
+                                    text=True, env=dict(os.environ, LC_ALL="C.UTF-8"))
             if result.returncode:
                 raise RuntimeError(f"7-Zip worker {index} が失敗しました: {result.returncode}")
             actual = result_counts(result.stdout)

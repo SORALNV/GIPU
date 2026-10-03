@@ -20,6 +20,7 @@ def main():
     parser.add_argument("--predecessor-report", type=Path, help="別の所有する逐次試験の完了を待ってから開始する")
     parser.add_argument("--parallel-reference-only", action="store_true",
                         help="追加の並列7-Zip参照とauto／GPUを同じ条件で比較する")
+    parser.add_argument("--from-phase", help="完了済み報告を残し、指定した段階から新しいreport-prefixで再実行する")
     args = parser.parse_args()
     matrix = str(Path(__file__).with_name("benchmark_matrix.py").resolve())
     phases = []
@@ -48,6 +49,11 @@ def main():
             ("parallel-reference-kaggle50", ["--archive", str(args.archive), "--source", str(args.source),
                 "--samples", "128", "--variants", "auto", "gpu-pipeline", "7zip-parallel", "--repeats", "3",
                 "--modes", "extract", "--output-root", str(args.ssd_output)])]
+    if args.from_phase:
+        names = [name for name, _ in phases]
+        if args.from_phase not in names:
+            parser.error("from-phaseは現在の試験計画に存在する段階を指定してください")
+        phases = phases[names.index(args.from_phase):]
     status_path = Path(str(args.report_prefix) + "-status.jsonl")
     if status_path.exists() or any(Path(str(args.report_prefix) + f"-{name}.jsonl").exists() for name, _ in phases):
         parser.error("既存の逐次試験結果を上書きしません")
