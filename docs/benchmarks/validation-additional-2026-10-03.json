@@ -1,0 +1,4202 @@
+{
+  "note": "倍率は同じ報告・case・mode内の中央値同士だけ。環境／cache／永続化条件を跨がない。",
+  "total_runs": 432,
+  "total_failures": 0,
+  "all_reports_complete": true,
+  "reports": [
+    {
+      "metadata": {
+        "kind": "metadata",
+        "time_utc": "2026-10-02T16:46:49Z",
+        "platform": "Linux-7.0.0-34-generic-x86_64-with-glibc2.43",
+        "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+        "cpu_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ],
+        "threads_requested": 16,
+        "output_root": "/home/sora/gipu-validation-output",
+        "output_device": 66313,
+        "cache": "drop-advised",
+        "durable": false,
+        "path_mode": "auto",
+        "host_limit": null,
+        "samples": 0,
+        "tool_sha256": {
+          "gipu": "398d66deb7d4c8a83856145c2cbcbe516700876911c5f05908aee3966fe7d97e",
+          "7zip": "3d52c92deb7e9f1bd059692eefc33f86a144cdc548acc4b6f4c809a4dd7bc369",
+          "unzip": "908a7d41dfe105c724737cb7f355f474186f51d645829af522265f01492a0cc7"
+        },
+        "reference_script_sha256": "de86a4a2676d8a0ec484479b4c83e268f6be7a69867a73dd7f05be7fdebd3d19",
+        "note": "同じ機械でのaffinity制限。cold cache保証なし。通常write終了まで、fsyncなし。属性復元・出力確定方式はツールで異なる。Python並列は比較用で最速CPU保証ではない。",
+        "7zip_version": "7-Zip (z) 26.03 (x64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-09-03",
+        "unzip_version": "UnZip 6.00 of 20 April 2009, by Debian. Original by Info-ZIP."
+      },
+      "runs": 432,
+      "failures": 0,
+      "complete": true,
+      "groups": [
+        {
+          "case": "deflate-level0",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.3325474579978618,
+            0.3356593129974499,
+            0.3344951880026201
+          ],
+          "sha256_verified_files": [
+            32,
+            32,
+            32
+          ],
+          "peak_rss_kib": [
+            7180,
+            7172,
+            6912
+          ],
+          "median_seconds": 0.3344951880026201,
+          "min_seconds": 0.3325474579978618,
+          "max_seconds": 0.3356593129974499
+        },
+        {
+          "case": "deflate-level0",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.1823943870003859,
+            0.19407363400023314,
+            0.1906317159991886
+          ],
+          "sha256_verified_files": [
+            32,
+            32,
+            32
+          ],
+          "peak_rss_kib": [
+            526944,
+            528768,
+            529140
+          ],
+          "median_seconds": 0.1906317159991886,
+          "min_seconds": 0.1823943870003859,
+          "max_seconds": 0.19407363400023314
+        },
+        {
+          "case": "deflate-level0",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.6407906919994275,
+            0.6288495959997817,
+            0.6416033339992282
+          ],
+          "sha256_verified_files": [
+            32,
+            32,
+            32
+          ],
+          "peak_rss_kib": [
+            645944,
+            645012,
+            645740
+          ],
+          "median_seconds": 0.6407906919994275,
+          "min_seconds": 0.6288495959997817,
+          "max_seconds": 0.6416033339992282
+        },
+        {
+          "case": "deflate-level0",
+          "mode": "extract",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.17991187699954025,
+            0.1938741049998498,
+            0.18408185099906405
+          ],
+          "sha256_verified_files": [
+            32,
+            32,
+            32
+          ],
+          "peak_rss_kib": [
+            528424,
+            528304,
+            527784
+          ],
+          "median_seconds": 0.18408185099906405,
+          "min_seconds": 0.17991187699954025,
+          "max_seconds": 0.1938741049998498
+        },
+        {
+          "case": "deflate-level0",
+          "mode": "extract",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.33498800699817366,
+            0.3249902320021647,
+            0.32685871799913
+          ],
+          "sha256_verified_files": [
+            32,
+            32,
+            32
+          ],
+          "peak_rss_kib": [
+            83636,
+            82224,
+            79736
+          ],
+          "median_seconds": 0.32685871799913,
+          "min_seconds": 0.3249902320021647,
+          "max_seconds": 0.33498800699817366
+        },
+        {
+          "case": "deflate-level0",
+          "mode": "extract",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            2.08602464499927,
+            2.1099160249978013,
+            2.1556768790032947
+          ],
+          "sha256_verified_files": [
+            32,
+            32,
+            32
+          ],
+          "peak_rss_kib": [
+            3040,
+            3312,
+            3360
+          ],
+          "median_seconds": 2.1099160249978013,
+          "min_seconds": 2.08602464499927,
+          "max_seconds": 2.1556768790032947
+        },
+        {
+          "case": "deflate-level0",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.23130690500329365,
+            0.2118507960003626,
+            0.21752338399892324
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            7184,
+            7176,
+            6520
+          ],
+          "median_seconds": 0.21752338399892324,
+          "min_seconds": 0.2118507960003626,
+          "max_seconds": 0.23130690500329365
+        },
+        {
+          "case": "deflate-level0",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.1533526860002894,
+            0.14366293100101757,
+            0.14561190300082671
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            528340,
+            527320,
+            528640
+          ],
+          "median_seconds": 0.14561190300082671,
+          "min_seconds": 0.14366293100101757,
+          "max_seconds": 0.1533526860002894
+        },
+        {
+          "case": "deflate-level0",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.6046934410005633,
+            0.5598899890028406,
+            0.5788260959998297
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            638092,
+            636216,
+            636992
+          ],
+          "median_seconds": 0.5788260959998297,
+          "min_seconds": 0.5598899890028406,
+          "max_seconds": 0.6046934410005633
+        },
+        {
+          "case": "deflate-level0",
+          "mode": "test",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.14287698200132581,
+            0.15473269199719653,
+            0.14930050100156222
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            528848,
+            528356,
+            528380
+          ],
+          "median_seconds": 0.14930050100156222,
+          "min_seconds": 0.14287698200132581,
+          "max_seconds": 0.15473269199719653
+        },
+        {
+          "case": "deflate-level0",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.30079821799881756,
+            0.3124080089983181,
+            0.312303073998919
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            77784,
+            82452,
+            82196
+          ],
+          "median_seconds": 0.312303073998919,
+          "min_seconds": 0.30079821799881756,
+          "max_seconds": 0.3124080089983181
+        },
+        {
+          "case": "deflate-level0",
+          "mode": "test",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            2.154725349002547,
+            2.088211931000842,
+            2.11150718099816
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            3040,
+            3036,
+            3056
+          ],
+          "median_seconds": 2.11150718099816,
+          "min_seconds": 2.088211931000842,
+          "max_seconds": 2.154725349002547
+        },
+        {
+          "case": "documents-level1",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.30999002299722633,
+            0.2970369890026632,
+            0.3144221580005251
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            8100,
+            8188,
+            8156
+          ],
+          "median_seconds": 0.30999002299722633,
+          "min_seconds": 0.2970369890026632,
+          "max_seconds": 0.3144221580005251
+        },
+        {
+          "case": "documents-level1",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.03136338900003466,
+            0.03290500900038751,
+            0.030977427999459906
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            10464,
+            10340,
+            10684
+          ],
+          "median_seconds": 0.03136338900003466,
+          "min_seconds": 0.030977427999459906,
+          "max_seconds": 0.03290500900038751
+        },
+        {
+          "case": "documents-level1",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.26952142599839135,
+            0.2627012160010054,
+            0.27350814400051604
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            148912,
+            148828,
+            149628
+          ],
+          "median_seconds": 0.26952142599839135,
+          "min_seconds": 0.2627012160010054,
+          "max_seconds": 0.27350814400051604
+        },
+        {
+          "case": "documents-level1",
+          "mode": "extract",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.031078054002136923,
+            0.030659178999485448,
+            0.030984221000835532
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            10488,
+            10344,
+            10160
+          ],
+          "median_seconds": 0.030984221000835532,
+          "min_seconds": 0.030659178999485448,
+          "max_seconds": 0.031078054002136923
+        },
+        {
+          "case": "documents-level1",
+          "mode": "extract",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.9179369849989598,
+            0.9013124060002156,
+            0.9656373550024
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            108016,
+            108072,
+            107304
+          ],
+          "median_seconds": 0.9179369849989598,
+          "min_seconds": 0.9013124060002156,
+          "max_seconds": 0.9656373550024
+        },
+        {
+          "case": "documents-level1",
+          "mode": "extract",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.36540938400139567,
+            0.36530114199922536,
+            0.3814183939975919
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            3612,
+            3556,
+            3552
+          ],
+          "median_seconds": 0.36540938400139567,
+          "min_seconds": 0.36530114199922536,
+          "max_seconds": 0.3814183939975919
+        },
+        {
+          "case": "documents-level1",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.09443887700035702,
+            0.09007558600205812,
+            0.09076650100178085
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            7924,
+            7944,
+            8244
+          ],
+          "median_seconds": 0.09076650100178085,
+          "min_seconds": 0.09007558600205812,
+          "max_seconds": 0.09443887700035702
+        },
+        {
+          "case": "documents-level1",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.01029203700090875,
+            0.012599466997926356,
+            0.009858463003183715
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            10416,
+            10208,
+            10584
+          ],
+          "median_seconds": 0.01029203700090875,
+          "min_seconds": 0.009858463003183715,
+          "max_seconds": 0.012599466997926356
+        },
+        {
+          "case": "documents-level1",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.20028735500090988,
+            0.17766887199832126,
+            0.16464281500157085
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            118556,
+            118164,
+            118232
+          ],
+          "median_seconds": 0.17766887199832126,
+          "min_seconds": 0.16464281500157085,
+          "max_seconds": 0.20028735500090988
+        },
+        {
+          "case": "documents-level1",
+          "mode": "test",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.0099083300010534,
+            0.009522849999484606,
+            0.010159990000829566
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            10428,
+            10368,
+            10528
+          ],
+          "median_seconds": 0.0099083300010534,
+          "min_seconds": 0.009522849999484606,
+          "max_seconds": 0.010159990000829566
+        },
+        {
+          "case": "documents-level1",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.6113087330013514,
+            0.6206598099997791,
+            0.6083695849993092
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            108980,
+            108952,
+            107860
+          ],
+          "median_seconds": 0.6113087330013514,
+          "min_seconds": 0.6083695849993092,
+          "max_seconds": 0.6206598099997791
+        },
+        {
+          "case": "documents-level1",
+          "mode": "test",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.14382117900095182,
+            0.14417902499917545,
+            0.14666514299824485
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            3296,
+            3296,
+            3296
+          ],
+          "median_seconds": 0.14417902499917545,
+          "min_seconds": 0.14382117900095182,
+          "max_seconds": 0.14666514299824485
+        },
+        {
+          "case": "documents-level9",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.29916696300279,
+            0.3002549299999373,
+            0.30650687600063975
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            8248,
+            7812,
+            7884
+          ],
+          "median_seconds": 0.3002549299999373,
+          "min_seconds": 0.29916696300279,
+          "max_seconds": 0.30650687600063975
+        },
+        {
+          "case": "documents-level9",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.03251819599972805,
+            0.033908271998370765,
+            0.030743252998945536
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            10192,
+            10660,
+            10632
+          ],
+          "median_seconds": 0.03251819599972805,
+          "min_seconds": 0.030743252998945536,
+          "max_seconds": 0.033908271998370765
+        },
+        {
+          "case": "documents-level9",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.2643389320001006,
+            0.2649076689995127,
+            0.2756737689996953
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            148204,
+            149564,
+            148792
+          ],
+          "median_seconds": 0.2649076689995127,
+          "min_seconds": 0.2643389320001006,
+          "max_seconds": 0.2756737689996953
+        },
+        {
+          "case": "documents-level9",
+          "mode": "extract",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.03348533800090081,
+            0.03010967000227538,
+            0.03281148700261838
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            10564,
+            10508,
+            10308
+          ],
+          "median_seconds": 0.03281148700261838,
+          "min_seconds": 0.03010967000227538,
+          "max_seconds": 0.03348533800090081
+        },
+        {
+          "case": "documents-level9",
+          "mode": "extract",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.982210974998452,
+            0.9610117939992051,
+            0.952234263997525
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            108132,
+            107976,
+            107984
+          ],
+          "median_seconds": 0.9610117939992051,
+          "min_seconds": 0.952234263997525,
+          "max_seconds": 0.982210974998452
+        },
+        {
+          "case": "documents-level9",
+          "mode": "extract",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.36809185200036154,
+            0.3660757889992965,
+            0.3677106610011833
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            3556,
+            3540,
+            3620
+          ],
+          "median_seconds": 0.3677106610011833,
+          "min_seconds": 0.3660757889992965,
+          "max_seconds": 0.36809185200036154
+        },
+        {
+          "case": "documents-level9",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.09245629900033236,
+            0.09604242699788301,
+            0.08924551100062672
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            7916,
+            7388,
+            8228
+          ],
+          "median_seconds": 0.09245629900033236,
+          "min_seconds": 0.08924551100062672,
+          "max_seconds": 0.09604242699788301
+        },
+        {
+          "case": "documents-level9",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.01165462900098646,
+            0.01166748300238396,
+            0.010722805000114022
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            10148,
+            10536,
+            10444
+          ],
+          "median_seconds": 0.01165462900098646,
+          "min_seconds": 0.010722805000114022,
+          "max_seconds": 0.01166748300238396
+        },
+        {
+          "case": "documents-level9",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.19076087800203823,
+            0.17808008300198708,
+            0.16992993299936643
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            117692,
+            117716,
+            117536
+          ],
+          "median_seconds": 0.17808008300198708,
+          "min_seconds": 0.16992993299936643,
+          "max_seconds": 0.19076087800203823
+        },
+        {
+          "case": "documents-level9",
+          "mode": "test",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.009639527001127135,
+            0.011270981998677598,
+            0.010173826998652657
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            10512,
+            10284,
+            10504
+          ],
+          "median_seconds": 0.010173826998652657,
+          "min_seconds": 0.009639527001127135,
+          "max_seconds": 0.011270981998677598
+        },
+        {
+          "case": "documents-level9",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.5544457159994636,
+            0.5353845550016558,
+            0.5320248969983368
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            108124,
+            108180,
+            108336
+          ],
+          "median_seconds": 0.5353845550016558,
+          "min_seconds": 0.5320248969983368,
+          "max_seconds": 0.5544457159994636
+        },
+        {
+          "case": "documents-level9",
+          "mode": "test",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.14906293799867854,
+            0.14836479100267752,
+            0.14360800400027074
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            3356,
+            3252,
+            2800
+          ],
+          "median_seconds": 0.14836479100267752,
+          "min_seconds": 0.14360800400027074,
+          "max_seconds": 0.14906293799867854
+        },
+        {
+          "case": "empty-directories",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.42109598299794015,
+            0.4319161570019787,
+            0.4502216580003733
+          ],
+          "sha256_verified_files": [
+            512,
+            512,
+            512
+          ],
+          "peak_rss_kib": [
+            9188,
+            9488,
+            8952
+          ],
+          "median_seconds": 0.4319161570019787,
+          "min_seconds": 0.42109598299794015,
+          "max_seconds": 0.4502216580003733
+        },
+        {
+          "case": "empty-directories",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.3500192449973838,
+            0.3473805310022726,
+            0.3514510720015096
+          ],
+          "sha256_verified_files": [
+            512,
+            512,
+            512
+          ],
+          "peak_rss_kib": [
+            9092,
+            9348,
+            9460
+          ],
+          "median_seconds": 0.3500192449973838,
+          "min_seconds": 0.3473805310022726,
+          "max_seconds": 0.3514510720015096
+        },
+        {
+          "case": "empty-directories",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.5107004319979751,
+            0.5814241210027831,
+            0.5371643870021217
+          ],
+          "sha256_verified_files": [
+            512,
+            512,
+            512
+          ],
+          "peak_rss_kib": [
+            118428,
+            118160,
+            118052
+          ],
+          "median_seconds": 0.5371643870021217,
+          "min_seconds": 0.5107004319979751,
+          "max_seconds": 0.5814241210027831
+        },
+        {
+          "case": "empty-directories",
+          "mode": "extract",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.3434852710015548,
+            0.346651963001932,
+            0.3550583509968419
+          ],
+          "sha256_verified_files": [
+            512,
+            512,
+            512
+          ],
+          "peak_rss_kib": [
+            9368,
+            9456,
+            9480
+          ],
+          "median_seconds": 0.346651963001932,
+          "min_seconds": 0.3434852710015548,
+          "max_seconds": 0.3550583509968419
+        },
+        {
+          "case": "empty-directories",
+          "mode": "extract",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.7368680070030678,
+            0.7284407189981721,
+            0.7530493340018438
+          ],
+          "sha256_verified_files": [
+            512,
+            512,
+            512
+          ],
+          "peak_rss_kib": [
+            111812,
+            110748,
+            111980
+          ],
+          "median_seconds": 0.7368680070030678,
+          "min_seconds": 0.7284407189981721,
+          "max_seconds": 0.7530493340018438
+        },
+        {
+          "case": "empty-directories",
+          "mode": "extract",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.419628397001361,
+            0.4219431909987179,
+            0.4118330179990153
+          ],
+          "sha256_verified_files": [
+            512,
+            512,
+            512
+          ],
+          "peak_rss_kib": [
+            4128,
+            4580,
+            4640
+          ],
+          "median_seconds": 0.419628397001361,
+          "min_seconds": 0.4118330179990153,
+          "max_seconds": 0.4219431909987179
+        },
+        {
+          "case": "empty-directories",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.027365189002011903,
+            0.028245022000191966,
+            0.028535215998999774
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            8260,
+            7920,
+            7932
+          ],
+          "median_seconds": 0.028245022000191966,
+          "min_seconds": 0.027365189002011903,
+          "max_seconds": 0.028535215998999774
+        },
+        {
+          "case": "empty-directories",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.009374672001285944,
+            0.007093553002050612,
+            0.007286369000212289
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            9464,
+            9788,
+            9696
+          ],
+          "median_seconds": 0.007286369000212289,
+          "min_seconds": 0.007093553002050612,
+          "max_seconds": 0.009374672001285944
+        },
+        {
+          "case": "empty-directories",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.17104944200036698,
+            0.15942453100069542,
+            0.16538185299941688
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            117308,
+            117516,
+            117648
+          ],
+          "median_seconds": 0.16538185299941688,
+          "min_seconds": 0.15942453100069542,
+          "max_seconds": 0.17104944200036698
+        },
+        {
+          "case": "empty-directories",
+          "mode": "test",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.007032194000203162,
+            0.006867043000966078,
+            0.00752808800098137
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            10076,
+            9728,
+            9256
+          ],
+          "median_seconds": 0.007032194000203162,
+          "min_seconds": 0.006867043000966078,
+          "max_seconds": 0.00752808800098137
+        },
+        {
+          "case": "empty-directories",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.3328411900001811,
+            0.33272477200080175,
+            0.33501631200124393
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            100800,
+            100888,
+            103640
+          ],
+          "median_seconds": 0.3328411900001811,
+          "min_seconds": 0.33272477200080175,
+          "max_seconds": 0.33501631200124393
+        },
+        {
+          "case": "empty-directories",
+          "mode": "test",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.003520781003317097,
+            0.0032793809987197164,
+            0.003312215001642471
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            3308,
+            3292,
+            3296
+          ],
+          "median_seconds": 0.003312215001642471,
+          "min_seconds": 0.0032793809987197164,
+          "max_seconds": 0.003520781003317097
+        },
+        {
+          "case": "incompressible",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.1763332039990928,
+            0.17120283099939115,
+            0.17287057599969557
+          ],
+          "sha256_verified_files": [
+            32,
+            32,
+            32
+          ],
+          "peak_rss_kib": [
+            7112,
+            6812,
+            7204
+          ],
+          "median_seconds": 0.17287057599969557,
+          "min_seconds": 0.17120283099939115,
+          "max_seconds": 0.1763332039990928
+        },
+        {
+          "case": "incompressible",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.09795176300031017,
+            0.09711107700059074,
+            0.09121353099908447
+          ],
+          "sha256_verified_files": [
+            32,
+            32,
+            32
+          ],
+          "peak_rss_kib": [
+            266792,
+            267188,
+            266928
+          ],
+          "median_seconds": 0.09711107700059074,
+          "min_seconds": 0.09121353099908447,
+          "max_seconds": 0.09795176300031017
+        },
+        {
+          "case": "incompressible",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.42089773600309854,
+            0.402550966002309,
+            0.40307855200080667
+          ],
+          "sha256_verified_files": [
+            32,
+            32,
+            32
+          ],
+          "peak_rss_kib": [
+            384416,
+            384004,
+            383912
+          ],
+          "median_seconds": 0.40307855200080667,
+          "min_seconds": 0.402550966002309,
+          "max_seconds": 0.42089773600309854
+        },
+        {
+          "case": "incompressible",
+          "mode": "extract",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.09047030500005349,
+            0.0940394200006267,
+            0.09919073299897718
+          ],
+          "sha256_verified_files": [
+            32,
+            32,
+            32
+          ],
+          "peak_rss_kib": [
+            267236,
+            266120,
+            267316
+          ],
+          "median_seconds": 0.0940394200006267,
+          "min_seconds": 0.09047030500005349,
+          "max_seconds": 0.09919073299897718
+        },
+        {
+          "case": "incompressible",
+          "mode": "extract",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.18950686699827202,
+            0.1930773259991838,
+            0.18748475299798883
+          ],
+          "sha256_verified_files": [
+            32,
+            32,
+            32
+          ],
+          "peak_rss_kib": [
+            78460,
+            78520,
+            80536
+          ],
+          "median_seconds": 0.18950686699827202,
+          "min_seconds": 0.18748475299798883,
+          "max_seconds": 0.1930773259991838
+        },
+        {
+          "case": "incompressible",
+          "mode": "extract",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            1.018209324000054,
+            1.0276925669968477,
+            1.0361177310005587
+          ],
+          "sha256_verified_files": [
+            32,
+            32,
+            32
+          ],
+          "peak_rss_kib": [
+            3296,
+            3044,
+            3040
+          ],
+          "median_seconds": 1.0276925669968477,
+          "min_seconds": 1.018209324000054,
+          "max_seconds": 1.0361177310005587
+        },
+        {
+          "case": "incompressible",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.1111419789995125,
+            0.10775649200149928,
+            0.1115305460007221
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            7228,
+            7124,
+            6984
+          ],
+          "median_seconds": 0.1111419789995125,
+          "min_seconds": 0.10775649200149928,
+          "max_seconds": 0.1115305460007221
+        },
+        {
+          "case": "incompressible",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.08112182300101267,
+            0.07360760200026562,
+            0.08233022499916842
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            267260,
+            267152,
+            266752
+          ],
+          "median_seconds": 0.08112182300101267,
+          "min_seconds": 0.07360760200026562,
+          "max_seconds": 0.08233022499916842
+        },
+        {
+          "case": "incompressible",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.3904536369991547,
+            0.3624496230004297,
+            0.36959201200079406
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            376188,
+            376092,
+            375048
+          ],
+          "median_seconds": 0.36959201200079406,
+          "min_seconds": 0.3624496230004297,
+          "max_seconds": 0.3904536369991547
+        },
+        {
+          "case": "incompressible",
+          "mode": "test",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.08024650999868754,
+            0.07467341499796021,
+            0.0780566989997169
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            266784,
+            265468,
+            266172
+          ],
+          "median_seconds": 0.0780566989997169,
+          "min_seconds": 0.07467341499796021,
+          "max_seconds": 0.08024650999868754
+        },
+        {
+          "case": "incompressible",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.1764049130033527,
+            0.17868665200148826,
+            0.17590328699952806
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            80232,
+            81928,
+            81572
+          ],
+          "median_seconds": 0.1764049130033527,
+          "min_seconds": 0.17590328699952806,
+          "max_seconds": 0.17868665200148826
+        },
+        {
+          "case": "incompressible",
+          "mode": "test",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            1.0258868029995938,
+            1.0118513320012426,
+            1.012429737002094
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            3104,
+            3040,
+            3100
+          ],
+          "median_seconds": 1.012429737002094,
+          "min_seconds": 1.0118513320012426,
+          "max_seconds": 1.0258868029995938
+        },
+        {
+          "case": "many-empty",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.9686895039994852,
+            0.9775482119985099,
+            0.9996701180025411
+          ],
+          "sha256_verified_files": [
+            32768,
+            32768,
+            32768
+          ],
+          "peak_rss_kib": [
+            12624,
+            13032,
+            13276
+          ],
+          "median_seconds": 0.9775482119985099,
+          "min_seconds": 0.9686895039994852,
+          "max_seconds": 0.9996701180025411
+        },
+        {
+          "case": "many-empty",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.10640241600049194,
+            0.10645220399965183,
+            0.09816294300253503
+          ],
+          "sha256_verified_files": [
+            32768,
+            32768,
+            32768
+          ],
+          "peak_rss_kib": [
+            21380,
+            21228,
+            21440
+          ],
+          "median_seconds": 0.10640241600049194,
+          "min_seconds": 0.09816294300253503,
+          "max_seconds": 0.10645220399965183
+        },
+        {
+          "case": "many-empty",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.1001870020008937,
+            0.09832769399872632,
+            0.10916825900130789
+          ],
+          "sha256_verified_files": [
+            32768,
+            32768,
+            32768
+          ],
+          "peak_rss_kib": [
+            21260,
+            21224,
+            21244
+          ],
+          "median_seconds": 0.1001870020008937,
+          "min_seconds": 0.09832769399872632,
+          "max_seconds": 0.10916825900130789
+        },
+        {
+          "case": "many-empty",
+          "mode": "extract",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.10242628900232376,
+            0.10647499799961224,
+            0.1060712720027368
+          ],
+          "sha256_verified_files": [
+            32768,
+            32768,
+            32768
+          ],
+          "peak_rss_kib": [
+            21380,
+            21108,
+            21124
+          ],
+          "median_seconds": 0.1060712720027368,
+          "min_seconds": 0.10242628900232376,
+          "max_seconds": 0.10647499799961224
+        },
+        {
+          "case": "many-empty",
+          "mode": "extract",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            3.1981914980024158,
+            2.9234594730005483,
+            3.270270506000088
+          ],
+          "sha256_verified_files": [
+            32768,
+            32768,
+            32768
+          ],
+          "peak_rss_kib": [
+            348560,
+            348496,
+            347004
+          ],
+          "median_seconds": 3.1981914980024158,
+          "min_seconds": 2.9234594730005483,
+          "max_seconds": 3.270270506000088
+        },
+        {
+          "case": "many-empty",
+          "mode": "extract",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.8479752990024281,
+            0.856337650999194,
+            0.8463425420013664
+          ],
+          "sha256_verified_files": [
+            32768,
+            32768,
+            32768
+          ],
+          "peak_rss_kib": [
+            4080,
+            4072,
+            4072
+          ],
+          "median_seconds": 0.8479752990024281,
+          "min_seconds": 0.8463425420013664,
+          "max_seconds": 0.856337650999194
+        },
+        {
+          "case": "many-empty",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.21398250499987626,
+            0.21085686199876363,
+            0.20694683300098404
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            13316,
+            12980,
+            12556
+          ],
+          "median_seconds": 0.21085686199876363,
+          "min_seconds": 0.20694683300098404,
+          "max_seconds": 0.21398250499987626
+        },
+        {
+          "case": "many-empty",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.03218681200087303,
+            0.037049583999760216,
+            0.0315285809992929
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            21116,
+            20688,
+            20548
+          ],
+          "median_seconds": 0.03218681200087303,
+          "min_seconds": 0.0315285809992929,
+          "max_seconds": 0.037049583999760216
+        },
+        {
+          "case": "many-empty",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.03795834199991077,
+            0.03121483100039768,
+            0.02843174400186399
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            21364,
+            21496,
+            21244
+          ],
+          "median_seconds": 0.03121483100039768,
+          "min_seconds": 0.02843174400186399,
+          "max_seconds": 0.03795834199991077
+        },
+        {
+          "case": "many-empty",
+          "mode": "test",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.030673998000565916,
+            0.026371775998995872,
+            0.03518121900197002
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            21488,
+            21028,
+            20696
+          ],
+          "median_seconds": 0.030673998000565916,
+          "min_seconds": 0.026371775998995872,
+          "max_seconds": 0.03518121900197002
+        },
+        {
+          "case": "many-empty",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            2.0816599919999135,
+            1.9200614100009261,
+            2.039352477000648
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            347904,
+            347136,
+            346744
+          ],
+          "median_seconds": 2.039352477000648,
+          "min_seconds": 1.9200614100009261,
+          "max_seconds": 2.0816599919999135
+        },
+        {
+          "case": "many-empty",
+          "mode": "test",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.009567487002641428,
+            0.007860755998990498,
+            0.007029148000583518
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            3556,
+            3568,
+            3748
+          ],
+          "median_seconds": 0.007860755998990498,
+          "min_seconds": 0.007029148000583518,
+          "max_seconds": 0.009567487002641428
+        },
+        {
+          "case": "skewed",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.6234631339975749,
+            0.5960431189996598,
+            0.6006652420001046
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            8916,
+            8972,
+            8984
+          ],
+          "median_seconds": 0.6006652420001046,
+          "min_seconds": 0.5960431189996598,
+          "max_seconds": 0.6234631339975749
+        },
+        {
+          "case": "skewed",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.21958605799954967,
+            0.2299298359976092,
+            0.22151378000125987
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            12464,
+            12264,
+            11924
+          ],
+          "median_seconds": 0.22151378000125987,
+          "min_seconds": 0.21958605799954967,
+          "max_seconds": 0.2299298359976092
+        },
+        {
+          "case": "skewed",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.9959827640013827,
+            0.9970437480005785,
+            0.9996844660017814
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            648720,
+            647600,
+            649620
+          ],
+          "median_seconds": 0.9970437480005785,
+          "min_seconds": 0.9959827640013827,
+          "max_seconds": 0.9996844660017814
+        },
+        {
+          "case": "skewed",
+          "mode": "extract",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.22811988400280825,
+            0.2278428850004275,
+            0.2204516120000335
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            12212,
+            12372,
+            12436
+          ],
+          "median_seconds": 0.2278428850004275,
+          "min_seconds": 0.2204516120000335,
+          "max_seconds": 0.22811988400280825
+        },
+        {
+          "case": "skewed",
+          "mode": "extract",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            1.1782732289975684,
+            1.1470420270015893,
+            1.0775492429966107
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            112568,
+            112472,
+            111948
+          ],
+          "median_seconds": 1.1470420270015893,
+          "min_seconds": 1.0775492429966107,
+          "max_seconds": 1.1782732289975684
+        },
+        {
+          "case": "skewed",
+          "mode": "extract",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            2.26766108800075,
+            2.3082489170010376,
+            2.3492679849987326
+          ],
+          "sha256_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "peak_rss_kib": [
+            3056,
+            3620,
+            3616
+          ],
+          "median_seconds": 2.3082489170010376,
+          "min_seconds": 2.26766108800075,
+          "max_seconds": 2.3492679849987326
+        },
+        {
+          "case": "skewed",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.28148754100038786,
+            0.28752614200129756,
+            0.2799695769972459
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            8916,
+            8668,
+            8652
+          ],
+          "median_seconds": 0.28148754100038786,
+          "min_seconds": 0.2799695769972459,
+          "max_seconds": 0.28752614200129756
+        },
+        {
+          "case": "skewed",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.1253675000007206,
+            0.12741535500026657,
+            0.1266123730019899
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            12176,
+            12440,
+            12164
+          ],
+          "median_seconds": 0.1266123730019899,
+          "min_seconds": 0.1253675000007206,
+          "max_seconds": 0.12741535500026657
+        },
+        {
+          "case": "skewed",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.8310730890007108,
+            0.8218674859999737,
+            0.8317995620018337
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            640736,
+            640112,
+            640004
+          ],
+          "median_seconds": 0.8310730890007108,
+          "min_seconds": 0.8218674859999737,
+          "max_seconds": 0.8317995620018337
+        },
+        {
+          "case": "skewed",
+          "mode": "test",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.12701261099937255,
+            0.1292360280021967,
+            0.12450588399951812
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            12164,
+            12460,
+            12412
+          ],
+          "median_seconds": 0.12701261099937255,
+          "min_seconds": 0.12450588399951812,
+          "max_seconds": 0.1292360280021967
+        },
+        {
+          "case": "skewed",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.7541898329982359,
+            0.7694317620007496,
+            0.7431127490017388
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            112492,
+            111772,
+            113016
+          ],
+          "median_seconds": 0.7541898329982359,
+          "min_seconds": 0.7431127490017388,
+          "max_seconds": 0.7694317620007496
+        },
+        {
+          "case": "skewed",
+          "mode": "test",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            2.0651661869997042,
+            2.0935716010026226,
+            2.0916589490007027
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            3300,
+            3300,
+            3300
+          ],
+          "median_seconds": 2.0916589490007027,
+          "min_seconds": 2.0651661869997042,
+          "max_seconds": 2.0935716010026226
+        },
+        {
+          "case": "stored-large",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.2651775339982123,
+            0.2630341229996702,
+            0.26866675400015083
+          ],
+          "sha256_verified_files": [
+            4,
+            4,
+            4
+          ],
+          "peak_rss_kib": [
+            6120,
+            6156,
+            5892
+          ],
+          "median_seconds": 0.2651775339982123,
+          "min_seconds": 0.2630341229996702,
+          "max_seconds": 0.26866675400015083
+        },
+        {
+          "case": "stored-large",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.10953570399942691,
+            0.11163313500219374,
+            0.10880128399730893
+          ],
+          "sha256_verified_files": [
+            4,
+            4,
+            4
+          ],
+          "peak_rss_kib": [
+            14712,
+            14624,
+            14888
+          ],
+          "median_seconds": 0.10953570399942691,
+          "min_seconds": 0.10880128399730893,
+          "max_seconds": 0.11163313500219374
+        },
+        {
+          "case": "stored-large",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.10999578799965093,
+            0.10768350900252699,
+            0.1085463979979977
+          ],
+          "sha256_verified_files": [
+            4,
+            4,
+            4
+          ],
+          "peak_rss_kib": [
+            14992,
+            14888,
+            14836
+          ],
+          "median_seconds": 0.1085463979979977,
+          "min_seconds": 0.10768350900252699,
+          "max_seconds": 0.10999578799965093
+        },
+        {
+          "case": "stored-large",
+          "mode": "extract",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.1076727479994588,
+            0.1100471390018356,
+            0.11019400400255108
+          ],
+          "sha256_verified_files": [
+            4,
+            4,
+            4
+          ],
+          "peak_rss_kib": [
+            14632,
+            14884,
+            14640
+          ],
+          "median_seconds": 0.1100471390018356,
+          "min_seconds": 0.1076727479994588,
+          "max_seconds": 0.11019400400255108
+        },
+        {
+          "case": "stored-large",
+          "mode": "extract",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.13425279000148294,
+            0.1384529630013276,
+            0.13396141300108866
+          ],
+          "sha256_verified_files": [
+            4,
+            4,
+            4
+          ],
+          "peak_rss_kib": [
+            25236,
+            25300,
+            25708
+          ],
+          "median_seconds": 0.13425279000148294,
+          "min_seconds": 0.13396141300108866,
+          "max_seconds": 0.1384529630013276
+        },
+        {
+          "case": "stored-large",
+          "mode": "extract",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            1.6365845979998994,
+            1.6292880900000455,
+            1.6652410200003942
+          ],
+          "sha256_verified_files": [
+            4,
+            4,
+            4
+          ],
+          "peak_rss_kib": [
+            3244,
+            3296,
+            3292
+          ],
+          "median_seconds": 1.6365845979998994,
+          "min_seconds": 1.6292880900000455,
+          "max_seconds": 1.6652410200003942
+        },
+        {
+          "case": "stored-large",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.16412091000165674,
+            0.16065914399950998,
+            0.16222260499853292
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            5788,
+            5844,
+            6120
+          ],
+          "median_seconds": 0.16222260499853292,
+          "min_seconds": 0.16065914399950998,
+          "max_seconds": 0.16412091000165674
+        },
+        {
+          "case": "stored-large",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.08631581099689356,
+            0.08616993599935086,
+            0.08498768600111362
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            13840,
+            14544,
+            14532
+          ],
+          "median_seconds": 0.08616993599935086,
+          "min_seconds": 0.08498768600111362,
+          "max_seconds": 0.08631581099689356
+        },
+        {
+          "case": "stored-large",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.0863411600003019,
+            0.08542824299729546,
+            0.08593917700272868
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            14844,
+            14756,
+            14524
+          ],
+          "median_seconds": 0.08593917700272868,
+          "min_seconds": 0.08542824299729546,
+          "max_seconds": 0.0863411600003019
+        },
+        {
+          "case": "stored-large",
+          "mode": "test",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.08454290999725345,
+            0.08599191999746836,
+            0.08609628300109762
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            14844,
+            14568,
+            14864
+          ],
+          "median_seconds": 0.08599191999746836,
+          "min_seconds": 0.08454290999725345,
+          "max_seconds": 0.08609628300109762
+        },
+        {
+          "case": "stored-large",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.11524133599959896,
+            0.11320047399931354,
+            0.11459830500098178
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            25628,
+            25860,
+            25708
+          ],
+          "median_seconds": 0.11459830500098178,
+          "min_seconds": 0.11320047399931354,
+          "max_seconds": 0.11524133599959896
+        },
+        {
+          "case": "stored-large",
+          "mode": "test",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            1.5730168629997934,
+            1.5305609489987546,
+            1.5405818889994407
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            3040,
+            3040,
+            2972
+          ],
+          "median_seconds": 1.5405818889994407,
+          "min_seconds": 1.5305609489987546,
+          "max_seconds": 1.5730168629997934
+        },
+        {
+          "case": "stored-medium",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.18004922399995849,
+            0.17046204800135456,
+            0.16939177599851973
+          ],
+          "sha256_verified_files": [
+            1024,
+            1024,
+            1024
+          ],
+          "peak_rss_kib": [
+            6704,
+            6196,
+            6448
+          ],
+          "median_seconds": 0.17046204800135456,
+          "min_seconds": 0.16939177599851973,
+          "max_seconds": 0.18004922399995849
+        },
+        {
+          "case": "stored-medium",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.05768716199963819,
+            0.057589231997553725,
+            0.05786494800122455
+          ],
+          "sha256_verified_files": [
+            1024,
+            1024,
+            1024
+          ],
+          "peak_rss_kib": [
+            11388,
+            12044,
+            11352
+          ],
+          "median_seconds": 0.05768716199963819,
+          "min_seconds": 0.057589231997553725,
+          "max_seconds": 0.05786494800122455
+        },
+        {
+          "case": "stored-medium",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.059352002001105575,
+            0.05709333599952515,
+            0.05771242099945084
+          ],
+          "sha256_verified_files": [
+            1024,
+            1024,
+            1024
+          ],
+          "peak_rss_kib": [
+            11752,
+            11116,
+            11868
+          ],
+          "median_seconds": 0.05771242099945084,
+          "min_seconds": 0.05709333599952515,
+          "max_seconds": 0.059352002001105575
+        },
+        {
+          "case": "stored-medium",
+          "mode": "extract",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.056982781999977306,
+            0.058009258998936275,
+            0.05830520499876002
+          ],
+          "sha256_verified_files": [
+            1024,
+            1024,
+            1024
+          ],
+          "peak_rss_kib": [
+            11120,
+            11976,
+            11204
+          ],
+          "median_seconds": 0.058009258998936275,
+          "min_seconds": 0.056982781999977306,
+          "max_seconds": 0.05830520499876002
+        },
+        {
+          "case": "stored-medium",
+          "mode": "extract",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.17140249899966875,
+            0.1881431839974539,
+            0.1902816760011774
+          ],
+          "sha256_verified_files": [
+            1024,
+            1024,
+            1024
+          ],
+          "peak_rss_kib": [
+            34824,
+            33576,
+            34888
+          ],
+          "median_seconds": 0.1881431839974539,
+          "min_seconds": 0.17140249899966875,
+          "max_seconds": 0.1902816760011774
+        },
+        {
+          "case": "stored-medium",
+          "mode": "extract",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.8667631270000129,
+            0.8670527309986937,
+            0.8647837950011308
+          ],
+          "sha256_verified_files": [
+            1024,
+            1024,
+            1024
+          ],
+          "peak_rss_kib": [
+            3292,
+            3220,
+            3304
+          ],
+          "median_seconds": 0.8667631270000129,
+          "min_seconds": 0.8647837950011308,
+          "max_seconds": 0.8670527309986937
+        },
+        {
+          "case": "stored-medium",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.0887739040008455,
+            0.08602484400034882,
+            0.08740577099888469
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            6032,
+            6408,
+            6420
+          ],
+          "median_seconds": 0.08740577099888469,
+          "min_seconds": 0.08602484400034882,
+          "max_seconds": 0.0887739040008455
+        },
+        {
+          "case": "stored-medium",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.05758140599937178,
+            0.0557373080009711,
+            0.05598723400180461
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            11320,
+            11800,
+            11560
+          ],
+          "median_seconds": 0.05598723400180461,
+          "min_seconds": 0.0557373080009711,
+          "max_seconds": 0.05758140599937178
+        },
+        {
+          "case": "stored-medium",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.056747312999505084,
+            0.05670466000083252,
+            0.056628222002473194
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            10932,
+            11848,
+            11824
+          ],
+          "median_seconds": 0.05670466000083252,
+          "min_seconds": 0.056628222002473194,
+          "max_seconds": 0.056747312999505084
+        },
+        {
+          "case": "stored-medium",
+          "mode": "test",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.05651442999806022,
+            0.056322487002034904,
+            0.05642356300086249
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            12008,
+            11788,
+            12256
+          ],
+          "median_seconds": 0.05642356300086249,
+          "min_seconds": 0.056322487002034904,
+          "max_seconds": 0.05651442999806022
+        },
+        {
+          "case": "stored-medium",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.13804186300330912,
+            0.13887898199755,
+            0.1340052179984923
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            34196,
+            33816,
+            34340
+          ],
+          "median_seconds": 0.13804186300330912,
+          "min_seconds": 0.1340052179984923,
+          "max_seconds": 0.13887898199755
+        },
+        {
+          "case": "stored-medium",
+          "mode": "test",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.7877380140016612,
+            0.7839693309979339,
+            0.7825122049980564
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            3040,
+            3100,
+            3040
+          ],
+          "median_seconds": 0.7839693309979339,
+          "min_seconds": 0.7825122049980564,
+          "max_seconds": 0.7877380140016612
+        },
+        {
+          "case": "stored-small",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.5294863669987535,
+            0.5485683180013439,
+            0.5464190659986343
+          ],
+          "sha256_verified_files": [
+            16384,
+            16384,
+            16384
+          ],
+          "peak_rss_kib": [
+            9676,
+            9300,
+            9684
+          ],
+          "median_seconds": 0.5464190659986343,
+          "min_seconds": 0.5294863669987535,
+          "max_seconds": 0.5485683180013439
+        },
+        {
+          "case": "stored-small",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.06574246599848266,
+            0.06728126100279042,
+            0.06682795999950031
+          ],
+          "sha256_verified_files": [
+            16384,
+            16384,
+            16384
+          ],
+          "peak_rss_kib": [
+            14312,
+            13748,
+            14332
+          ],
+          "median_seconds": 0.06682795999950031,
+          "min_seconds": 0.06574246599848266,
+          "max_seconds": 0.06728126100279042
+        },
+        {
+          "case": "stored-small",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.06745249500090722,
+            0.0668902400029765,
+            0.06857685199793195
+          ],
+          "sha256_verified_files": [
+            16384,
+            16384,
+            16384
+          ],
+          "peak_rss_kib": [
+            13240,
+            13604,
+            14332
+          ],
+          "median_seconds": 0.06745249500090722,
+          "min_seconds": 0.0668902400029765,
+          "max_seconds": 0.06857685199793195
+        },
+        {
+          "case": "stored-small",
+          "mode": "extract",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.06668943900149316,
+            0.06878112999766017,
+            0.0686972670009709
+          ],
+          "sha256_verified_files": [
+            16384,
+            16384,
+            16384
+          ],
+          "peak_rss_kib": [
+            13676,
+            13752,
+            13820
+          ],
+          "median_seconds": 0.0686972670009709,
+          "min_seconds": 0.06668943900149316,
+          "max_seconds": 0.06878112999766017
+        },
+        {
+          "case": "stored-small",
+          "mode": "extract",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            1.695121704000485,
+            1.838363847000437,
+            1.6476758399985556
+          ],
+          "sha256_verified_files": [
+            16384,
+            16384,
+            16384
+          ],
+          "peak_rss_kib": [
+            207144,
+            207436,
+            207612
+          ],
+          "median_seconds": 1.695121704000485,
+          "min_seconds": 1.6476758399985556,
+          "max_seconds": 1.838363847000437
+        },
+        {
+          "case": "stored-small",
+          "mode": "extract",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.6689377629991213,
+            0.6647521680024511,
+            0.6656033549988933
+          ],
+          "sha256_verified_files": [
+            16384,
+            16384,
+            16384
+          ],
+          "peak_rss_kib": [
+            4068,
+            3508,
+            4068
+          ],
+          "median_seconds": 0.6656033549988933,
+          "min_seconds": 0.6647521680024511,
+          "max_seconds": 0.6689377629991213
+        },
+        {
+          "case": "stored-small",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.11943047700333409,
+            0.11701677100063534,
+            0.1171845979988575
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            9488,
+            9292,
+            9484
+          ],
+          "median_seconds": 0.1171845979988575,
+          "min_seconds": 0.11701677100063534,
+          "max_seconds": 0.11943047700333409
+        },
+        {
+          "case": "stored-small",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.025328567000542535,
+            0.026648265000403626,
+            0.027712806000636192
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            14316,
+            14088,
+            13768
+          ],
+          "median_seconds": 0.026648265000403626,
+          "min_seconds": 0.025328567000542535,
+          "max_seconds": 0.027712806000636192
+        },
+        {
+          "case": "stored-small",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.026320896999095567,
+            0.0251414720005414,
+            0.025895159000356216
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            13916,
+            13744,
+            13584
+          ],
+          "median_seconds": 0.025895159000356216,
+          "min_seconds": 0.0251414720005414,
+          "max_seconds": 0.026320896999095567
+        },
+        {
+          "case": "stored-small",
+          "mode": "test",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.025177192001137882,
+            0.026466130002518184,
+            0.026810440002009273
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            13708,
+            13776,
+            13332
+          ],
+          "median_seconds": 0.026466130002518184,
+          "min_seconds": 0.025177192001137882,
+          "max_seconds": 0.026810440002009273
+        },
+        {
+          "case": "stored-small",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            1.0716136019982514,
+            1.0460191489983117,
+            1.0719105299976945
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            206764,
+            206548,
+            207016
+          ],
+          "median_seconds": 1.0716136019982514,
+          "min_seconds": 1.0460191489983117,
+          "max_seconds": 1.0719105299976945
+        },
+        {
+          "case": "stored-small",
+          "mode": "test",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.19586123200133443,
+            0.19440487799874973,
+            0.20535755200035055
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            3808,
+            3808,
+            3808
+          ],
+          "median_seconds": 0.19586123200133443,
+          "min_seconds": 0.19440487799874973,
+          "max_seconds": 0.20535755200035055
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.06978669700038154,
+            0.06965941899761674,
+            0.07051678700008779
+          ],
+          "sha256_verified_files": [
+            2048,
+            2048,
+            2048
+          ],
+          "peak_rss_kib": [
+            6896,
+            6928,
+            6988
+          ],
+          "median_seconds": 0.06978669700038154,
+          "min_seconds": 0.06965941899761674,
+          "max_seconds": 0.07051678700008779
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.012303931998758344,
+            0.011493555000924971,
+            0.013183172999561066
+          ],
+          "sha256_verified_files": [
+            2048,
+            2048,
+            2048
+          ],
+          "peak_rss_kib": [
+            8688,
+            8652,
+            8800
+          ],
+          "median_seconds": 0.012303931998758344,
+          "min_seconds": 0.011493555000924971,
+          "max_seconds": 0.013183172999561066
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.17647408799894038,
+            0.16926986899852636,
+            0.1773935069977597
+          ],
+          "sha256_verified_files": [
+            2048,
+            2048,
+            2048
+          ],
+          "peak_rss_kib": [
+            123304,
+            123328,
+            122964
+          ],
+          "median_seconds": 0.17647408799894038,
+          "min_seconds": 0.16926986899852636,
+          "max_seconds": 0.1773935069977597
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "extract",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.011678073999064509,
+            0.011995511998975417,
+            0.01315245300065726
+          ],
+          "sha256_verified_files": [
+            2048,
+            2048,
+            2048
+          ],
+          "peak_rss_kib": [
+            8936,
+            9160,
+            8920
+          ],
+          "median_seconds": 0.011995511998975417,
+          "min_seconds": 0.011678073999064509,
+          "max_seconds": 0.01315245300065726
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "extract",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.26603764700121246,
+            0.27084994100005133,
+            0.25851512900044327
+          ],
+          "sha256_verified_files": [
+            2048,
+            2048,
+            2048
+          ],
+          "peak_rss_kib": [
+            45624,
+            46152,
+            45196
+          ],
+          "median_seconds": 0.26603764700121246,
+          "min_seconds": 0.25851512900044327,
+          "max_seconds": 0.27084994100005133
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "extract",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.07188179399963701,
+            0.07209400700230617,
+            0.07692902499911725
+          ],
+          "sha256_verified_files": [
+            2048,
+            2048,
+            2048
+          ],
+          "peak_rss_kib": [
+            3360,
+            3296,
+            3300
+          ],
+          "median_seconds": 0.07209400700230617,
+          "min_seconds": 0.07188179399963701,
+          "max_seconds": 0.07692902499911725
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.021505957996851066,
+            0.02049937900301302,
+            0.019836339000903536
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            6964,
+            6924,
+            6908
+          ],
+          "median_seconds": 0.02049937900301302,
+          "min_seconds": 0.019836339000903536,
+          "max_seconds": 0.021505957996851066
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.006716348998452304,
+            0.005756702001235681,
+            0.005793462998553878
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            8936,
+            8956,
+            8932
+          ],
+          "median_seconds": 0.005793462998553878,
+          "min_seconds": 0.005756702001235681,
+          "max_seconds": 0.006716348998452304
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.1764066060022742,
+            0.1628786619985476,
+            0.15841181999712717
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            115480,
+            115744,
+            115404
+          ],
+          "median_seconds": 0.1628786619985476,
+          "min_seconds": 0.15841181999712717,
+          "max_seconds": 0.1764066060022742
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "test",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.005919628998526605,
+            0.005089303002023371,
+            0.006091063001804287
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            8896,
+            8880,
+            8564
+          ],
+          "median_seconds": 0.005919628998526605,
+          "min_seconds": 0.005089303002023371,
+          "max_seconds": 0.006091063001804287
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.15531945299881045,
+            0.1511944769990805,
+            0.1554798649995064
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            45880,
+            45892,
+            45620
+          ],
+          "median_seconds": 0.15531945299881045,
+          "min_seconds": 0.1511944769990805,
+          "max_seconds": 0.1554798649995064
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "test",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.01978556100220885,
+            0.019738658997084713,
+            0.01958425900011207
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            3040,
+            2976,
+            3040
+          ],
+          "median_seconds": 0.019738658997084713,
+          "min_seconds": 0.01958425900011207,
+          "max_seconds": 0.01978556100220885
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.5555799219982873,
+            0.5589169650011172,
+            0.5637906990014017
+          ],
+          "sha256_verified_files": [
+            4096,
+            4096,
+            4096
+          ],
+          "peak_rss_kib": [
+            7228,
+            7180,
+            7144
+          ],
+          "median_seconds": 0.5589169650011172,
+          "min_seconds": 0.5555799219982873,
+          "max_seconds": 0.5637906990014017
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.033200984998984495,
+            0.03288869699827046,
+            0.033799038999859476
+          ],
+          "sha256_verified_files": [
+            4096,
+            4096,
+            4096
+          ],
+          "peak_rss_kib": [
+            9296,
+            9380,
+            9164
+          ],
+          "median_seconds": 0.033200984998984495,
+          "min_seconds": 0.03288869699827046,
+          "max_seconds": 0.033799038999859476
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.35684022799978266,
+            0.3476544439981808,
+            0.3391481920007209
+          ],
+          "sha256_verified_files": [
+            4096,
+            4096,
+            4096
+          ],
+          "peak_rss_kib": [
+            376128,
+            376308,
+            377016
+          ],
+          "median_seconds": 0.3476544439981808,
+          "min_seconds": 0.3391481920007209,
+          "max_seconds": 0.35684022799978266
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "extract",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.34676162699906854,
+            0.32045435599866323,
+            0.34860709799977485
+          ],
+          "sha256_verified_files": [
+            4096,
+            4096,
+            4096
+          ],
+          "peak_rss_kib": [
+            376672,
+            377324,
+            375892
+          ],
+          "median_seconds": 0.34676162699906854,
+          "min_seconds": 0.32045435599866323,
+          "max_seconds": 0.34860709799977485
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "extract",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.551081489000353,
+            0.5616484700003639,
+            0.5150910060001479
+          ],
+          "sha256_verified_files": [
+            4096,
+            4096,
+            4096
+          ],
+          "peak_rss_kib": [
+            64364,
+            63948,
+            64036
+          ],
+          "median_seconds": 0.551081489000353,
+          "min_seconds": 0.5150910060001479,
+          "max_seconds": 0.5616484700003639
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "extract",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.9208794410005794,
+            0.9382989980003913,
+            0.9408195719988726
+          ],
+          "sha256_verified_files": [
+            4096,
+            4096,
+            4096
+          ],
+          "peak_rss_kib": [
+            3616,
+            3296,
+            3556
+          ],
+          "median_seconds": 0.9382989980003913,
+          "min_seconds": 0.9208794410005794,
+          "max_seconds": 0.9408195719988726
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.4070667529995262,
+            0.4150673510011984,
+            0.4106241549998231
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            6940,
+            6472,
+            7168
+          ],
+          "median_seconds": 0.4106241549998231,
+          "min_seconds": 0.4070667529995262,
+          "max_seconds": 0.4150673510011984
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.01944191199800116,
+            0.019179251001332887,
+            0.019294634999823757
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            9016,
+            9216,
+            9224
+          ],
+          "median_seconds": 0.019294634999823757,
+          "min_seconds": 0.019179251001332887,
+          "max_seconds": 0.01944191199800116
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.17280011800175998,
+            0.1637956659978954,
+            0.17039721199762425
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            116468,
+            117348,
+            116100
+          ],
+          "median_seconds": 0.17039721199762425,
+          "min_seconds": 0.1637956659978954,
+          "max_seconds": 0.17280011800175998
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "test",
+          "variant": "hybrid",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.18426333399838768,
+            0.16336904700074228,
+            0.1714091419999022
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            116764,
+            116960,
+            116804
+          ],
+          "median_seconds": 0.1714091419999022,
+          "min_seconds": 0.16336904700074228,
+          "max_seconds": 0.18426333399838768
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.3552161180014082,
+            0.32737058400016394,
+            0.35311694399933913
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            62336,
+            63056,
+            62708
+          ],
+          "median_seconds": 0.35311694399933913,
+          "min_seconds": 0.32737058400016394,
+          "max_seconds": 0.3552161180014082
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "test",
+          "variant": "unzip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.7630820659978781,
+            0.7877310910007509,
+            0.7729457300010836
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            3100,
+            3056,
+            3036
+          ],
+          "median_seconds": 0.7729457300010836,
+          "min_seconds": 0.7630820659978781,
+          "max_seconds": 0.7877310910007509
+        }
+      ],
+      "comparisons": [
+        {
+          "case": "deflate-level0",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.3344951880026201,
+            "auto": 0.1906317159991886,
+            "gpu": 0.6407906919994275,
+            "hybrid": 0.18408185099906405,
+            "python-parallel": 0.32685871799913,
+            "unzip": 2.1099160249978013
+          },
+          "ratio_to_auto": {
+            "7zip": 1.7546670355946639,
+            "auto": 1.0,
+            "gpu": 3.3614065143396967,
+            "hybrid": 0.9656412629672156,
+            "python-parallel": 1.7146082764135704,
+            "unzip": 11.06802199171717
+          },
+          "fastest_measured": "hybrid"
+        },
+        {
+          "case": "deflate-level0",
+          "mode": "test",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.21752338399892324,
+            "auto": 0.14561190300082671,
+            "gpu": 0.5788260959998297,
+            "hybrid": 0.14930050100156222,
+            "python-parallel": 0.312303073998919,
+            "unzip": 2.11150718099816
+          },
+          "ratio_to_auto": {
+            "7zip": 1.4938571608235094,
+            "auto": 1.0,
+            "gpu": 3.9751289837654507,
+            "hybrid": 1.0253317065756264,
+            "python-parallel": 2.1447633576847482,
+            "unzip": 14.500924289040931
+          },
+          "fastest_measured": "auto"
+        },
+        {
+          "case": "documents-level1",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.30999002299722633,
+            "auto": 0.03136338900003466,
+            "gpu": 0.26952142599839135,
+            "hybrid": 0.030984221000835532,
+            "python-parallel": 0.9179369849989598,
+            "unzip": 0.36540938400139567
+          },
+          "ratio_to_auto": {
+            "7zip": 9.883817816910149,
+            "auto": 1.0,
+            "gpu": 8.593504547550442,
+            "hybrid": 0.9879104901833565,
+            "python-parallel": 29.26778687717534,
+            "unzip": 11.650825872197418
+          },
+          "fastest_measured": "hybrid"
+        },
+        {
+          "case": "documents-level1",
+          "mode": "test",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.09076650100178085,
+            "auto": 0.01029203700090875,
+            "gpu": 0.17766887199832126,
+            "hybrid": 0.0099083300010534,
+            "python-parallel": 0.6113087330013514,
+            "unzip": 0.14417902499917545
+          },
+          "ratio_to_auto": {
+            "7zip": 8.81909975583711,
+            "auto": 1.0,
+            "gpu": 17.26275099697307,
+            "hybrid": 0.9627180703079994,
+            "python-parallel": 59.396282091424176,
+            "unzip": 14.008793884674626
+          },
+          "fastest_measured": "hybrid"
+        },
+        {
+          "case": "documents-level9",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.3002549299999373,
+            "auto": 0.03251819599972805,
+            "gpu": 0.2649076689995127,
+            "hybrid": 0.03281148700261838,
+            "python-parallel": 0.9610117939992051,
+            "unzip": 0.3677106610011833
+          },
+          "ratio_to_auto": {
+            "7zip": 9.233443638830652,
+            "auto": 1.0,
+            "gpu": 8.14644419394385,
+            "hybrid": 1.0090192888588525,
+            "python-parallel": 29.55304759240771,
+            "unzip": 11.307843184297754
+          },
+          "fastest_measured": "auto"
+        },
+        {
+          "case": "documents-level9",
+          "mode": "test",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.09245629900033236,
+            "auto": 0.01165462900098646,
+            "gpu": 0.17808008300198708,
+            "hybrid": 0.010173826998652657,
+            "python-parallel": 0.5353845550016558,
+            "unzip": 0.14836479100267752
+          },
+          "ratio_to_auto": {
+            "7zip": 7.933010908584628,
+            "auto": 1.0,
+            "gpu": 15.279772782721285,
+            "hybrid": 0.8729430167010493,
+            "python-parallel": 45.93750302616585,
+            "unzip": 12.73011701960824
+          },
+          "fastest_measured": "hybrid"
+        },
+        {
+          "case": "empty-directories",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.4319161570019787,
+            "auto": 0.3500192449973838,
+            "gpu": 0.5371643870021217,
+            "hybrid": 0.346651963001932,
+            "python-parallel": 0.7368680070030678,
+            "unzip": 0.419628397001361
+          },
+          "ratio_to_auto": {
+            "7zip": 1.2339783116931387,
+            "auto": 1.0,
+            "gpu": 1.5346710064646207,
+            "hybrid": 0.9903797232764245,
+            "python-parallel": 2.105221405778918,
+            "unzip": 1.1988723563028585
+          },
+          "fastest_measured": "hybrid"
+        },
+        {
+          "case": "empty-directories",
+          "mode": "test",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.028245022000191966,
+            "auto": 0.007286369000212289,
+            "gpu": 0.16538185299941688,
+            "hybrid": 0.007032194000203162,
+            "python-parallel": 0.3328411900001811,
+            "unzip": 0.003312215001642471
+          },
+          "ratio_to_auto": {
+            "7zip": 3.8764193797169817,
+            "auto": 1.0,
+            "gpu": 22.69743036546714,
+            "hybrid": 0.9651163700326292,
+            "python-parallel": 45.679979972258295,
+            "unzip": 0.4545768957825179
+          },
+          "fastest_measured": "unzip"
+        },
+        {
+          "case": "incompressible",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.17287057599969557,
+            "auto": 0.09711107700059074,
+            "gpu": 0.40307855200080667,
+            "hybrid": 0.0940394200006267,
+            "python-parallel": 0.18950686699827202,
+            "unzip": 1.0276925669968477
+          },
+          "ratio_to_auto": {
+            "7zip": 1.780132414746507,
+            "auto": 1.0,
+            "gpu": 4.150695929346502,
+            "hybrid": 0.9683696536498576,
+            "python-parallel": 1.9514443959582408,
+            "unzip": 10.582650288088105
+          },
+          "fastest_measured": "hybrid"
+        },
+        {
+          "case": "incompressible",
+          "mode": "test",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.1111419789995125,
+            "auto": 0.08112182300101267,
+            "gpu": 0.36959201200079406,
+            "hybrid": 0.0780566989997169,
+            "python-parallel": 0.1764049130033527,
+            "unzip": 1.012429737002094
+          },
+          "ratio_to_auto": {
+            "7zip": 1.370062640211193,
+            "auto": 1.0,
+            "gpu": 4.556012159590895,
+            "hybrid": 0.9622157899329074,
+            "python-parallel": 2.1745679088246153,
+            "unzip": 12.480362244687912
+          },
+          "fastest_measured": "hybrid"
+        },
+        {
+          "case": "many-empty",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.9775482119985099,
+            "auto": 0.10640241600049194,
+            "gpu": 0.1001870020008937,
+            "hybrid": 0.1060712720027368,
+            "python-parallel": 3.1981914980024158,
+            "unzip": 0.8479752990024281
+          },
+          "ratio_to_auto": {
+            "7zip": 9.1872745821297,
+            "auto": 1.0,
+            "gpu": 0.941585781289313,
+            "hybrid": 0.9968878150496733,
+            "python-parallel": 30.057508261726213,
+            "unzip": 7.9695116979158405
+          },
+          "fastest_measured": "gpu"
+        },
+        {
+          "case": "many-empty",
+          "mode": "test",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.21085686199876363,
+            "auto": 0.03218681200087303,
+            "gpu": 0.03121483100039768,
+            "hybrid": 0.030673998000565916,
+            "python-parallel": 2.039352477000648,
+            "unzip": 0.007860755998990498
+          },
+          "ratio_to_auto": {
+            "7zip": 6.551032826520513,
+            "auto": 1.0,
+            "gpu": 0.9698018865475404,
+            "hybrid": 0.9529989487537293,
+            "python-parallel": 63.359877857593744,
+            "unzip": 0.24422288230276687
+          },
+          "fastest_measured": "unzip"
+        },
+        {
+          "case": "skewed",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.6006652420001046,
+            "auto": 0.22151378000125987,
+            "gpu": 0.9970437480005785,
+            "hybrid": 0.2278428850004275,
+            "python-parallel": 1.1470420270015893,
+            "unzip": 2.3082489170010376
+          },
+          "ratio_to_auto": {
+            "7zip": 2.7116382646564396,
+            "auto": 1.0,
+            "gpu": 4.501046156112309,
+            "hybrid": 1.0285720599374522,
+            "python-parallel": 5.178197162249073,
+            "unzip": 10.420340066373791
+          },
+          "fastest_measured": "auto"
+        },
+        {
+          "case": "skewed",
+          "mode": "test",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.28148754100038786,
+            "auto": 0.1266123730019899,
+            "gpu": 0.8310730890007108,
+            "hybrid": 0.12701261099937255,
+            "python-parallel": 0.7541898329982359,
+            "unzip": 2.0916589490007027
+          },
+          "ratio_to_auto": {
+            "7zip": 2.2232230099341384,
+            "auto": 1.0,
+            "gpu": 6.563916853431451,
+            "hybrid": 1.0031611286313729,
+            "python-parallel": 5.956683498747651,
+            "unzip": 16.52017807902415
+          },
+          "fastest_measured": "auto"
+        },
+        {
+          "case": "stored-large",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.2651775339982123,
+            "auto": 0.10953570399942691,
+            "gpu": 0.1085463979979977,
+            "hybrid": 0.1100471390018356,
+            "python-parallel": 0.13425279000148294,
+            "unzip": 1.6365845979998994
+          },
+          "ratio_to_auto": {
+            "7zip": 2.4209232635196254,
+            "auto": 1.0,
+            "gpu": 0.9909681869444652,
+            "hybrid": 1.004669116860849,
+            "python-parallel": 1.225653235425276,
+            "unzip": 14.941106308208527
+          },
+          "fastest_measured": "gpu"
+        },
+        {
+          "case": "stored-large",
+          "mode": "test",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.16222260499853292,
+            "auto": 0.08616993599935086,
+            "gpu": 0.08593917700272868,
+            "hybrid": 0.08599191999746836,
+            "python-parallel": 0.11459830500098178,
+            "unzip": 1.5405818889994407
+          },
+          "ratio_to_auto": {
+            "7zip": 1.882589363879242,
+            "auto": 1.0,
+            "gpu": 0.9973220474873753,
+            "hybrid": 0.9979341286515074,
+            "python-parallel": 1.3299105270525569,
+            "unzip": 17.878415147146523
+          },
+          "fastest_measured": "gpu"
+        },
+        {
+          "case": "stored-medium",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.17046204800135456,
+            "auto": 0.05768716199963819,
+            "gpu": 0.05771242099945084,
+            "hybrid": 0.058009258998936275,
+            "python-parallel": 0.1881431839974539,
+            "unzip": 0.8667631270000129
+          },
+          "ratio_to_auto": {
+            "7zip": 2.954939055632927,
+            "auto": 1.0,
+            "gpu": 1.0004378617171843,
+            "hybrid": 1.0055835126591963,
+            "python-parallel": 3.261439416947464,
+            "unzip": 15.025234332128337
+          },
+          "fastest_measured": "auto"
+        },
+        {
+          "case": "stored-medium",
+          "mode": "test",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.08740577099888469,
+            "auto": 0.05598723400180461,
+            "gpu": 0.05670466000083252,
+            "hybrid": 0.05642356300086249,
+            "python-parallel": 0.13804186300330912,
+            "unzip": 0.7839693309979339
+          },
+          "ratio_to_auto": {
+            "7zip": 1.56117323095596,
+            "auto": 1.0,
+            "gpu": 1.0128140997107444,
+            "hybrid": 1.0077933658777252,
+            "python-parallel": 2.4655953355163014,
+            "unzip": 14.00264444163583
+          },
+          "fastest_measured": "auto"
+        },
+        {
+          "case": "stored-small",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.5464190659986343,
+            "auto": 0.06682795999950031,
+            "gpu": 0.06745249500090722,
+            "hybrid": 0.0686972670009709,
+            "python-parallel": 1.695121704000485,
+            "unzip": 0.6656033549988933
+          },
+          "ratio_to_auto": {
+            "7zip": 8.176503756851474,
+            "auto": 1.0,
+            "gpu": 1.0093454147247887,
+            "hybrid": 1.0279719297354666,
+            "python-parallel": 25.365456375043617,
+            "unzip": 9.959953214251493
+          },
+          "fastest_measured": "auto"
+        },
+        {
+          "case": "stored-small",
+          "mode": "test",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.1171845979988575,
+            "auto": 0.026648265000403626,
+            "gpu": 0.025895159000356216,
+            "hybrid": 0.026466130002518184,
+            "python-parallel": 1.0716136019982514,
+            "unzip": 0.19586123200133443
+          },
+          "ratio_to_auto": {
+            "7zip": 4.3974569450237215,
+            "auto": 1.0,
+            "gpu": 0.9717390231583181,
+            "hybrid": 0.9931652211548225,
+            "python-parallel": 40.213259736872935,
+            "unzip": 7.349868068272656
+          },
+          "fastest_measured": "gpu"
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.06978669700038154,
+            "auto": 0.012303931998758344,
+            "gpu": 0.17647408799894038,
+            "hybrid": 0.011995511998975417,
+            "python-parallel": 0.26603764700121246,
+            "unzip": 0.07209400700230617
+          },
+          "ratio_to_auto": {
+            "7zip": 5.671902039723894,
+            "auto": 1.0,
+            "gpu": 14.342901766423068,
+            "hybrid": 0.9749332164860752,
+            "python-parallel": 21.622164932971,
+            "unzip": 5.859428271351106
+          },
+          "fastest_measured": "hybrid"
+        },
+        {
+          "case": "unicode-paths",
+          "mode": "test",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.02049937900301302,
+            "auto": 0.005793462998553878,
+            "gpu": 0.1628786619985476,
+            "hybrid": 0.005919628998526605,
+            "python-parallel": 0.15531945299881045,
+            "unzip": 0.019738658997084713
+          },
+          "ratio_to_auto": {
+            "7zip": 3.5383636709391126,
+            "auto": 1.0,
+            "gpu": 28.1142145965555,
+            "hybrid": 1.0217773031439434,
+            "python-parallel": 26.809432119887564,
+            "unzip": 3.4070570575857193
+          },
+          "fastest_measured": "auto"
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.5589169650011172,
+            "auto": 0.033200984998984495,
+            "gpu": 0.3476544439981808,
+            "hybrid": 0.34676162699906854,
+            "python-parallel": 0.551081489000353,
+            "unzip": 0.9382989980003913
+          },
+          "ratio_to_auto": {
+            "7zip": 16.834348891101047,
+            "auto": 1.0,
+            "gpu": 10.471208730970313,
+            "hybrid": 10.444317450511628,
+            "python-parallel": 16.59834757966394,
+            "unzip": 28.261179541182006
+          },
+          "fastest_measured": "auto"
+        },
+        {
+          "case": "zeros-medium",
+          "mode": "test",
+          "complete_success": true,
+          "tools": {
+            "7zip": 0.4106241549998231,
+            "auto": 0.019294634999823757,
+            "gpu": 0.17039721199762425,
+            "hybrid": 0.1714091419999022,
+            "python-parallel": 0.35311694399933913,
+            "unzip": 0.7729457300010836
+          },
+          "ratio_to_auto": {
+            "7zip": 21.28177884699938,
+            "auto": 1.0,
+            "gpu": 8.83132601363958,
+            "hybrid": 8.883772198928247,
+            "python-parallel": 18.30130209784039,
+            "unzip": 40.06013744277328
+          },
+          "fastest_measured": "auto"
+        }
+      ]
+    }
+  ]
+}

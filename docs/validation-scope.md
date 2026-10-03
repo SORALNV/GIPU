@@ -20,7 +20,7 @@ GIPUは現時点でLinux向けのStored／Deflate ZIP32・ZIP64展開CLIです�
 
 ## 環境
 
-2026年10月3日の[CI](https://github.com/SORALNV/GIPU/actions/runs/37039233087)では11ジョブが成功しました。
+2026年10月3日の[CI](https://github.com/SORALNV/GIPU/actions/runs/37111316575)では11ジョブが成功しました。
 
 | 環境 | 実施した検証 | 保証しないもの |
 |---|---|---|
@@ -43,7 +43,7 @@ SFX／実行ファイルに付加されたZIP、全producer・全文字コード
 - CLI起動・GPU初期化・ZIP解析・CRC・ファイル生成・write完了までを含める。解凍カーネルだけの速度を実展開速度として扱わない。
 - 既定比較はfsyncなし。永続化までの計測は別条件とする。
 - `drop-advised`は対象ZIPへのDONTNEED助言で、完全なcold cacheを保証しない。`warm`も全データのキャッシュ常駐を保証しない。
-- 全件CRC、出力集合・サイズを確認し、合成コーパスは全ファイルSHA256、Kaggleは固定seedサンプルの元データSHA256も確認する。
+- 全件CRC・件数・サイズを確認する。実展開では出力集合を確認し、合成コーパスは全ファイルSHA256、Kaggleは固定seedサンプルの元データSHA256も確認する。出力なしの`test`を実展開SHA256確認として数えない。
 - SHA256照合、試験が作成した一時出力の削除は速度計測外。元データ・元ZIPは削除しない。
 - CPUのworker数とGPUの出力worker数は別。GPU比較は既定の出力8 worker、pipelineは最大2バッチを重畳する。
 - GNU timeのRSSは親子プロセス全体の同時ピークを保証しない。

@@ -1,0 +1,525 @@
+{
+  "note": "倍率は同じ報告・case・mode内の中央値同士だけ。環境／cache／永続化条件を跨がない。",
+  "total_runs": 14,
+  "total_failures": 0,
+  "all_reports_complete": false,
+  "reports": [
+    {
+      "metadata": {
+        "kind": "metadata",
+        "time_utc": "2026-10-02T17:25:34Z",
+        "platform": "Linux-7.0.0-34-generic-x86_64-with-glibc2.43",
+        "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+        "cpu_affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "threads_requested": 4,
+        "output_root": "/home/sora/gipu-validation-output",
+        "repeats_requested": 3,
+        "variants_requested": [
+          "auto",
+          "gpu",
+          "7zip",
+          "python-parallel"
+        ],
+        "modes_requested": [
+          "test",
+          "extract"
+        ],
+        "cases_requested": [
+          "documents-level1",
+          "zeros-medium",
+          "incompressible",
+          "stored-medium",
+          "skewed"
+        ],
+        "output_device": 66313,
+        "cache": "drop-advised",
+        "durable": false,
+        "path_mode": "auto",
+        "host_limit": null,
+        "vram_limit": null,
+        "samples": 0,
+        "source_sha256_validation": false,
+        "tool_sha256": {
+          "gipu": "398d66deb7d4c8a83856145c2cbcbe516700876911c5f05908aee3966fe7d97e",
+          "7zip": "3d52c92deb7e9f1bd059692eefc33f86a144cdc548acc4b6f4c809a4dd7bc369",
+          "unzip": "908a7d41dfe105c724737cb7f355f474186f51d645829af522265f01492a0cc7"
+        },
+        "benchmark_script_sha256": "dd31eaa61d6dca462e721df46a4555ba596742f04698a04b7dd054b894698578",
+        "reference_script_sha256": "de86a4a2676d8a0ec484479b4c83e268f6be7a69867a73dd7f05be7fdebd3d19",
+        "reference_7zip_script_sha256": "20fe41084a93542fa5a04ec65460be072b303be864625b7bc173926e358d22a1",
+        "note": "同じ機械でのaffinity制限。cold cache保証なし。通常write終了まで、fsyncなし。属性復元・出力確定方式はツールで異なる。Python並列は比較用で最速CPU保証ではない。",
+        "7zip_version": "7-Zip (z) 26.03 (x64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-09-03",
+        "unzip_version": "UnZip 6.00 of 20 April 2009, by Debian. Original by Info-ZIP."
+      },
+      "runs": 14,
+      "failures": 0,
+      "complete": false,
+      "missing_groups": [
+        [
+          "documents-level1",
+          "extract",
+          "auto"
+        ],
+        [
+          "documents-level1",
+          "extract",
+          "python-parallel"
+        ],
+        [
+          "incompressible",
+          "extract",
+          "7zip"
+        ],
+        [
+          "incompressible",
+          "extract",
+          "auto"
+        ],
+        [
+          "incompressible",
+          "extract",
+          "gpu"
+        ],
+        [
+          "incompressible",
+          "extract",
+          "python-parallel"
+        ],
+        [
+          "incompressible",
+          "test",
+          "7zip"
+        ],
+        [
+          "incompressible",
+          "test",
+          "auto"
+        ],
+        [
+          "incompressible",
+          "test",
+          "gpu"
+        ],
+        [
+          "incompressible",
+          "test",
+          "python-parallel"
+        ],
+        [
+          "skewed",
+          "extract",
+          "7zip"
+        ],
+        [
+          "skewed",
+          "extract",
+          "auto"
+        ],
+        [
+          "skewed",
+          "extract",
+          "gpu"
+        ],
+        [
+          "skewed",
+          "extract",
+          "python-parallel"
+        ],
+        [
+          "skewed",
+          "test",
+          "7zip"
+        ],
+        [
+          "skewed",
+          "test",
+          "auto"
+        ],
+        [
+          "skewed",
+          "test",
+          "gpu"
+        ],
+        [
+          "skewed",
+          "test",
+          "python-parallel"
+        ],
+        [
+          "stored-medium",
+          "extract",
+          "7zip"
+        ],
+        [
+          "stored-medium",
+          "extract",
+          "auto"
+        ],
+        [
+          "stored-medium",
+          "extract",
+          "gpu"
+        ],
+        [
+          "stored-medium",
+          "extract",
+          "python-parallel"
+        ],
+        [
+          "stored-medium",
+          "test",
+          "7zip"
+        ],
+        [
+          "stored-medium",
+          "test",
+          "auto"
+        ],
+        [
+          "stored-medium",
+          "test",
+          "gpu"
+        ],
+        [
+          "stored-medium",
+          "test",
+          "python-parallel"
+        ],
+        [
+          "zeros-medium",
+          "extract",
+          "7zip"
+        ],
+        [
+          "zeros-medium",
+          "extract",
+          "auto"
+        ],
+        [
+          "zeros-medium",
+          "extract",
+          "gpu"
+        ],
+        [
+          "zeros-medium",
+          "extract",
+          "python-parallel"
+        ],
+        [
+          "zeros-medium",
+          "test",
+          "7zip"
+        ],
+        [
+          "zeros-medium",
+          "test",
+          "auto"
+        ],
+        [
+          "zeros-medium",
+          "test",
+          "gpu"
+        ],
+        [
+          "zeros-medium",
+          "test",
+          "python-parallel"
+        ]
+      ],
+      "unexpected_groups": [],
+      "groups": [
+        {
+          "case": "documents-level1",
+          "mode": "extract",
+          "variant": "7zip",
+          "runs": 1,
+          "failures": 0,
+          "wall_seconds": [
+            0.32002763000127743
+          ],
+          "archive_sha256": [
+            "ae0d0501cd890e590314c71a1366fe87dac107bbf0698a5bb8034d5af27a4625"
+          ],
+          "archive_bytes": 2639217,
+          "raw_bytes": 67108864,
+          "files": 8192,
+          "crc_verified_files": [
+            8192
+          ],
+          "sha256_verified_files": [
+            8192
+          ],
+          "peak_rss_kib": [
+            8432
+          ],
+          "selected_backends": [
+            null
+          ],
+          "selection_reasons": [
+            null
+          ],
+          "missing_runs": 2,
+          "repeat_sequence_valid": false,
+          "median_seconds": 0.32002763000127743,
+          "min_seconds": 0.32002763000127743,
+          "max_seconds": 0.32002763000127743
+        },
+        {
+          "case": "documents-level1",
+          "mode": "extract",
+          "variant": "gpu",
+          "runs": 1,
+          "failures": 0,
+          "wall_seconds": [
+            0.27949404699756997
+          ],
+          "archive_sha256": [
+            "ae0d0501cd890e590314c71a1366fe87dac107bbf0698a5bb8034d5af27a4625"
+          ],
+          "archive_bytes": 2639217,
+          "raw_bytes": 67108864,
+          "files": 8192,
+          "crc_verified_files": [
+            8192
+          ],
+          "sha256_verified_files": [
+            8192
+          ],
+          "peak_rss_kib": [
+            150084
+          ],
+          "selected_backends": [
+            "gpu"
+          ],
+          "selection_reasons": [
+            ""
+          ],
+          "missing_runs": 2,
+          "repeat_sequence_valid": false,
+          "median_seconds": 0.27949404699756997,
+          "min_seconds": 0.27949404699756997,
+          "max_seconds": 0.27949404699756997
+        },
+        {
+          "case": "documents-level1",
+          "mode": "test",
+          "variant": "7zip",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.0928412670000398,
+            0.09476095200079726,
+            0.09570741400239058
+          ],
+          "archive_sha256": [
+            "ae0d0501cd890e590314c71a1366fe87dac107bbf0698a5bb8034d5af27a4625"
+          ],
+          "archive_bytes": 2639217,
+          "raw_bytes": 67108864,
+          "files": 8192,
+          "crc_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            7904,
+            8180,
+            8248
+          ],
+          "selected_backends": [
+            null,
+            null,
+            null
+          ],
+          "selection_reasons": [
+            null,
+            null,
+            null
+          ],
+          "missing_runs": 0,
+          "repeat_sequence_valid": true,
+          "median_seconds": 0.09476095200079726,
+          "min_seconds": 0.0928412670000398,
+          "max_seconds": 0.09570741400239058
+        },
+        {
+          "case": "documents-level1",
+          "mode": "test",
+          "variant": "auto",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.013858186001016293,
+            0.01629371599847218,
+            0.018747850001091138
+          ],
+          "archive_sha256": [
+            "ae0d0501cd890e590314c71a1366fe87dac107bbf0698a5bb8034d5af27a4625"
+          ],
+          "archive_bytes": 2639217,
+          "raw_bytes": 67108864,
+          "files": 8192,
+          "crc_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            10624,
+            10636,
+            10684
+          ],
+          "selected_backends": [
+            "libdeflate",
+            "libdeflate",
+            "libdeflate"
+          ],
+          "selection_reasons": [
+            "auto_cpu_test",
+            "auto_cpu_test",
+            "auto_cpu_test"
+          ],
+          "missing_runs": 0,
+          "repeat_sequence_valid": true,
+          "median_seconds": 0.01629371599847218,
+          "min_seconds": 0.013858186001016293,
+          "max_seconds": 0.018747850001091138
+        },
+        {
+          "case": "documents-level1",
+          "mode": "test",
+          "variant": "gpu",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.1725446380005451,
+            0.1611234340016381,
+            0.15669748200161848
+          ],
+          "archive_sha256": [
+            "ae0d0501cd890e590314c71a1366fe87dac107bbf0698a5bb8034d5af27a4625"
+          ],
+          "archive_bytes": 2639217,
+          "raw_bytes": 67108864,
+          "files": 8192,
+          "crc_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            118488,
+            118352,
+            118400
+          ],
+          "selected_backends": [
+            "gpu",
+            "gpu",
+            "gpu"
+          ],
+          "selection_reasons": [
+            "",
+            "",
+            ""
+          ],
+          "missing_runs": 0,
+          "repeat_sequence_valid": true,
+          "median_seconds": 0.1611234340016381,
+          "min_seconds": 0.15669748200161848,
+          "max_seconds": 0.1725446380005451
+        },
+        {
+          "case": "documents-level1",
+          "mode": "test",
+          "variant": "python-parallel",
+          "runs": 3,
+          "failures": 0,
+          "wall_seconds": [
+            0.3041796819998126,
+            0.3596504810011538,
+            0.33228461999897263
+          ],
+          "archive_sha256": [
+            "ae0d0501cd890e590314c71a1366fe87dac107bbf0698a5bb8034d5af27a4625"
+          ],
+          "archive_bytes": 2639217,
+          "raw_bytes": 67108864,
+          "files": 8192,
+          "crc_verified_files": [
+            8192,
+            8192,
+            8192
+          ],
+          "sha256_verified_files": [
+            0,
+            0,
+            0
+          ],
+          "peak_rss_kib": [
+            44196,
+            44300,
+            44552
+          ],
+          "selected_backends": [
+            null,
+            null,
+            null
+          ],
+          "selection_reasons": [
+            null,
+            null,
+            null
+          ],
+          "missing_runs": 0,
+          "repeat_sequence_valid": true,
+          "median_seconds": 0.33228461999897263,
+          "min_seconds": 0.3041796819998126,
+          "max_seconds": 0.3596504810011538
+        }
+      ],
+      "comparisons": [
+        {
+          "case": "documents-level1",
+          "mode": "extract",
+          "complete_success": false,
+          "tools": {
+            "7zip": 0.32002763000127743,
+            "gpu": 0.27949404699756997
+          }
+        },
+        {
+          "case": "documents-level1",
+          "mode": "test",
+          "complete_success": false,
+          "tools": {
+            "7zip": 0.09476095200079726,
+            "auto": 0.01629371599847218,
+            "gpu": 0.1611234340016381,
+            "python-parallel": 0.33228461999897263
+          }
+        }
+      ]
+    }
+  ]
+}

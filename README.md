@@ -4,7 +4,9 @@ LinuxでStored／DeflateのZIP32・ZIP64を展開するCLIを開発していま�
 
 目標は、GPUとCPUを使い分け、大小・多数のファイルを含む標準ZIPを高速に展開することです。VRAMより大きいアーカイブや単一ファイルもストリーミング展開します。性能は解凍・CRCだけでなく、ファイル操作とI/Oを含めて実測で判断します。
 
-最新の50GB ZIP・SSD実展開3回中央値はCPU auto **50.56秒**、GPU pipeline **66.04秒**、hybrid **61.62秒**です。公式7-Zip 26.03は**407.80秒**で、この入力ではGPU約6.2倍、CPU auto約8.1倍でした（通常write完了まで、fsyncなし。7-ZipはDeflate解凍で実質1コア、属性復元等の機能差も含む比較）。入力とストレージ状態で優劣が変わるため、通常はCPUを選ぶ`auto`を既定にしています。全条件で最速CPU比5倍を達成したものではありません。大小・多数・単一ファイルを含む[最新の測定と制約](docs/measurements-adaptive-2026-10-02.md)を参照してください。
+測定版6da1908の単一8GiB実データZIPでは、実験用CPU並列が同GIPUのGPU Streamingより**約9.3倍高速**でした。この入力・実機・CLI全体時間に限った比較で、全ZIPでのGPU比ではありません。
+
+50GB ZIPのSSD実展開3回中央値はCPU auto **49.64秒**、GPU pipeline **52.38秒**、通常7-Zip **410.57秒**、独立16プロセス並列7-Zip **62.38秒**でした（測定版6da1908、索引除外、通常write完了まで、fsyncなし）。CPU autoは通常7-Zip比約8.27倍ですが、並列7-Zip比では約1.26倍で、全条件・最速CPU比5倍は未達です。入力と環境で優劣が変わるため、通常はCPUを選ぶ`auto`を既定にしています。改良版の新旧対照試験、全件ハッシュ照合、不利な条件も含む[最新の検証記録](docs/measurements-validation-2026-10-03.md)を参照してください。
 
 ## 実装状況
 
@@ -88,6 +90,8 @@ GPU auto／batchでは、Stored・空ファイル・ディレクトリを先にC
 
 CPUの全量バッファには、worker予算に加えて`--cpu-buffer-limit`（既定64MiB）を適用します。巨大ファイルでは全量のメモリ確保・コピーを避けた方が速かった測定から採用しました。超過時も定量メモリのStreamingへ切り替えるため、ファイルサイズ制限ではありません。
 
+ISA-Lがある場合、8MiB以上のDeflateで圧縮後サイズが元サイズの98%以上なら、予算に収まってもCPU Streamingへ回します。非圧縮に近い512MiB／256MiBの複数ファイル入力では、旧版autoと同じ条件で比較して約2倍高速になり、ピークRSSも減りました。Stored・小ファイル・ISA-Lなし構成は従来の選択を保ちます。この条件も実測に基づく暫定則で、全機種での最速保証ではありません。
+
 既定の`--temp-mode auto`はLinuxの`O_TMPFILE`を試し、検証済みのファイルだけ`linkat`で確定します。未確定ファイルは名前を持たないため、強制終了でも一時名が残りません。対応しないfilesystemや`/proc/self/fd`を開けない環境では、従来の名前付き`.part`へ戻ります。比較には`--temp-mode named`を使えます。どちらも既存出力を上書きせず、容量不足・FD不足を成功扱いしません。JSONの`anonymous_output_files`／`named_output_files`で実際の方式を確認できます。
 
 pipelineは各slotの単一固定化バッファに、入力を先頭、出力を末尾から配置します。最大入力と最大出力が別バッチでも、最大の「入力＋出力」だけを予約すれば足ります。次入力が前出力へ重なる場合だけ前の書き込みを待ち、未完了の出力を上書きしません。`pipeline_overlap_waits`でこの待機回数を記録します。一つのエントリでも予算に収まらない場合は、出力を書き始める前にエラーを返します。
@@ -156,6 +160,30 @@ CPU比較対象にはzlibとlibdeflateを使います。`test`はデコード＋
 多形状比較と制約は[適応型解凍の実測](docs/measurements-adaptive-2026-10-02.md)を参照してください。`tests/cancellation.py`は単一大ファイルの処理中にSIGINT／SIGTERM／SIGKILLを送り、未確定出力とworker残留を検査します。`--worker-faults`では所有するGPU子プロセスの停止／異常終了も試します。`/usr/bin/time`のピークRSSは、GPU Streamingの親子合計ピークではない点に注意してください。
 
 `scripts/benchmark_7zip.py`は公式7-Zipの外部比較用です。CLIバージョン・バイナリSHA256・外部時間・CPU時間・RSSを記録します。`-mmt=16`は要求値で、Deflate解凍が16並列になる保証ではありません。実展開は各回新規の一時ディレクトリに限定し、全件サイズと指定元データ128件のSHA256を検査します。既知の正しい比較用ZIPにだけ使ってください。
+
+### OSS公開向けの互換性・形状・制約試験
+
+対応形式、Linux／ARM64／依存構成の確認と未検証事項は[検証範囲](docs/validation-scope.md)、独立並列CPU参照を含む結果は[2026年10月3日の検証記録](docs/measurements-validation-2026-10-03.md)にまとめています。未対応形式の拒否を解凍対応とは数えず、CPU affinityや媒体の異なる結果を混ぜて速度倍率を作りません。
+
+```bash
+python3 scripts/make_validation_corpus.py --output /optane/workspace/validation-corpus
+python3 scripts/benchmark_matrix.py --corpus /optane/workspace/validation-corpus \
+  --cases documents-level1 deflate-level0 incompressible stored-medium \
+  --variants auto gpu 7zip 7zip-parallel python-parallel --repeats 3 \
+  --output-root /ssd/gipu-validation-output --report bench-results/validation.jsonl
+python3 scripts/summarize_matrix.py --input bench-results/validation.jsonl \
+  --output bench-results/validation-summary.json
+```
+
+`benchmark_matrix.py`は全出力集合・サイズと、合成コーパスの全ファイルSHA256を確認します。報告にはバイナリ／入力／比較スクリプトのSHA256、各回の時間、実際のCPU／GPU経路を保存します。途中中断、欠けた反復、異なる入力、失敗を含む比較からは公開用倍率を作りません。既存のコーパス・報告は上書きしません。
+
+外部比較には7-Zipとunzipも用意し、`--sevenzip /path/to/7zz --unzip /path/to/unzip`で指定できます。本測定の7-Zipは公式26.03です。CIで使う旧版p7zipは互換性確認用であり、同じ性能の比較対象とは扱いません。
+
+`reference_7zip_parallel.py`は最大16個の7-Zipプロセスへ独立エントリを分担する比較用CPU参照です。単一Deflate内部の並列処理や、最速のCPU製品を代表するものではありません。未知のZIPに使う汎用安全解凍ツールではなく、既知の正しい試験入力だけに使用します。
+
+改善前のバイナリを比較する場合は`--reference-binary /path/to/previous-gipu --variants auto auto-reference`を使えます。旧版と新版を同じ条件で交互に測り、両方のバイナリSHA256を報告へ記録します。過去の別報告から時間を寄せ集めて改善倍率を作りません。
+
+本体ライセンスとGPU SDKの再配布条件は別です。依存と公開物の境界は[THIRD_PARTY.md](THIRD_PARTY.md)を参照してください。ライセンス選択が済むまで、本体の利用・再配布許諾が確定したとは扱いません。
 
 ### Kaggle実データの大容量測定
 

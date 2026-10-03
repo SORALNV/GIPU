@@ -30,9 +30,21 @@
     "zlib_only_ctest": {"suites": 5, "failures": 0},
     "cuda_invisible_auto": {"tests_run_including_skips": 67, "skips": 23, "failures": 0}
   },
+  "tuned_build": {
+    "revision": "e0eb987d115bbe9287d5986a1bd4e4b9e3fb86ba",
+    "binary_sha256": "ad6fc512c023f3ab0091fdcbe92ba4d48cd542ac9f01e1fce71b00e23bb135ad",
+    "asan_ubsan_binary_sha256": "80a8fb0adeac2a24814fed8ad8b77f9f1f8382bd8caa1cb3c8d9469c6d0f6214",
+    "zlib_only_binary_sha256": "334e0db44a1b6433cea24cd49d166c5cced687bfec605983296d27dbfeedc004",
+    "gpu_enabled_ctest": {"suites": 12, "failures": 0},
+    "asan_ubsan_ctest": {"suites": 7, "failures": 0},
+    "zlib_only_ctest": {"suites": 5, "failures": 0},
+    "integration_test_definitions": 69,
+    "benchmark_helper_tests": 27,
+    "cuda_invisible_auto": {"tests_run_including_skips": 69, "skips": 25, "failures": 0}
+  },
   "ci": {
-    "revision": "dcbfa0066eaa3db0d1923099a05563d052972723",
-    "url": "https://github.com/SORALNV/GIPU/actions/runs/37106162269",
+    "revision": "e0eb987d115bbe9287d5986a1bd4e4b9e3fb86ba",
+    "url": "https://github.com/SORALNV/GIPU/actions/runs/37111316575",
     "all_jobs_succeeded": true,
     "jobs": 11,
     "successful_jobs": [

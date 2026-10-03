@@ -1,0 +1,189 @@
+{
+  "note": "倍率は同じ報告・case・mode内の中央値同士だけ。環境／cache／永続化条件を跨がない。",
+  "total_runs": 1,
+  "total_failures": 0,
+  "all_reports_complete": true,
+  "reports": [
+    {
+      "source_report": "kaggle-full-integrity-tuned-20261003.jsonl",
+      "source_report_sha256": "4b66f07b4d5b84eaf92fced83a82969b0d6fcd18fcef1822b30bc961947b0524",
+      "metadata": {
+        "kind": "metadata",
+        "time_utc": "2026-10-03T09:16:10Z",
+        "platform": "Linux-7.0.0-34-generic-x86_64-with-glibc2.43",
+        "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+        "cpu_affinity": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31
+        ],
+        "threads_requested": 16,
+        "output_root": "/home/sora/.cache/gipu-validation-20261003",
+        "repeats_requested": 1,
+        "variants_requested": [
+          "auto"
+        ],
+        "modes_requested": [
+          "extract"
+        ],
+        "cases_requested": [
+          "kaggle-50GB"
+        ],
+        "output_device": 66313,
+        "cache": "drop-advised",
+        "durable": false,
+        "output_index_exclusion_marker": true,
+        "output_root_hidden_component": true,
+        "path_mode": "auto",
+        "host_limit": null,
+        "vram_limit": null,
+        "samples": 0,
+        "source_sha256_validation": true,
+        "tool_sha256": {
+          "gipu": "ad6fc512c023f3ab0091fdcbe92ba4d48cd542ac9f01e1fce71b00e23bb135ad",
+          "7zip": "3d52c92deb7e9f1bd059692eefc33f86a144cdc548acc4b6f4c809a4dd7bc369",
+          "unzip": "908a7d41dfe105c724737cb7f355f474186f51d645829af522265f01492a0cc7"
+        },
+        "benchmark_script_sha256": "a756a367410ddf27c7c69bce3068b90f68a017b1e6c0fb0e4ea6557ee81b4ec9",
+        "reference_script_sha256": "de86a4a2676d8a0ec484479b4c83e268f6be7a69867a73dd7f05be7fdebd3d19",
+        "reference_7zip_script_sha256": "a0f1542fee250e8ee2d79ffaa71d79c947537189b4b056bf533d718cebd7726e",
+        "note": "同じ機械でのaffinity制限。cold cache保証なし。通常write終了まで、fsyncなし。属性復元・出力確定方式はツールで異なる。Python並列は比較用で最速CPU保証ではない。",
+        "7zip_version": "7-Zip (z) 26.03 (x64) : Copyright (c) 1999-2026 Igor Pavlov : 2026-09-03",
+        "unzip_version": "UnZip 6.00 of 20 April 2009, by Debian. Original by Info-ZIP."
+      },
+      "runs": 1,
+      "failures": 0,
+      "complete": true,
+      "missing_groups": [],
+      "unexpected_groups": [],
+      "groups": [
+        {
+          "case": "kaggle-50GB",
+          "mode": "extract",
+          "variant": "auto",
+          "runs": 1,
+          "failures": 0,
+          "wall_seconds": [
+            70.04666287700002
+          ],
+          "archive_sha256": [
+            "e9b3ecf6d22489d5373729660d2ce0ac19e5a9c2c8bb9d294e37626c47b3e898"
+          ],
+          "archive_bytes": 50001081292,
+          "raw_bytes": 109556630214,
+          "files": 155925,
+          "crc_verified_files": [
+            155925
+          ],
+          "sha256_verified_files": [
+            155925
+          ],
+          "peak_rss_kib": [
+            273516
+          ],
+          "selected_backends": [
+            "libdeflate"
+          ],
+          "selection_reasons": [
+            "auto_cpu_extract"
+          ],
+          "gpu_batches": [
+            0
+          ],
+          "gpu_streams": [
+            0
+          ],
+          "gpu_crc_bytes": [
+            0
+          ],
+          "cpu_crc_bytes": [
+            109556630214
+          ],
+          "cpu_buffered_files": [
+            155925
+          ],
+          "cpu_stream_files": [
+            0
+          ],
+          "isal_files": [
+            0
+          ],
+          "cpu_parallel_files": [
+            0
+          ],
+          "stage_seconds": {
+            "parse_seconds": [
+              0.694627
+            ],
+            "allocation_seconds": [
+              0.071653
+            ],
+            "read_seconds": [
+              26.0012
+            ],
+            "write_seconds": [
+              961.259
+            ],
+            "decode_seconds": [
+              118.158
+            ],
+            "crc_seconds": [
+              2.88866
+            ],
+            "transfer_seconds": [
+              0
+            ]
+          },
+          "missing_runs": 0,
+          "repeat_sequence_valid": true,
+          "median_seconds": 70.04666287700002,
+          "min_seconds": 70.04666287700002,
+          "max_seconds": 70.04666287700002
+        }
+      ],
+      "comparisons": [
+        {
+          "case": "kaggle-50GB",
+          "mode": "extract",
+          "complete_success": true,
+          "tools": {
+            "auto": 70.04666287700002
+          },
+          "ratio_to_auto": {
+            "auto": 1.0
+          },
+          "fastest_measured": "auto"
+        }
+      ]
+    }
+  ]
+}
